@@ -1,0 +1,434 @@
+/* =====================================================================
+   Deutsch Essay · Editor (Schreiben) — styles
+   Direction: same "expensive paper" base as the Wörterbuch, but the
+   accent shifts to the warm autumn ORANGE of the word-card — one accent,
+   used with discipline. The writing surface is the hero; the right rail
+   carries exactly three calm, well-proportioned tools.
+   ===================================================================== */
+
+:root{
+  /* surfaces — a touch warmer than the Wörterbuch to match the autumn key */
+  --bg:#FAF8F4;
+  --bg-2:#F3F0E9;
+  --card:#FFFFFF;
+  --cream:#FBFAF6;
+
+  /* warm ink ramp */
+  --ink:#2A2420;
+  --ink-soft:#5B534A;
+  --ink-mute:#8C8377;
+  --muted:#A8A096;
+  --muted-2:#C8C1B6;
+  --line:#ECE7DE;
+  --line-soft:#F3EFE8;
+
+  /* the one accent — warm orange, plus a lighter sibling for the live line */
+  --accent:#C4622D;
+  --accent-2:#E08A3C;
+  --accent-dk:#A44E20;
+  --accent-bg:#FBF1EA;
+  --accent-ln:#E7B48F;
+
+  --graphite:#33312C;
+  --radius:18px;
+
+  /* Wörterbuch detail-card tokens (the popover is 1:1 with that page) */
+  --rose:#C2868D;
+  --rose-soft:#F2E6E6;
+  --hair:#ECEAE4;
+  --orange:#E08A3C;        /* the live connector line — same as the Wörterbuch */
+  font-synthesis:none;
+}
+
+/* animatable brush reveal — same mechanism as the Wörterbuch washes */
+@property --reveal { syntax:"<percentage>"; inherits:false; initial-value:30%; }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+.serif{font-family:'Cormorant Garamond',Georgia,serif}
+svg{display:block}
+button{font-family:inherit}
+
+/* faint paper grain over the whole page — keeps the surface from feeling flat */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(120% 80% at 100% 0%, rgba(196,98,45,.05), transparent 60%),
+             radial-gradient(90% 60% at 0% 100%, rgba(196,98,45,.035), transparent 55%)}
+
+/* Top bar lives in css/site-header.css — shared 1:1 with the Wörterbuch. */
+
+/* =====================================================================
+   Left edge decoration — narrow watercolor strip + vertical label
+   (a slimmer echo of the Wörterbuch's left column, kept in the gutter)
+   ===================================================================== */
+.bg-column{position:fixed;left:-130px;top:0;bottom:0;width:300px;z-index:0;pointer-events:none;
+  background:url('../images/abstract-watercolor-column.png') no-repeat -150px center;
+  background-size:auto 108%;opacity:.42;filter:saturate(.85);
+  /* melt out well before it reaches the essay-map column */
+  -webkit-mask:linear-gradient(to right,#000 0,#000 20%,transparent 60%);
+          mask:linear-gradient(to right,#000 0,#000 20%,transparent 60%)}
+.side-label{position:fixed;left:13px;top:232px;z-index:2;writing-mode:vertical-rl;transform:rotate(180deg);
+  letter-spacing:6px;font-size:10px;color:var(--muted-2);font-weight:700;pointer-events:none}
+
+/* =====================================================================
+   Page grid: left essay-map · center writing surface · right tools
+   ===================================================================== */
+.layout{position:relative;z-index:1;display:grid;
+  grid-template-columns:236px minmax(0,1fr) 360px;
+  gap:36px;align-items:start;
+  max-width:1640px;margin:0 auto;padding:34px 40px 80px}
+
+/* ---------------------------------------------------------------------
+   Left rail — essay map
+   --------------------------------------------------------------------- */
+.rail-left{position:sticky;top:96px;display:flex;flex-direction:column;gap:26px}
+.new-essay-row{display:flex;gap:10px}
+.btn-new{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:46px;
+  border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font-size:14px;font-weight:600;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.btn-new:hover{border-color:var(--accent-ln);box-shadow:0 8px 20px -12px rgba(196,98,45,.5);transform:translateY(-1px)}
+.btn-new svg{width:16px;height:16px;color:var(--accent)}
+.btn-icon{width:46px;height:46px;flex:none;border-radius:13px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink-soft);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .18s,color .18s}
+.btn-icon:hover{border-color:var(--accent-ln);color:var(--accent)}
+
+.rail-cap{font-size:10px;letter-spacing:2.4px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:14px}
+
+/* the map: numbered sections joined by a vertical track */
+.essay-map{position:relative;padding-left:26px}
+.essay-map::before{content:"";position:absolute;left:5px;top:10px;bottom:10px;width:2px;
+  background:var(--line);border-radius:2px}
+.map-item{position:relative;display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  padding:9px 0;margin-bottom:6px}
+.map-item::before{content:"";position:absolute;left:-26px;top:13px;width:12px;height:12px;border-radius:50%;
+  background:var(--card);border:2px solid var(--muted-2);transition:border-color .2s,background .2s,transform .2s}
+.map-item:hover::before{border-color:var(--accent-ln)}
+.map-item.active::before{border-color:var(--accent);background:var(--accent);
+  box-shadow:0 0 0 4px var(--accent-bg);transform:scale(1.05)}
+.map-num{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink-soft);line-height:1.2}
+.map-item.active .map-num{color:var(--accent)}
+.map-words{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* progress */
+.progress-cap{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.progress-cap b{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink)}
+.progress-cap b .of{color:var(--muted);font-size:15px}
+.progress-track{height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.progress-fill{height:100%;width:0;border-radius:6px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+
+/* niveau selector at the foot */
+.niveau-box{margin-top:auto;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:13px;
+  border:1px solid var(--line);background:var(--card)}
+.niveau-box .dd{margin:0}
+.niveau-box .niveau-lab{font-size:9.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+/* ---------------------------------------------------------------------
+   Center — the writing surface (hero)
+   --------------------------------------------------------------------- */
+.editor-card{background:var(--card);border:1px solid var(--line);border-radius:22px;
+  box-shadow:0 1px 2px rgba(60,40,20,.04),0 18px 50px -28px rgba(60,40,20,.22);
+  overflow:hidden;min-height:calc(100vh - 150px);display:flex;flex-direction:column}
+
+/* meta strip above the document */
+.doc-meta{display:flex;align-items:center;gap:8px;padding:16px 26px;border-bottom:1px solid var(--line-soft);
+  background:linear-gradient(180deg,var(--cream),var(--card))}
+.doc-meta .spacer{margin-left:auto}
+.doc-notes{display:inline-flex;align-items:center;gap:7px;background:none;border:1px solid var(--line);
+  border-radius:10px;padding:8px 13px;font-size:13px;font-weight:500;color:var(--ink-soft);cursor:pointer;
+  transition:border-color .18s,color .18s}
+.doc-notes:hover{border-color:var(--accent-ln);color:var(--accent)}
+.doc-notes svg{width:15px;height:15px}
+
+/* generic pill dropdown (used in meta strip + niveau) */
+.dd{position:relative}
+.dd-btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 13px;border-radius:11px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13.5px;font-weight:600;
+  cursor:pointer;transition:border-color .18s,box-shadow .18s}
+.dd-btn:hover{border-color:var(--accent-ln);box-shadow:0 6px 16px -12px rgba(196,98,45,.45)}
+.dd-btn .k{font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-right:2px}
+.dd-btn .chev{width:13px;height:13px;opacity:.6;transition:transform .2s}
+.dd.open .chev{transform:rotate(180deg)}
+.dd-menu{position:absolute;top:calc(100% + 7px);left:0;min-width:160px;z-index:30;background:var(--card);
+  border:1px solid var(--line);border-radius:13px;padding:6px;
+  box-shadow:0 14px 36px -16px rgba(60,40,20,.42),0 4px 12px rgba(60,40,20,.06);
+  opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s}
+.dd.open .dd-menu{opacity:1;visibility:visible;transform:none}
+.dd-menu button{display:flex;width:100%;text-align:left;padding:9px 12px;border:0;border-radius:9px;background:none;
+  font-size:13.5px;color:var(--ink-soft);cursor:pointer}
+.dd-menu button:hover{background:var(--accent-bg);color:var(--accent-dk)}
+.dd-menu button.sel{color:var(--accent);font-weight:600}
+
+/* document header — eyebrow + serif title + subtitle */
+.doc-head{padding:30px 48px 18px}
+.doc-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:10px}
+.doc-title{font-family:'Cormorant Garamond',serif;font-size:56px;font-weight:600;line-height:1.0;
+  letter-spacing:-.5px;color:var(--ink);margin-bottom:8px}
+.doc-sub{font-size:14.5px;color:var(--ink-mute)}
+
+/* the writing area itself — big, calm, serif-friendly */
+.doc-scroll{flex:1;overflow:auto;padding:30px 48px 22px}
+.editable{min-height:420px;outline:none;font-family:'Cormorant Garamond',serif;font-size:21px;line-height:1.85;
+  color:var(--ink);caret-color:var(--accent)}
+.editable:empty::before{content:attr(data-placeholder);color:var(--muted-2);font-style:italic;pointer-events:none}
+.editable p{margin:0 0 .7em}
+.editable ul,.editable ol{margin:0 0 .7em 1.3em}
+/* a faint ruled-paper feel without the literal lines being loud */
+.doc-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 48px;
+  border-top:1px solid var(--line-soft);background:var(--card);font-size:13px;color:var(--muted)}
+.doc-foot .saved{display:inline-flex;align-items:center;gap:7px}
+.doc-foot .saved .dot{width:7px;height:7px;border-radius:50%;background:#7faa6e}
+
+/* ---------------------------------------------------------------------
+   Right rail — exactly three tools
+   --------------------------------------------------------------------- */
+.rail-right{position:sticky;top:96px;display:flex;flex-direction:column;gap:22px}
+.tool{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 1px 2px rgba(60,40,20,.04),0 12px 30px -22px rgba(60,40,20,.2)}
+.tool-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px}
+.tool-title{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);font-weight:700}
+.tool-title b{color:var(--accent-dk)}
+
+/* 1 · Pomodoro --------------------------------------------------------- */
+.pomodoro{position:relative;overflow:hidden;border-radius:var(--radius);min-height:218px;
+  display:flex;flex-direction:column;justify-content:space-between;color:#fff;
+  /* fallback warm-autumn gradient until images/pomodoro-forest.png is dropped in */
+  background:
+    linear-gradient(180deg, rgba(60,34,20,.28) 0%, rgba(60,34,20,.46) 100%),
+    radial-gradient(120% 90% at 70% 10%, #e8a866 0%, #c8783c 38%, #9c5026 72%, #6e3a1d 100%);
+  background-size:cover;background-position:center}
+/* the autumn watercolor is bright, so a warm scrim keeps white text + the
+   orange button readable without hiding the painting */
+.pomodoro.has-img{background:
+    linear-gradient(180deg, rgba(58,32,16,.34) 0%, rgba(58,32,16,.14) 38%, rgba(58,32,16,.52) 100%),
+    var(--pomo-img) center/cover no-repeat}
+.pomo-top{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 0}
+.pomo-label{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;
+  color:rgba(255,255,255,.92);text-shadow:0 1px 3px rgba(0,0,0,.4)}
+.pomo-mode{display:flex;gap:4px}
+.pomo-mode button{font-size:11px;font-weight:600;color:rgba(255,255,255,.78);background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:4px 11px;cursor:pointer;backdrop-filter:blur(4px);
+  transition:background .18s,color .18s}
+.pomo-mode button.on{background:#fff;color:var(--accent-dk);border-color:#fff}
+.pomo-center{text-align:center;padding:6px 18px 0}
+.pomo-time{font-family:'Cormorant Garamond',serif;font-size:64px;font-weight:600;line-height:1;
+  letter-spacing:1px;text-shadow:0 2px 14px rgba(0,0,0,.35);font-variant-numeric:tabular-nums}
+.pomo-sub{font-size:12px;letter-spacing:.06em;color:rgba(255,255,255,.86);margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+.pomo-controls{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 0 20px}
+.pomo-play{width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;background:var(--accent);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 22px -6px rgba(196,98,45,.7),0 2px 6px rgba(0,0,0,.25);
+  transition:transform .15s,box-shadow .15s,background .18s}
+.pomo-play:hover{transform:scale(1.06);box-shadow:0 12px 28px -6px rgba(196,98,45,.8)}
+.pomo-play svg{width:24px;height:24px}
+.pomo-reset{width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.16);
+  color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);
+  transition:background .18s,transform .15s}
+.pomo-reset:hover{background:rgba(255,255,255,.28);transform:rotate(-40deg)}
+.pomo-reset svg{width:18px;height:18px}
+
+/* 2 · Klischees -------------------------------------------------------- */
+.kli-head .kli-pager{display:flex;align-items:center;gap:8px}
+.kli-count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600;min-width:34px;text-align:center}
+.kli-nav{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .18s,color .18s}
+.kli-nav:hover{border-color:var(--accent-ln);color:var(--accent)}
+.kli-nav:disabled{opacity:.35;cursor:default}
+.kli-nav svg{width:14px;height:14px}
+.kli-list{padding:4px 16px 18px;display:flex;flex-direction:column;gap:10px}
+.kli{position:relative;padding:12px 14px 12px 16px;border-radius:12px;border:1px solid var(--line-soft);
+  background:var(--cream);cursor:pointer;overflow:hidden;
+  transition:border-color .18s,box-shadow .18s,transform .18s}
+.kli::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;
+  background:var(--accent-ln);opacity:0;transition:opacity .18s}
+.kli:hover{border-color:var(--accent-ln);transform:translateY(-1px);box-shadow:0 8px 18px -12px rgba(196,98,45,.4)}
+.kli:hover::before{opacity:1}
+.kli-de{font-size:14px;line-height:1.5;color:var(--ink)}
+.kli-de em{font-style:normal;color:var(--accent);font-weight:600}
+.kli-ru{font-size:12.5px;line-height:1.45;color:var(--ink-mute);margin-top:4px}
+/* optional faint backgrounds per slot — activated only once the images exist
+   (JS adds .has-bg). A heavy white scrim keeps them quiet, never distracting. */
+.kli-list.has-bg .kli{background-size:cover;background-position:center;border-color:var(--line)}
+.kli-list.has-bg .kli:nth-child(1){background-image:linear-gradient(rgba(255,255,255,.82),rgba(255,255,255,.86)),url('../images/kli-1.png')}
+.kli-list.has-bg .kli:nth-child(2){background-image:linear-gradient(rgba(255,255,255,.82),rgba(255,255,255,.86)),url('../images/kli-2.png')}
+.kli-list.has-bg .kli:nth-child(3){background-image:linear-gradient(rgba(255,255,255,.82),rgba(255,255,255,.86)),url('../images/kli-3.png')}
+
+/* 3 · Wörterbuch panel ------------------------------------------------- */
+.wb-search{margin:0 16px 8px;display:flex;align-items:center;gap:9px;height:40px;padding:0 13px;
+  border-radius:11px;border:1px solid var(--line);background:var(--cream);transition:border-color .18s,box-shadow .18s}
+.wb-search:focus-within{border-color:var(--accent-ln);box-shadow:0 0 0 4px var(--accent-bg)}
+.wb-search svg{width:16px;height:16px;color:var(--muted);flex:none}
+.wb-search input{flex:1;border:0;outline:0;background:none;font-family:inherit;font-size:13.5px;color:var(--ink)}
+.wb-search input::placeholder{color:var(--muted-2)}
+.wb-list{max-height:330px;overflow:auto;padding:2px 8px 12px}
+.wb-row{position:relative;display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:12px;
+  cursor:pointer;min-height:42px;overflow:hidden}
+.wb-row > *{position:relative;z-index:1}
+/* paint stroke — same level+type→colour logic as the Wörterbuch. The row clips
+   to its rounded rectangle and the stroke's left end is feathered, so it reads
+   as a soft, rounded brush start (no hard edge). The STROKE itself — not a row
+   highlight — reacts to hover/active: it draws in, deepens and saturates. */
+.wb-wash{position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:62%;height:122%;z-index:0;pointer-events:none;
+  background:var(--brush) no-repeat left center;background-size:auto 116%;
+  --reveal:34%;opacity:.5;
+  -webkit-mask:linear-gradient(90deg,
+        transparent 0, rgba(0,0,0,.5) 6px, #000 16px,
+        #000 calc(var(--reveal) - 13%),
+        rgba(0,0,0,.4) var(--reveal),
+        transparent calc(var(--reveal) + 10%));
+          mask:linear-gradient(90deg,
+        transparent 0, rgba(0,0,0,.5) 6px, #000 16px,
+        #000 calc(var(--reveal) - 13%),
+        rgba(0,0,0,.4) var(--reveal),
+        transparent calc(var(--reveal) + 10%));
+  transition:--reveal 480ms cubic-bezier(.34,1.12,.36,1),opacity .45s ease,
+             filter .45s ease,background-size .45s ease}
+.wb-row:hover .wb-wash,.wb-row.active .wb-wash{--reveal:90%;opacity:.95;
+  background-size:auto 132%;filter:saturate(1.2) contrast(1.04)}
+.wb-de{font-size:14px;color:var(--ink);font-weight:500;flex:none;text-shadow:0 0 4px rgba(255,255,255,.55)}
+.wb-de .art{color:var(--ink-mute);font-weight:400}
+.wb-ru{font-size:13px;color:var(--ink-mute);font-style:italic;margin-left:auto;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-star{flex:none;width:24px;height:24px;border-radius:7px;border:0;background:none;color:var(--muted-2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:color .15s,transform .15s}
+.wb-star:hover{color:var(--accent-ln);transform:scale(1.1)}
+.wb-star.on{color:var(--accent)}
+.wb-star svg{width:16px;height:16px}
+.wb-empty{padding:18px 14px;color:var(--muted);font-style:italic;font-size:13px;text-align:center}
+
+/* =====================================================================
+   "Analysieren" — primary CTA, centred under the writing block
+   ===================================================================== */
+.analyze-row{display:flex;justify-content:center;padding:18px 48px 6px;background:var(--card)}
+.btn-analyze{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 30px;border:0;border-radius:14px;
+  cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.2px;color:#fff;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);
+  box-shadow:0 10px 26px -10px rgba(196,98,45,.7),0 2px 6px rgba(196,98,45,.3);
+  transition:transform .16s,box-shadow .16s,filter .16s}
+.btn-analyze:hover{transform:translateY(-2px);box-shadow:0 16px 34px -10px rgba(196,98,45,.8)}
+.btn-analyze:active{transform:translateY(0)}
+.btn-analyze:disabled{filter:saturate(.6) brightness(1.02);cursor:default;transform:none}
+.btn-analyze svg{width:18px;height:18px}
+
+/* =====================================================================
+   Word-card popover — 1:1 with the Wörterbuch detail card (rose, centred
+   header, decor, examples), just a touch more compact. Opens to the LEFT
+   of the clicked word; the live orange connector links the two.
+   ===================================================================== */
+.wc-overlay{position:fixed;inset:0;z-index:60;background:rgba(40,28,18,.06);
+  opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+.wc-overlay.open{opacity:1;visibility:visible}
+
+/* the detail sheet itself, as a fixed popover */
+#wordCard{position:fixed;z-index:62;width:430px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--card);border:1px solid var(--hair);border-radius:18px;
+  box-shadow:0 1px 2px rgba(40,40,45,.04),0 3px 8px rgba(40,40,45,.05),
+    0 24px 48px -20px rgba(40,40,45,.22),0 50px 110px -50px rgba(40,40,45,.4);
+  opacity:0;transform:translateY(10px) scale(.99);pointer-events:none;
+  transition:opacity .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1)}
+#wordCard.open{opacity:1;transform:none;pointer-events:auto}
+
+.d-close{position:absolute;top:14px;right:14px;z-index:5;width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--hair);
+  color:var(--ink-soft);cursor:pointer;transition:border-color .2s,color .2s,box-shadow .2s}
+.d-close:hover{border-color:var(--rose);color:var(--rose);box-shadow:0 6px 16px -10px rgba(194,134,141,.6)}
+.d-close svg{width:14px;height:14px}
+
+/* header — white, centred, rose decor split into the top-right corner */
+.d-head{position:relative;overflow:hidden;background:var(--card);flex:none;
+  border-bottom:1px solid var(--hair);border-radius:18px 18px 0 0;padding:26px 42px 22px;text-align:center}
+.d-head::before{content:"";position:absolute;top:0;right:0;width:164px;height:128px;opacity:.4;
+  background:var(--rose);pointer-events:none;
+  -webkit-mask:url('../images/decor-head.png') no-repeat right top / contain;
+          mask:url('../images/decor-head.png') no-repeat right top / contain}
+.d-head>*{position:relative;z-index:1}
+.d-meta{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:14px}
+.d-cat{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.d-cat .hl{color:var(--ink);font-weight:700}
+.d-level{display:inline-block;padding:3px 10px;border-radius:20px;background:var(--rose-soft);
+  color:#9d5a62;font-size:11px;font-weight:700;letter-spacing:.04em}
+.d-word{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:600;line-height:1.0;
+  letter-spacing:-.5px;color:var(--ink);margin-bottom:10px}
+.d-word .art{font-size:1em;font-weight:600;font-style:normal;color:var(--ink-soft)}
+.d-tools{display:flex;justify-content:center;align-items:center;gap:14px;margin-bottom:12px}
+.d-ipa{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:13.5px;color:var(--ink-soft);letter-spacing:.2px}
+.d-hear{display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
+  color:var(--rose);font-family:inherit;font-size:12.5px;font-weight:600;padding:0}
+.d-hear:hover{text-decoration:underline}
+.d-hear svg{width:14px;height:14px}
+.d-ru{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;line-height:1.2;color:var(--ink-soft)}
+
+/* body — centred editorial rhythm, scrolls inside the popover */
+.d-body{position:relative;padding:24px 32px 28px;overflow:auto}
+.d-body>section{margin-top:28px}
+.d-body>section:first-child{margin-top:0}
+.lab{display:flex;align-items:center;justify-content:center;gap:14px;font-size:11px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:0 0 20px}
+.lab::before,.lab::after{content:"";height:1px;width:34px;background:var(--hair)}
+.def{font-size:16px;line-height:1.65;color:var(--ink);margin:0 auto;max-width:42ch;text-align:center}
+.pull{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:19px;line-height:1.5;
+  color:var(--ink-soft);text-align:center;max-width:40ch;margin:16px auto 0}
+.pull::before{content:"\201C";display:block;font-size:38px;line-height:0;color:var(--rose);
+  opacity:.55;margin:0 auto 14px;font-style:normal}
+.g-params{display:flex;justify-content:center;flex-wrap:wrap;gap:0;margin-bottom:22px}
+.g-param{display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 22px;text-align:center}
+.g-param + .g-param{border-left:1px solid var(--hair)}
+.g-k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.g-param b{font-size:15px;color:var(--ink);font-weight:600}
+.g-use{position:relative;text-align:center;border:1px solid var(--rose-soft);border-radius:14px;
+  padding:20px 24px;margin:6px 0 0;
+  background:linear-gradient(0deg,rgba(255,255,255,.40),rgba(255,255,255,.40)),
+    url('../images/Verwendung.png') center/cover no-repeat}
+.g-use-lab{display:block;font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--rose);font-weight:700;margin-bottom:10px}
+.g-use-rule{display:block;font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:600;
+  color:var(--ink);line-height:1.05}
+.g-use-ex{display:block;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;
+  color:var(--ink-soft);margin-top:8px}
+.ex-list{display:flex;flex-direction:column;gap:22px}
+.ex{display:flex;gap:16px;align-items:baseline}
+.ex-n{flex:none;width:22px;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;
+  color:var(--rose);line-height:1.5}
+.ex-body{flex:1;min-width:0}
+.ex-de{margin:0;font-size:15px;line-height:1.55;color:var(--ink)}
+.ex-de b,.ex-de strong{font-weight:600;color:var(--ink);border-bottom:2px solid var(--rose);padding-bottom:1px}
+.ex-ru{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-soft);font-style:italic}
+
+/* the live, dashed orange connector — same logic & look as the Wörterbuch */
+.link-line{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:61}
+.link-line[hidden]{display:none}
+.link-line path{fill:none;stroke:var(--orange);stroke-width:2.4;stroke-linecap:round;
+  stroke-dasharray:6 7;filter:drop-shadow(0 1px 1.5px rgba(224,138,60,.5));
+  animation:antsMove 3.2s linear infinite}
+.link-line .ll-dot{fill:var(--orange);filter:drop-shadow(0 1px 2px rgba(224,138,60,.55))}
+.link-line .ll-anchor{fill:none;stroke:var(--orange);stroke-width:2}
+@keyframes antsMove{to{stroke-dashoffset:-130}}
+
+/* =====================================================================
+   Responsive
+   ===================================================================== */
+@media (max-width:1320px){
+  .layout{grid-template-columns:210px minmax(0,1fr) 330px;gap:26px;padding:28px 26px 70px}
+}
+@media (max-width:1080px){
+  .layout{grid-template-columns:1fr;gap:24px}
+  .rail-left,.rail-right{position:static}
+  .rail-right{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .editor-card{min-height:520px}
+  .bg-column,.side-label{display:none}
+}
+@media (max-width:640px){
+  .rail-right{grid-template-columns:1fr}
+  .doc-head,.doc-scroll,.doc-foot,.doc-meta{padding-left:22px;padding-right:22px}
+  .doc-title{font-size:42px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}

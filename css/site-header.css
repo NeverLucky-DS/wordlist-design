@@ -1,0 +1,63 @@
+/* =====================================================================
+   Shared site header  ·  identical across Editor and Wörterbuch
+   ---------------------------------------------------------------------
+   Self-contained: every colour is hard-coded (not via a page :root), so
+   the bar renders the same on any page that links this file. Everything
+   is scoped under .topbar so it never collides with a page's own nav/
+   avatar/top-right rules.
+   ===================================================================== */
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:40px;
+  padding:18px 40px;background:rgba(250,248,244,.82);
+  -webkit-backdrop-filter:saturate(140%) blur(14px);backdrop-filter:saturate(140%) blur(14px);
+  border-bottom:1px solid #ECE7DE}
+
+.topbar .brand{font-family:'Cormorant Garamond',Georgia,serif;font-size:23px;font-weight:600;
+  line-height:1.0;letter-spacing:.2px;flex:none;color:#2A2420;text-decoration:none}
+.topbar .brand span{display:block}
+
+/* center nav */
+.topbar .nav{display:flex;align-items:center;gap:6px;margin:0 auto}
+.topbar .nav a,
+.topbar .nav .nav-drop>button{position:relative;display:inline-flex;align-items:center;gap:6px;
+  text-decoration:none;color:#8C8377;font-size:14px;font-weight:500;font-family:inherit;
+  padding:9px 15px;border-radius:11px;border:1px solid transparent;background:none;cursor:pointer;
+  transition:color .18s,background .18s,border-color .18s}
+.topbar .nav a:hover,
+.topbar .nav .nav-drop>button:hover{color:#2A2420;background:#FBFAF6;border-color:#ECE7DE}
+.topbar .nav a.active,
+.topbar .nav .nav-drop>button.active{color:#2A2420;font-weight:600}
+.topbar .nav a.active::after,
+.topbar .nav .nav-drop>button.active::after{content:"";position:absolute;left:15px;right:15px;bottom:3px;
+  height:2px;border-radius:2px;background:linear-gradient(90deg,#C4622D,#E08A3C)}
+.topbar .nav .chev{width:13px;height:13px;opacity:.7;transition:transform .2s}
+.topbar .nav-drop{position:relative}
+.topbar .nav-drop.open .chev{transform:rotate(180deg)}
+.topbar .nav-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:190px;background:#FFFFFF;
+  border:1px solid #ECE7DE;border-radius:14px;padding:7px;
+  box-shadow:0 12px 34px -16px rgba(60,40,20,.4),0 4px 12px rgba(60,40,20,.06);
+  opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .16s,transform .16s,visibility .16s}
+.topbar .nav-drop.open .nav-menu{opacity:1;visibility:visible;transform:none}
+.topbar .nav-menu a{display:flex;width:100%;padding:10px 12px;border-radius:9px;font-size:13.5px;
+  color:#5B534A;border:1px solid transparent}
+.topbar .nav-menu a:hover{background:#FBF1EA;color:#A44E20;border-color:transparent}
+
+/* right cluster */
+.topbar .top-right{display:flex;align-items:center;gap:10px;flex:none}
+.topbar .icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid #ECE7DE;background:#FFFFFF;
+  color:#5B534A;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:border-color .18s,color .18s,box-shadow .18s}
+.topbar .icon-btn svg{width:18px;height:18px}
+.topbar .icon-btn:hover{border-color:#E7B48F;color:#C4622D;box-shadow:0 6px 16px -10px rgba(196,98,45,.5)}
+.topbar .avatar{width:38px;height:38px;border-radius:50%;background:#33312C;color:#fff;display:flex;
+  align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;
+  font-size:17px;font-weight:600;flex:none}
+.topbar .lang-pill{display:flex;align-items:center;gap:6px;padding:0 12px;height:38px;border-radius:11px;
+  border:1px solid #ECE7DE;background:#FFFFFF;color:#5B534A;font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer;transition:border-color .18s,color .18s}
+.topbar .lang-pill:hover{border-color:#E7B48F;color:#C4622D}
+.topbar .lang-pill svg{width:12px;height:12px;opacity:.7}
+
+@media (max-width:1080px){
+  .topbar{gap:18px;padding:16px 24px}
+  .topbar .nav{display:none}
+}

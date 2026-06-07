@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deutsch Essay · Wörterbuch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site-header.css?v=4">
+<link rel="stylesheet" href="css/styles.css?v=19">
+</head>
+<body>
+
+  <!-- left decorative watercolor column (images/abstract-watercolor-column.png) -->
+  <div class="bg-column" aria-hidden="true"></div>
+
+  <!-- left edge: vertical Niveau gradient -->
+  <aside class="level-rail"><div class="lr-cap"><b id="lrLevel">B1</b><span>Niveau</span></div></aside>
+  <div class="side-label">WÖRTERBUCH</div>
+
+  <!-- ===================== Top bar (shared 1:1 with the Editor) ===================== -->
+  <header class="topbar">
+    <a class="brand" href="index.html"><span>Deutsch</span><span>Essay</span></a>
+
+    <nav class="nav">
+      <a href="#">Dashboard</a>
+      <a href="editor.html">Schreiben</a>
+      <div class="nav-drop">
+        <button type="button" class="active">Lernen
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-menu">
+          <a href="index.html">Wörterbuch</a>
+          <a href="#">Übung</a>
+          <a href="#">Grammatik</a>
+        </div>
+      </div>
+      <a href="#">Verlauf</a>
+    </nav>
+
+    <div class="top-right">
+      <button class="icon-btn" id="themeBtn" aria-label="Theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <div class="avatar">D</div>
+      <button class="lang-pill">DE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+    </div>
+  </header>
+
+  <main id="mainGrid">
+    <section class="col-list">
+      <div class="eyebrow">Lernen</div>
+      <h1 class="title">Wörterbuch</h1>
+      <p class="lede">Ihr thematischer Wortschatz für präzises Deutsch. Wählen Sie ein Wort,
+        um Bedeutung, Grammatik und Beispiele zu sehen.</p>
+
+      <div class="search-row">
+        <label class="search">
+          <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input id="search" type="text" placeholder="Suche nach Begriff oder Übersetzung (z. B. „Fortschritt“)">
+        </label>
+      </div>
+
+      <div class="chips" id="chips"></div>
+      <div class="word-list" id="wordList"></div>
+      <div class="pager" id="pager" hidden></div>
+    </section>
+
+    <!-- detail card: takes the right column when a word is opened; closeable -->
+    <section class="col-detail" id="colDetail"><div class="detail" id="detail"></div></section>
+  </main>
+
+  <!-- live orange connector, drawn over the page from the card's word to the list word -->
+  <svg class="link-line" id="linkLine" aria-hidden="true" hidden>
+    <path id="linkPath" d=""/>
+    <circle id="linkAnchor" class="ll-anchor" r="4.5"/>
+    <circle id="linkDot" class="ll-dot" r="4"/>
+  </svg>
+
+  <!-- right rail: level distribution -->
+  <aside class="rail">
+    <div>
+      <div class="rail-label">Verteilung nach Niveau</div>
+      <div class="donut-wrap"><div id="donut"></div>
+        <div class="donut-center"><b id="donutTotal">214</b><span>Wörter</span></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="rail-hr"></div>
+    <div class="rail-tot"><b id="totDone">214</b><span>Wörter gelernt</span></div>
+    <div class="rail-hr"></div>
+    <div class="rail-quote">Die Grenzen meiner Sprache bedeuten die Grenzen meiner Welt.
+      <span class="au">Wittgenstein</span></div>
+  </aside>
+
+  <script src="js/site-header.js?v=4"></script>
+  <script src="js/app.js?v=19"></script>
+  <script src="js/animations.js?v=18"></script>
+</body>
+</html>

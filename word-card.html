@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deutsch Essay — analysieren</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ---------- Palette (warm, 4-color discipline + orange accent) ---------- */
+    :root {
+      --ink:       #2a2420;  /* primary text — warm near-black, readable      */
+      --ink-soft:  #5b534a;  /* secondary text — replaces the dead grays      */
+      --ink-mute:  #8c8377;  /* tertiary — still clearly visible              */
+      --accent:    #C4622D;  /* warm orange — the one accent, used everywhere */
+      --accent-dk: #a44e20;  /* deeper orange for small text on light tint    */
+      --accent-bg: #fbf1ea;  /* faint orange wash for chips / quote           */
+      --accent-ln: #e7b48f;  /* soft orange for underlines / hairlines        */
+      --paper:     #ffffff;
+      --cream:     #faf9f6;
+      --line:      #ece8e0;
+      --line-soft: #f0ede6;
+    }
+
+    /* ---------- Reset / base ---------- */
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 56px 20px;
+      background: #f0ede6; /* imitation of the site's watercolor backdrop */
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------- Card container ---------- */
+    .card {
+      background: var(--paper);
+      border-radius: 16px;
+      border-top-left-radius: 0; /* corner sits flush here */
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 12px 40px rgba(60,40,20,0.10);
+      overflow: visible; /* important: lets the folded corner show */
+      max-width: 580px;
+      width: 100%;
+      position: relative;
+    }
+
+    /* ---------- Folded corner (top-left) ---------- */
+    .corner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* ---------- Header ---------- */
+    .card__header {
+      background: var(--cream);
+      border-bottom: 1px solid var(--line);
+      border-radius: 0 16px 0 0; /* only top-right rounded */
+      padding: 2rem 2rem 1.75rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    /* warm accent rule across the bottom of the header */
+    .card__header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-ln) 38%, transparent 72%);
+      opacity: 0.7;
+      z-index: 2;
+    }
+
+    .header-decor {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 200px;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* keep all header text above the decor */
+    .card__header > .meta,
+    .card__header > .word,
+    .card__header > .ipa,
+    .card__header > .translation {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* meta line */
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .meta__cat {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      font-weight: 500;
+    }
+    .meta__cat .verb {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .meta__level {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--accent-bg);
+      border: 1px solid rgba(196,98,45,0.30);
+      color: var(--accent-dk);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    /* headword */
+    .word {
+      font-family: 'Playfair Display', serif;
+      font-size: 44px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+      margin: 0 0 8px;
+    }
+
+    /* IPA — now in accent orange, sits right under the headword */
+    .ipa {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    /* translation */
+    .translation {
+      font-style: italic;
+      font-size: 18px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- Body ---------- */
+    .card__body {
+      padding: 1.75rem 2rem 2rem;
+    }
+
+    .card__body hr {
+      border: none;
+      border-top: 1px solid var(--line-soft);
+      margin: 1.5rem 0;
+    }
+
+    /* section label — accent orange with a small orange marker */
+    .label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    .label::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 1px;
+      background: var(--accent);
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+
+    /* Section 1 — Bedeutung */
+    .definition {
+      font-size: 16.5px;
+      color: var(--ink);
+      line-height: 1.7;
+      margin: 0 0 14px;
+    }
+    .quote {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-bg);
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-style: italic;
+      font-size: 14.5px;
+      color: var(--ink-soft);
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    /* Section 2 — Grammatik */
+    .verb-params {
+      display: flex;
+      gap: 1.25rem 1.75rem;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: var(--ink-soft);
+      margin-bottom: 14px;
+    }
+    .verb-params .val {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .verwendung {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 15px;
+      font-size: 14px;
+      flex-wrap: wrap;
+    }
+    .verwendung__label {
+      color: var(--ink-mute);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 600;
+    }
+    .verwendung__case {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .verwendung__sep { color: var(--accent-ln); font-weight: 700; }
+    .verwendung__example {
+      font-style: italic;
+      color: var(--ink-soft);
+    }
+
+    /* Section 3 — Konjugation (accordion) */
+    .acc-btn {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .acc-btn:hover { background: var(--accent-bg); border-color: var(--accent-ln); }
+    .acc-btn .arrow {
+      font-size: 11px;
+      color: var(--accent);
+      transition: transform 0.2s;
+    }
+
+    .acc-content {
+      display: none;
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .conj-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .conj-table th {
+      background: var(--accent-bg);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--accent-dk);
+      padding: 9px 13px;
+      border-bottom: 1px solid rgba(196,98,45,0.18);
+      font-weight: 700;
+      text-align: left;
+    }
+    .conj-table td {
+      padding: 9px 13px;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 14px;
+    }
+    .conj-table tr:last-child td { border-bottom: none; }
+    .conj-table .person { color: var(--ink-soft); }
+    .conj-table .form { color: var(--ink); font-weight: 600; }
+
+    .conj-extra {
+      background: var(--cream);
+      border-top: 1px solid var(--line-soft);
+      padding: 11px 13px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      display: flex;
+      gap: 1.25rem 1.75rem;
+      flex-wrap: wrap;
+    }
+    .conj-extra b { color: var(--accent-dk); font-weight: 700; }
+
+    /* Section 4 — Kollokationen */
+    .kollokationen {
+      font-size: 15px;
+      color: var(--ink);
+      line-height: 1.95;
+      margin: 0;
+    }
+    .kollokationen span {
+      text-decoration: underline;
+      text-decoration-color: var(--accent-ln);
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 3px;
+    }
+
+    /* Section 5 — Beispiele */
+    .example { margin-bottom: 16px; }
+    .example:last-child { margin-bottom: 0; }
+    .example__de {
+      font-size: 15px;
+      color: var(--ink);
+      line-height: 1.65;
+    }
+    .example__de strong {
+      font-weight: 600;
+      color: var(--ink);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 1px;
+    }
+    .example__ru {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .ru-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 15px;
+      background: var(--accent);
+      border-radius: 3px;
+      font-size: 8.5px;
+      letter-spacing: 0.06em;
+      color: #fff;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .example__ru-text {
+      font-size: 14px;
+      color: var(--ink-soft);
+      font-style: normal;
+    }
+  </style>
+</head>
+<body>
+
+  <article class="card">
+
+    <!-- Folded corner (top-left). z-index 10, sits above the header. -->
+    <svg class="corner" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+      <!-- shadow of the fold -->
+      <polygon points="0,0 52,0 0,52" fill="rgba(0,0,0,0.07)"/>
+      <!-- front face of the folded part -->
+      <polygon points="0,0 48,0 0,48" fill="#f0ede6"/>
+      <!-- fold crease -->
+      <line x1="48" y1="0" x2="0" y2="48" stroke="#ddd8ce" stroke-width="0.8"/>
+    </svg>
+
+    <!-- ============ HEADER ============ -->
+    <header class="card__header">
+
+      <!-- Editorial geometric decor, top-right. z-index 0. Orange, now stronger. -->
+      <svg class="header-decor" aria-hidden="true">
+        <!-- soft warm glow behind the geometry -->
+        <circle cx="178" cy="46" r="62" fill="#C4622D" opacity="0.05"/>
+        <!-- 1. large arc -->
+        <path d="M 160 -10 Q 190 60 140 110" fill="none" stroke="#C4622D" stroke-width="1.3" opacity="0.45"/>
+        <!-- 2. small circle -->
+        <circle cx="145" cy="25" r="8" fill="none" stroke="#C4622D" stroke-width="1.3" opacity="0.5"/>
+        <!-- 3. dot -->
+        <circle cx="170" cy="55" r="3" fill="#C4622D" opacity="0.55"/>
+        <!-- 4. small cross (~8px) at 125,70 -->
+        <line x1="121" y1="66" x2="129" y2="74" stroke="#C4622D" stroke-width="1.1" opacity="0.45"/>
+        <line x1="129" y1="66" x2="121" y2="74" stroke="#C4622D" stroke-width="1.1" opacity="0.45"/>
+        <!-- 5. thin horizontal line -->
+        <line x1="110" y1="90" x2="195" y2="90" stroke="#C4622D" stroke-width="1" opacity="0.30"/>
+        <!-- 6. larger open circle -->
+        <circle cx="185" cy="100" r="12" fill="none" stroke="#C4622D" stroke-width="1.1" opacity="0.35"/>
+        <!-- 7. small square rotated 15deg (~8px) -->
+        <rect x="152" y="78" width="8" height="8" fill="none" stroke="#C4622D" stroke-width="1.1" opacity="0.4" transform="rotate(15 156 82)"/>
+      </svg>
+
+      <div class="meta">
+        <span class="meta__cat"><span class="verb">VERB</span> · WISSENSCHAFT</span>
+        <span class="meta__level">B2</span>
+      </div>
+
+      <h1 class="word">analysieren</h1>
+
+      <div class="ipa">[analy'zi:ʁən]</div>
+
+      <div class="translation">анализировать</div>
+
+    </header>
+
+    <!-- ============ BODY ============ -->
+    <div class="card__body">
+
+      <!-- Section 1 — Bedeutung -->
+      <section>
+        <div class="label">Bedeutung</div>
+        <p class="definition">Etwas systematisch und gründlich untersuchen, um es zu verstehen oder zu bewerten.</p>
+        <blockquote class="quote">Wer Daten klug analysiert, trifft bessere Entscheidungen.</blockquote>
+      </section>
+
+      <hr>
+
+      <!-- Section 2 — Grammatik -->
+      <section>
+        <div class="label">Grammatik</div>
+        <div class="verb-params">
+          <span>Hilfsverb: <span class="val">haben</span></span>
+          <span>Trennbar: <span class="val">nein</span></span>
+          <span>Partizip II: <span class="val">analysiert</span></span>
+        </div>
+        <div class="verwendung">
+          <span class="verwendung__label">Verwendung</span>
+          <span class="verwendung__case">+ Akkusativ</span>
+          <span class="verwendung__sep">·</span>
+          <span class="verwendung__example">die Daten genau analysieren</span>
+        </div>
+      </section>
+
+      <hr>
+
+      <!-- Section 3 — Konjugation (accordion) -->
+      <section>
+        <div class="label">Konjugation</div>
+        <button class="acc-btn" type="button" onclick="toggleAcc(this)">
+          <span>Präsens — alle Formen</span>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="acc-content">
+          <table class="conj-table">
+            <thead>
+              <tr>
+                <th>Person</th><th>Form</th><th>Person</th><th>Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="person">ich</td><td class="form">analysiere</td>
+                <td class="person">wir</td><td class="form">analysieren</td>
+              </tr>
+              <tr>
+                <td class="person">du</td><td class="form">analysierst</td>
+                <td class="person">ihr</td><td class="form">analysiert</td>
+              </tr>
+              <tr>
+                <td class="person">er·sie·es</td><td class="form">analysiert</td>
+                <td class="person">sie·Sie</td><td class="form">analysieren</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="conj-extra">
+            <span>Präteritum: <b>analysierte</b></span>
+            <span>Konjunktiv II: <b>analysierte</b></span>
+            <span>Imperativ: <b>analysiere!</b></span>
+          </div>
+        </div>
+      </section>
+
+      <hr>
+
+      <!-- Section 4 — Kollokationen -->
+      <section>
+        <div class="label">Kollokationen</div>
+        <p class="kollokationen"><span>Daten analysieren</span>, <span>Proben analysieren</span>, <span>genau analysieren</span>, <span>Text analysieren</span>, <span>kritisch analysieren</span></p>
+      </section>
+
+      <hr>
+
+      <!-- Section 5 — Beispiele -->
+      <section>
+        <div class="label">Beispiele</div>
+
+        <div class="example">
+          <div class="example__de">Wir müssen die Ergebnisse genau <strong>analysieren</strong>.</div>
+          <div class="example__ru">
+            <span class="ru-badge">RU</span>
+            <span class="example__ru-text">Нам нужно тщательно проанализировать результаты.</span>
+          </div>
+        </div>
+
+        <div class="example">
+          <div class="example__de">Der Forscher <strong>analysiert</strong> die Proben im Labor.</div>
+          <div class="example__ru">
+            <span class="ru-badge">RU</span>
+            <span class="example__ru-text">Исследователь анализирует пробы в лаборатории.</span>
+          </div>
+        </div>
+
+        <div class="example">
+          <div class="example__de">Sie hat den Text Satz für Satz <strong>analysiert</strong>.</div>
+          <div class="example__ru">
+            <span class="ru-badge">RU</span>
+            <span class="example__ru-text">Она проанализировала текст предложение за предложением.</span>
+          </div>
+        </div>
+
+      </section>
+
+    </div><!-- /.card__body -->
+
+  </article>
+
+  <script>
+    function toggleAcc(btn) {
+      const isOpen = btn.classList.toggle('open');
+      btn.querySelector('.arrow').style.transform = isOpen ? 'rotate(180deg)' : '';
+      btn.nextElementSibling.style.display = isOpen ? 'block' : 'none';
+    }
+  </script>
+
+</body>
+</html>
