@@ -407,6 +407,7 @@ function accBlock(title,inner){
 }
 function gramBlock(w){
   const g=w.gram;
+  if(!g) return `<div class="g-params"><div class="g-param"><span class="g-k">Wortart</span><b>${w.pos==="verb"?"Verb":w.pos==="adj"?"Adjektiv":"Substantiv"}</b></div></div>`+useBlock(w);
   let params="",title="",table="",extra="";
   if(g.type==="noun"){
     params=`<div class="g-param"><span class="g-k">Genus</span><b>${w.genus}</b></div><div class="g-param"><span class="g-k">Plural</span><b>${g.plural}</b></div>`;
@@ -603,3 +604,139 @@ function updateLink(){
   window.__resetSticky  = function(){ curVt=null; measure(); frame(); }; // on a fresh open
   measure(); hideLink();
 })();
+
+/* =========================================================================
+   API word loader — merges pipeline/seed words from the backend into WORDS
+   ========================================================================= */
+
+const API_BASE_DICT = "";
+
+function _mapApiWord(w) {
+  const art  = (w.article || "").toLowerCase();
+  const pos  = w.word_type === "adjective" ? "adj"
+             : w.word_type === "verb"      ? "verb"
+             : "noun";
+
+  // Build category from first topic (capitalize first letter)
+  const topicRaw = (w.topics && w.topics.length) ? w.topics[0] : "";
+  const cat = topicRaw
+    ? topicRaw.charAt(0).toUpperCase() + topicRaw.slice(1)
+    : "Andere";
+
+  // Examples: API stores [{text_de, is_ai}] — convert to HTML strings
+  const examples = (w.examples || []).map(e => {
+    const txt = (typeof e === "object") ? (e.text_de || "") : String(e);
+    return txt;
+  }).filter(Boolean).slice(0, 3);
+
+  // Grammar from pipeline grammar_data
+  const gd = w.grammar_data || {};
+  let gram = null;
+  const decl = gd.declension || {};
+  if (pos === "noun" && Object.keys(decl).length) {
+    // Build rows from declension object {Nominativ: {singular, plural}, ...}
+    const cases = ["Nominativ","Genitiv","Dativ","Akkusativ"];
+    const rows = cases.map(c => {
+      const row = decl[c] || {};
+      return [c, row.singular || "–", row.plural || "–"];
+    });
+    gram = { type:"noun", plural: rows[0]?.[2] || "–", rows };
+  } else if (pos === "verb" && Object.keys(decl).length) {
+    const praesens = ["ich","du","er/sie/es","wir","ihr","sie/Sie"].map(p => {
+      const form = decl.Präsens?.[p] || decl.praesens?.[p] || "–";
+      return [p, form];
+    });
+    gram = {
+      type:"verb",
+      hilfsverb: decl.hilfsverb || decl.Hilfsverb || "haben",
+      partizip:  decl.partizip2 || decl["Partizip II"] || "–",
+      praeteritum: decl.prateritum || decl["Präteritum"] || "–",
+      praesens,
+    };
+  } else if (pos === "adj" && Object.keys(decl).length) {
+    const base = (w.german || "").replace(/^(der|die|das)\s+/i, "");
+    let positiv = base, komparativ = "—", superlativ = "—";
+    if (typeof decl.positiv === "string") {
+      positiv = decl.positiv || base;
+      komparativ = decl.komparativ || "—";
+      superlativ = decl.superlativ || "—";
+    } else if (decl.positive && typeof decl.positive === "object") {
+      positiv = decl.positive?.masculine?.nominative || base;
+      komparativ = decl.comparative?.masculine?.nominative || "—";
+      const supNom = decl.superlative?.masculine?.nominative || "";
+      superlativ = supNom ? "am " + supNom.replace(/e?r$/, "en") : "—";
+    }
+    gram = {
+      type: "adj",
+      steigerung: [positiv, komparativ, superlativ],
+      rows: [
+        ["Maskulinum", "der " + positiv + "e …"],
+        ["Femininum",  "die " + positiv + "e …"],
+        ["Neutrum",    "das " + positiv + "e …"],
+        ["Plural",     "die " + positiv + "en …"],
+      ],
+    };
+  }
+
+  return {
+    de:       (w.german || "").replace(/^(der|die|das)\s+/i, ""),
+    art:      art || null,
+    pos,
+    cat,
+    level:    w.level || "B2",
+    genus:    art === "die" ? "Femininum" : art === "der" ? "Maskulinum" : art === "das" ? "Neutrum" : "",
+    ru:       w.translation_ru || "",
+    ipa:      "",
+    def:      gd.ready_phrase || "",
+    pull:     gd.ready_phrase || "",
+    gram,
+    examples,
+    _apiId:   w.id,
+    _source:  w.source || "api",
+    _rektion: gd.rektion || "",
+  };
+}
+
+async function loadApiWords() {
+  try {
+    const res = await fetch(`${API_BASE_DICT}/api/words?limit=500`);
+    if (!res.ok) return;
+    const apiWords = await res.json();
+    if (!Array.isArray(apiWords)) return;
+
+    // IDs already in WORDS (avoid double-adding on refresh)
+    const existingIds = new Set(WORDS.map(w => w._apiId).filter(Boolean));
+    // Names already in WORDS (avoid duplicating seed words)
+    const existingNames = new Set(WORDS.map(w => w.de.toLowerCase()));
+
+    let added = 0;
+    apiWords.forEach(w => {
+      if (existingIds.has(w.id)) return;
+      const mapped = _mapApiWord(w);
+      if (existingNames.has(mapped.de.toLowerCase())) return;
+      existingNames.add(mapped.de.toLowerCase());
+      existingIds.add(w.id);
+      WORDS.push(mapped);
+      added++;
+    });
+
+    if (added > 0) {
+      // Add any new categories from API to CATS
+      const newCats = [...new Set(WORDS.map(w => w.cat))].filter(c => !CATS.includes(c));
+      CATS.push(...newCats);
+
+      // Update level counts from API data
+      const lvlCounts = {B1:0, B2:0, C1:0};
+      WORDS.forEach(w => { if(lvlCounts[w.level] !== undefined) lvlCounts[w.level]++; });
+      Object.keys(lvlCounts).forEach(lv => { if(LEVELS[lv]) LEVELS[lv].done = lvlCounts[lv]; });
+
+      render();
+      renderRail();
+    }
+  } catch(e) {
+    console.warn("Could not load API words:", e);
+  }
+}
+
+// Load on page init
+loadApiWords();

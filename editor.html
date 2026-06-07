@@ -192,7 +192,23 @@
     <circle id="linkDot" class="ll-dot" r="4"/>
   </svg>
 
+  <!-- analyze annotations popover -->
+  <button class="annotation-backdrop" id="annotationBackdrop" type="button" aria-label="Schließen" hidden></button>
+  <svg class="annotation-connector" id="annotationConnector" aria-hidden="true" hidden>
+    <path id="annotationConnectorPath" d=""></path>
+  </svg>
+  <article class="annotation-popover" id="annotationPopover" role="dialog" aria-label="Hinweis" hidden>
+    <p class="annotation-popover-kicker">Редакторская заметка</p>
+    <div id="annotationContent"></div>
+    <div class="annotation-footer">
+      <button type="button" class="annotation-footer-link" id="annotationRuleBtn" hidden>Regel anzeigen</button>
+      <button type="button" class="annotation-footer-link" id="annotationCloseBtn">Schließen</button>
+    </div>
+    <p class="annotation-rule" id="annotationRule" hidden></p>
+  </article>
+
   <script src="js/site-header.js?v=4"></script>
-  <script src="js/editor.js?v=4"></script>
+  <script src="js/editor-api.js?v=2"></script>
+  <script src="js/editor.js?v=6"></script>
 </body>
 </html>

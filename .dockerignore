@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+backend/data/*.db
+backend/.env
+*.png
+*.jpg
+*.pdf
+node_modules

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline · Deutsch Essay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site-header.css?v=4">
+<style>
+:root {
+  --ink:#1a1a1a; --paper:#faf8f5; --rose:#c9a0a0; --blue:#8fafc2;
+  --lav:#b0a9cc; --sage:#9ab5a0; --sand:#c8b99a; --orange:#d4905a;
+  --muted:#888; --border:#e8e3dc; --card:#fff; --radius:12px;
+  --font-serif:'Cormorant Garamond',serif; --font-sans:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:14px;line-height:1.6;min-height:100vh;}
+
+.page{max-width:900px;margin:0 auto;padding:32px 24px 80px;}
+h1{font-family:var(--font-serif);font-size:clamp(2rem,5vw,3rem);font-weight:500;line-height:1.1;margin-bottom:4px;}
+.subtitle{color:var(--muted);font-size:13px;margin-bottom:32px;}
+
+/* ── form ── */
+.add-form{display:flex;gap:10px;margin-bottom:36px;}
+.add-form input{
+  flex:1;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;
+  font-family:var(--font-sans);font-size:14px;color:var(--ink);background:#fff;
+  outline:none;transition:border-color .15s;
+}
+.add-form input:focus{border-color:var(--orange);}
+.btn{
+  padding:10px 22px;border-radius:8px;border:none;cursor:pointer;
+  font-family:var(--font-sans);font-size:14px;font-weight:500;
+  background:var(--orange);color:#fff;transition:opacity .15s;white-space:nowrap;
+}
+.btn:hover{opacity:.85;}
+.btn:disabled{opacity:.4;cursor:default;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--rose);color:var(--rose);opacity:1;}
+
+/* ── section header ── */
+.sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
+.sec-title{font-family:var(--font-serif);font-size:1.5rem;font-weight:500;}
+.sec-badge{font-size:11px;color:var(--muted);background:var(--border);padding:2px 8px;border-radius:10px;}
+
+/* ── stack ── */
+.stack{display:flex;flex-direction:column;gap:8px;}
+
+/* ── topic card ── */
+.topic-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;transition:border-color .25s,box-shadow .25s;
+}
+.topic-card.is-running{border-color:var(--orange);box-shadow:0 0 0 3px rgba(212,144,90,.1);}
+.topic-card.is-done   {border-color:var(--sage);}
+.topic-card.is-error  {border-color:var(--rose);}
+
+/* head row */
+.tc-head{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;user-select:none;}
+.tc-icon{
+  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;background:var(--border);color:var(--muted);
+  transition:background .2s;
+}
+.is-running .tc-icon{background:#fff3e0;color:#e67e22;}
+.is-done    .tc-icon{background:#e8f5e9;color:#2e7d32;}
+.is-error   .tc-icon{background:#fce4ec;color:#c62828;}
+
+.tc-name{font-weight:600;font-size:15px;flex:1;min-width:0;}
+.tc-mini-stats{font-size:12px;color:var(--muted);white-space:nowrap;}
+.tc-pill{
+  font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;
+}
+.is-waiting .tc-pill{background:var(--border);color:var(--muted);}
+.is-running .tc-pill{background:#fff3e0;color:#e67e22;}
+.is-done    .tc-pill{background:#e8f5e9;color:#2e7d32;}
+.is-error   .tc-pill{background:#fce4ec;color:#c62828;}
+
+.tc-rm{
+  width:22px;height:22px;border:none;background:none;cursor:pointer;
+  color:var(--muted);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;
+  flex-shrink:0;
+}
+.tc-rm:hover{background:#fce4ec;color:var(--rose);}
+.tc-chevron{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.tc-head.open .tc-chevron{transform:rotate(180deg);}
+
+/* spin */
+.spin{
+  width:13px;height:13px;border:2px solid #e67e22;border-top-color:transparent;
+  border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* body */
+.tc-body{border-top:1px solid var(--border);}
+
+/* pipeline steps */
+.tc-steps{padding:12px 18px 6px;display:flex;flex-direction:column;gap:4px;}
+.step-row{
+  display:flex;align-items:flex-start;gap:10px;padding:7px 10px;
+  border-radius:8px;transition:background .15s;
+}
+.step-row.s-active{background:#fff8f4;}
+.step-row.s-done  {background:#f5fbf5;}
+.step-row.s-error {background:#fff8f8;}
+.step-dot{
+  width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;
+  background:var(--border);color:var(--muted);margin-top:1px;
+}
+.step-row.s-active .step-dot{background:var(--orange);color:#fff;}
+.step-row.s-done   .step-dot{background:var(--sage);color:#fff;}
+.step-row.s-error  .step-dot{background:var(--rose);color:#fff;}
+.step-info{flex:1;}
+.step-label{font-size:12px;font-weight:600;}
+.step-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.step-badge{font-size:11px;font-weight:600;margin-top:2px;white-space:nowrap;}
+.step-row.s-active .step-badge{color:#e67e22;}
+.step-row.s-done   .step-badge{color:#2e7d32;}
+.step-row.s-error  .step-badge{color:#c62828;}
+
+/* stats bar */
+.tc-statsbar{
+  display:flex;gap:0;border-top:1px solid var(--border);background:#f9f8f6;
+}
+.tc-stat{
+  flex:1;padding:12px 18px;display:flex;flex-direction:column;gap:1px;
+  border-right:1px solid var(--border);
+}
+.tc-stat:last-child{border-right:none;}
+.stat-v{font-family:var(--font-serif);font-size:1.5rem;font-weight:500;line-height:1;}
+.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+
+/* words section */
+.tc-words{padding:14px 18px;border-top:1px solid var(--border);}
+.tc-words-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.chip-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.w-chip{
+  font-size:12px;padding:3px 10px;border-radius:20px;
+  background:var(--border);color:var(--ink);
+}
+.w-chip.lvl-B1{background:#e3f0ff;color:#3a6fa0;}
+.w-chip.lvl-B2{background:#f3e8ff;color:#7c4d9f;}
+.w-chip.lvl-C1{background:#fdecea;color:#c0392b;}
+
+/* errors */
+.tc-errs{padding:0 18px 14px;}
+.err-btn{
+  background:none;border:1px solid var(--border);border-radius:6px;
+  padding:4px 12px;font-size:12px;cursor:pointer;color:var(--muted);
+}
+.err-btn:hover{border-color:var(--rose);color:var(--rose);}
+.err-list{margin-top:8px;display:none;max-height:200px;overflow-y:auto;}
+.err-list.open{display:block;}
+.err-item{
+  background:#fff8f8;border:1px solid #fdd;border-radius:5px;
+  padding:6px 10px;margin-bottom:4px;font-size:11px;
+}
+.err-stage{font-weight:700;color:var(--rose);text-transform:uppercase;font-size:10px;}
+.err-msg{color:#c0392b;}
+
+/* elapsed */
+.tc-elapsed{padding:6px 18px 12px;font-size:11px;color:var(--muted);}
+
+/* empty state */
+.empty-state{
+  text-align:center;color:var(--muted);padding:40px 24px;
+  border:1.5px dashed var(--border);border-radius:var(--radius);
+}
+.empty-state p{font-size:13px;}
+
+/* history sep */
+.history-section{margin-top:44px;}
+</style>
+</head>
+<body>
+
+
+<div class="page">
+
+  <h1>Wörter sammeln</h1>
+  <p class="subtitle">Themen einreihen — die Pipeline arbeitet sie nacheinander ab.</p>
+
+  <!-- ── Add form ── -->
+  <div class="add-form">
+    <input type="text" id="topicInput"
+      placeholder="Thema eingeben, z. B. Migration, KI, Bildung …"
+      autocomplete="off">
+    <button class="btn" id="addBtn" onclick="addTopic()">+ Einreihen</button>
+  </div>
+
+  <!-- ── Active queue ── -->
+  <div class="sec-head">
+    <span class="sec-title">Warteschlange</span>
+    <span class="sec-badge" id="qBadge">0</span>
+    <button class="btn btn-sm" id="startBtn" style="margin-left:auto" onclick="startNext()" disabled>
+      Starten
+    </button>
+  </div>
+  <div class="stack" id="queueStack">
+    <div class="empty-state" id="emptyQueue">
+      <p>Keine Themen in der Warteschlange.<br>Gib oben ein Thema ein und klicke <em>Einreihen</em>.</p>
+    </div>
+  </div>
+
+  <!-- ── History ── -->
+  <div class="history-section">
+    <div class="sec-head">
+      <span class="sec-title">Verlauf</span>
+      <span class="sec-badge" id="histBadge"></span>
+    </div>
+    <div class="stack" id="histStack">
+      <div class="empty-state" id="emptyHist">
+        <p>Noch keine abgeschlossenen Läufe.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = "";
+
+/* ─── state ──────────────────────────────────────────────────────────────── */
+// item shape: { id, topic, status:'waiting'|'running'|'done'|'error',
+//              runId, data, expanded, startTime, _words }
+const queue   = [];   // waiting + running
+const history = [];   // completed (backend history + finished queue items)
+
+let runningItem = null;
+let pollTimer   = null;
+let _uid        = 0;
+
+/* ─── init ───────────────────────────────────────────────────────────────── */
+async function loadHistory() {
+  try {
+    const runs = await apiFetch("/api/pipeline/runs");
+    if (!Array.isArray(runs)) return;
+    runs.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+    runs.forEach(run => {
+      history.push({
+        id: "h" + run.id,
+        topic: run.topic,
+        status: run.status === "completed" ? "done" : run.status === "failed" ? "error" : "done",
+        runId: run.id,
+        data: {
+          words_added: run.words_added,
+          words_linked: run.words_linked,
+          errors: run.errors_json || [],
+          status: run.status,
+        },
+        expanded: false,
+        startTime: run.started_at ? new Date(run.started_at).getTime() : null,
+        _finishTime: run.finished_at ? new Date(run.finished_at).getTime() : null,
+        _words: null,
+      });
+    });
+    renderHistory();
+  } catch (_) {}
+}
+
+/* ─── queue management ───────────────────────────────────────────────────── */
+function addTopic() {
+  const input = document.getElementById("topicInput");
+  const topic = input.value.trim();
+  if (!topic) { input.focus(); return; }
+  input.value = "";
+
+  // Prevent duplicate topic already in queue
+  if (queue.some(i => i.topic.toLowerCase() === topic.toLowerCase())) {
+    input.value = topic;
+    input.focus();
+    return;
+  }
+
+  queue.push({
+    id: "q" + (++_uid), topic,
+    status: "waiting", runId: null, data: null,
+    expanded: false, startTime: null, _words: null,
+  });
+  renderQueue();
+  if (!runningItem) startNext();
+}
+
+function removeTopic(id) {
+  const idx = queue.findIndex(i => i.id === id && i.status === "waiting");
+  if (idx >= 0) { queue.splice(idx, 1); renderQueue(); }
+}
+
+function startNext() {
+  if (runningItem) return;
+  const next = queue.find(i => i.status === "waiting");
+  if (!next) return;
+  runningItem = next;
+  next.status = "running";
+  next.startTime = Date.now();
+  next.expanded = true;
+  renderQueue();
+  launch(next);
+}
+
+async function launch(item) {
+  try {
+    const res = await apiFetch("/api/pipeline/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic: item.topic, article_urls: [] }),
+    });
+    item.runId = res.run_id;
+    renderQueue();
+    startPolling(item);
+  } catch (e) {
+    item.status = "error";
+    item.data = { words_added: 0, words_linked: 0, errors: [{ stage: "start", item: item.topic, error: String(e) }] };
+    runningItem = null;
+    renderQueue();
+    startNext();
+  }
+}
+
+function startPolling(item) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (!item.runId) return;
+    try {
+      const data = await apiFetch("/api/pipeline/run/" + item.runId);
+      item.data = { ...data, errors: data.errors || [] };
+      if (data.status === "completed" || data.status === "failed") {
+        item.status = data.status === "completed" ? "done" : "error";
+        item._finishTime = Date.now();
+        clearInterval(pollTimer); pollTimer = null;
+        runningItem = null;
+        history.unshift({ ...item, id: "h" + item.id });
+        queue.splice(queue.indexOf(item), 1);
+        renderQueue();
+        renderHistory();
+        startNext();
+      } else {
+        refreshRunningCard(item);
+      }
+    } catch (_) {}
+  }, 3000);
+}
+
+/* ─── helpers ────────────────────────────────────────────────────────────── */
+function apiFetch(path, opts) {
+  return fetch(API + path, opts).then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+
+function formatDur(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return s + "s";
+  return Math.floor(s / 60) + "m " + (s % 60) + "s";
+}
+
+function realErrors(errs) {
+  return (errs || []).filter(e => e.error && !e.error.includes("429") && e.stage !== "wiktionary");
+}
+
+function inferActiveStep(item) {
+  const errs = item.data?.errors || [];
+  if ((item.data?.words_added || 0) > 0) return 5;
+  if (errs.some(e => e.stage === "wiktionary" || e.stage === "mistral")) return 4;
+  if (errs.some(e => e.stage === "extract")) return 3;
+  if (errs.some(e => e.stage === "fetch" && !String(e.item||"").includes("grok"))) return 2;
+  return 1;
+}
+
+/* ─── render ─────────────────────────────────────────────────────────────── */
+function renderQueue() {
+  const stack = document.getElementById("queueStack");
+  const empty = document.getElementById("emptyQueue");
+  document.getElementById("qBadge").textContent = queue.length;
+  const startBtn = document.getElementById("startBtn");
+  startBtn.disabled = !!runningItem || !queue.some(i => i.status === "waiting");
+  startBtn.textContent = runningItem ? "läuft…" : "Starten";
+
+  stack.querySelectorAll(".topic-card").forEach(el => el.remove());
+  empty.style.display = queue.length ? "none" : "block";
+  queue.forEach(item => stack.appendChild(buildCard(item)));
+}
+
+function renderHistory() {
+  const stack = document.getElementById("histStack");
+  const empty = document.getElementById("emptyHist");
+  const badge = document.getElementById("histBadge");
+  badge.textContent = history.length || "";
+
+  stack.querySelectorAll(".topic-card").forEach(el => el.remove());
+  empty.style.display = history.length ? "none" : "block";
+  history.forEach(item => stack.appendChild(buildCard(item)));
+}
+
+function refreshRunningCard(item) {
+  const card = document.getElementById("card-" + item.id);
+  if (!card) return;
+  // Redraw only the step rows without full rebuild
+  const stepEl = card.querySelector(".tc-steps");
+  if (stepEl) {
+    const fresh = buildSteps(item);
+    stepEl.replaceWith(fresh);
+  }
+  // Update elapsed
+  const elapsed = card.querySelector(".tc-elapsed");
+  if (elapsed && item.startTime) elapsed.textContent = "Läuft seit " + formatDur(Date.now() - item.startTime);
+}
+
+function buildCard(item) {
+  const card = document.createElement("div");
+  card.className = "topic-card is-" + item.status;
+  card.id = "card-" + item.id;
+
+  // ── head
+  const head = document.createElement("div");
+  head.className = "tc-head" + (item.expanded ? " open" : "");
+
+  const icon = { waiting:"–", running:"", done:"✓", error:"✗" }[item.status];
+  const pill = { waiting:"Wartend", running:"Läuft …", done:"Fertig", error:"Fehler" }[item.status];
+  const d = item.data;
+  const miniStats = (item.status === "done" || item.status === "error") && d
+    ? `${d.words_added ?? 0} neu · ${d.words_linked ?? 0} verknüpft`
+    : "";
+
+  head.innerHTML = `
+    <div class="tc-icon">${item.status === "running" ? '<span class="spin"></span>' : icon}</div>
+    <div class="tc-name">${item.topic}</div>
+    ${miniStats ? `<div class="tc-mini-stats">${miniStats}</div>` : ""}
+    <span class="tc-pill">${pill}</span>
+    ${item.status === "waiting" ? `<button class="tc-rm" title="Entfernen" onclick="removeTopic('${item.id}');event.stopPropagation()">×</button>` : ""}
+    <span class="tc-chevron">▼</span>
+  `;
+  head.onclick = e => {
+    if (e.target.classList.contains("tc-rm")) return;
+    toggleCard(item, card);
+  };
+  card.appendChild(head);
+
+  if (item.expanded) card.appendChild(buildBody(item));
+  return card;
+}
+
+function buildBody(item) {
+  const body = document.createElement("div");
+  body.className = "tc-body";
+
+  // Steps (always show for running/done/error)
+  if (item.status !== "waiting") body.appendChild(buildSteps(item));
+
+  // Stats bar (completed only)
+  if (item.status === "done" || item.status === "error") {
+    const d = item.data || {};
+    const dur = (item._finishTime && item.startTime) ? formatDur(item._finishTime - item.startTime) : "—";
+    const sb = document.createElement("div");
+    sb.className = "tc-statsbar";
+    sb.innerHTML = `
+      <div class="tc-stat"><div class="stat-v">${d.words_added ?? 0}</div><div class="stat-l">Neu hinzugefügt</div></div>
+      <div class="tc-stat"><div class="stat-v">${d.words_linked ?? 0}</div><div class="stat-l">Thema verknüpft</div></div>
+      <div class="tc-stat"><div class="stat-v">${realErrors(d.errors).length}</div><div class="stat-l">Fehler</div></div>
+      <div class="tc-stat"><div class="stat-v" style="font-size:1.1rem;padding-top:3px">${dur}</div><div class="stat-l">Dauer</div></div>
+    `;
+    body.appendChild(sb);
+
+    // Words
+    if (item._words?.length) {
+      const wd = document.createElement("div");
+      wd.className = "tc-words";
+      wd.innerHTML = `<div class="tc-words-label">${item._words.length} Wörter</div>`;
+      const cg = document.createElement("div");
+      cg.className = "chip-grid";
+      item._words.forEach(w => {
+        const chip = document.createElement("span");
+        chip.className = `w-chip lvl-${w.level || "B2"}`;
+        chip.textContent = (w.article ? w.article + " " : "") + w.german;
+        cg.appendChild(chip);
+      });
+      wd.appendChild(cg);
+      body.appendChild(wd);
+    } else if (item._words === null && (d.words_added > 0)) {
+      // Placeholder — will load when expanded
+      const wd = document.createElement("div");
+      wd.className = "tc-words";
+      wd.innerHTML = `<div class="tc-words-label" style="color:var(--muted)">Wörter werden geladen…</div>`;
+      body.appendChild(wd);
+    }
+
+    // Errors
+    const errs = realErrors(d.errors);
+    if (errs.length) {
+      const ed = document.createElement("div");
+      ed.className = "tc-errs";
+      ed.innerHTML = `
+        <button class="err-btn" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'Verbergen':'${errs.length} Fehler anzeigen'">
+          ${errs.length} Fehler anzeigen
+        </button>
+        <div class="err-list">
+          ${errs.map(e=>`<div class="err-item"><div class="err-stage">${e.stage}</div><div class="err-msg">${(e.error||"").slice(0,140)}</div></div>`).join("")}
+        </div>
+      `;
+      body.appendChild(ed);
+    }
+  }
+
+  // Elapsed (running only)
+  if (item.status === "running") {
+    const et = document.createElement("div");
+    et.className = "tc-elapsed";
+    et.textContent = item.startTime ? "Läuft seit " + formatDur(Date.now() - item.startTime) : "";
+    body.appendChild(et);
+  }
+
+  return body;
+}
+
+function buildSteps(item) {
+  const STEPS = [
+    { label:"Quellen suchen",           sub:"Grok / DuckDuckGo" },
+    { label:"Artikel parsen & Wörter",  sub:"requests + Mistral" },
+    { label:"Router",                   sub:"neu oder verknüpfen" },
+    { label:"Anreicherung",             sub:"Wiktionary + DWDS + Mistral" },
+    { label:"Datenbank",                sub:"PostgreSQL schreiben" },
+  ];
+
+  const wrap = document.createElement("div");
+  wrap.className = "tc-steps";
+
+  const isDone  = item.status === "done" || item.status === "error";
+  const active  = isDone ? 6 : inferActiveStep(item);
+  const errs    = item.data?.errors || [];
+  const d       = item.data || {};
+
+  STEPS.forEach((s, i) => {
+    const n = i + 1;
+    let state = "";
+    if (isDone) state = "s-done";
+    else if (n < active) state = "s-done";
+    else if (n === active) state = "s-active";
+
+    let detail = s.sub;
+    if (isDone || n < active || n === active) {
+      if (n === 1) {
+        const grokFail = errs.some(e => String(e.item||"").includes("grok"));
+        if (grokFail) detail = "Grok nicht verfügbar → DuckDuckGo Fallback";
+      }
+      if (n === 3 && d.words_added !== undefined) {
+        detail = `${d.words_added} neu · ${d.words_linked ?? 0} verknüpft`;
+      }
+      if (n === 4) {
+        const wikiMiss = errs.filter(e => e.stage === "wiktionary").length;
+        if (wikiMiss) detail = `${wikiMiss} Wörter ohne Wiktionary → DWDS Fallback`;
+      }
+      if (n === 5 && (d.words_added || 0) > 0) {
+        detail = `${d.words_added} Wörter gespeichert`;
+      }
+    }
+
+    const badge = state === "s-done" ? "✓" : state === "s-active" ? "⏳" : "—";
+
+    const row = document.createElement("div");
+    row.className = "step-row " + state;
+    row.innerHTML = `
+      <div class="step-dot">${state === "s-active" ? '<span class="spin" style="width:11px;height:11px;"></span>' : n}</div>
+      <div class="step-info">
+        <div class="step-label">${s.label}</div>
+        <div class="step-sub">${detail}</div>
+      </div>
+      <div class="step-badge">${badge}</div>
+    `;
+    wrap.appendChild(row);
+  });
+
+  return wrap;
+}
+
+async function toggleCard(item, cardEl) {
+  item.expanded = !item.expanded;
+  cardEl.querySelector(".tc-head").classList.toggle("open", item.expanded);
+
+  const oldBody = cardEl.querySelector(".tc-body");
+  if (oldBody) oldBody.remove();
+
+  if (item.expanded) {
+    // Lazy-load words for completed items
+    if ((item.status === "done" || item.status === "error") && item._words === null) {
+      try {
+        const words = await apiFetch("/api/words?topic=" + encodeURIComponent(item.topic) + "&limit=200");
+        item._words = (words || []).filter(w => w.source === "pipeline");
+      } catch (_) { item._words = []; }
+    }
+    cardEl.appendChild(buildBody(item));
+  }
+}
+
+/* ─── live elapsed timer ─────────────────────────────────────────────────── */
+setInterval(() => {
+  if (!runningItem) return;
+  const el = document.querySelector("#card-" + runningItem.id + " .tc-elapsed");
+  if (el && runningItem.startTime) el.textContent = "Läuft seit " + formatDur(Date.now() - runningItem.startTime);
+}, 1000);
+
+/* ─── enter key ──────────────────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.SiteHeader) SiteHeader.mount?.();
+  document.getElementById("topicInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") addTopic();
+  });
+  loadHistory();
+});
+</script>
+</body>
+</html>
