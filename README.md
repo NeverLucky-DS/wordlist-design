@@ -1,82 +1,95 @@
-# wordlist-design — Deutsch Essay Wörterbuch
+# Deutsch Essay Trainer
 
-Full-stack прототип тренажёра немецкого: словарь, редактор эссе, FastAPI backend, полуавтоматический пайплайн пополнения базы слов.
+Full-stack прототип тренажёра немецкого: тематический словарь B1–C1, AI-редактор эссе и pipeline автоматического обогащения слов по теме.
 
----
+**Репо:** https://github.com/NeverLucky-DS/wordlist-design
 
-## Зачем этот проект (backend / AI)
-
-Пет-проект уровня production-prototype: REST API, PostgreSQL, LLM-интеграция, тесты. Покрывает стек стажировки в разработке агентских backend-решений.
+Пет-проект уровня production-prototype: REST API, PostgreSQL, LLM-интеграция, тесты.
 
 | Навык | Реализация |
 |-------|------------|
-| Python | backend, pipeline, скрипты |
-| FastAPI | REST API, OpenAPI, async routes |
-| PostgreSQL | слова, грамматика, прогресс |
-| Тесты | pytest (`backend/tests/`) |
-| LLM / агенты | пайплайн обогащения слов (Mistral), structured output |
-| Async | async SQLAlchemy / httpx |
-| Git, Docker | docker-compose, changelog |
+| Python | backend, pipeline |
+| FastAPI | REST API, SSE-стриминг, OpenAPI |
+| PostgreSQL | слова, эссе, фразы, прогресс pipeline |
+| Тесты | pytest — 16 тестов (`backend/tests/`) |
+| LLM / агенты | Mistral (анализ эссе, enrichment) · Grok (discovery) |
+| Async | SQLAlchemy async, httpx, `asyncio.gather` |
+| Docker | docker-compose: nginx + FastAPI + PostgreSQL |
 
 ---
 
-## Стек
+## Демонстрация
 
-- **Backend:** FastAPI, SQLAlchemy, PostgreSQL, Alembic
-- **Frontend:** HTML/CSS/JS (прототип UI), editor-extract (React + FastAPI)
-- **AI:** Mistral API — обогащение карточек слов
-- **Тесты:** pytest
-- **Инфра:** Docker Compose, uv
+### Редактор эссе
 
----
+Структура из четырёх разделов, тематический словарь, клише по секциям, Pomodoro и AI-анализ текста.
 
-## Страницы
+![Редактор — карта эссе, клише и словарь по теме](screenshots/Deutsch_3.png)
 
-- `index.html` — словарь (Wörterbuch)
-- `editor.html` — редактор эссе
-- `word-card.html` — карточка слова
-- `backend/` — API и пайплайн
-- `PIPELINE.md` — спецификация пайплайна пополнения слов
+![Редактор — набор текста с прогрессом и подсказками](screenshots/Deutsch_7.png)
+
+![Редактор — карточка слова и связь со словарём](screenshots/Deutsch_1.png)
+
+### AI-разбор текста
+
+Streaming-анализ с подсветкой ошибок, объяснениями на русском и вариантами B1/B2.
+
+![AI-аннотация с вариантами исправления](screenshots/Deutsch_8.png)
+
+![Разбор аргумента с обратной связью и подсветкой](screenshots/Deutsch_9.png)
+
+### Словарь (Wörterbuch)
+
+Тематические фильтры, watercolor-карточки по уровню CEFR, детальная карточка с грамматикой и статистикой.
+
+![Словарь — сетка карточек и распределение по уровням](screenshots/Deutsch_5.png)
+
+![Словарь — детальная карточка слова](screenshots/Deutsch_4.png)
+
+### Pipeline обогащения слов
+
+Очередь тем: discovery → extraction → enrichment → запись в БД.
+
+![Pipeline — очередь тем и история запусков](screenshots/Deutsch_6.png)
 
 ---
 
 ## Быстрый старт
 
 ```bash
-cp .env.example .env
-# MISTRAL_API_KEY и DATABASE_URL
+export MISTRAL_API_KEY=...   # AI-анализ эссе
+export GROK_API_KEY=...      # discovery в pipeline
+
 docker compose up --build
 ```
 
-API: `http://127.0.0.1:8000/docs`  
-Тесты: `uv run pytest`
+| Страница | URL |
+|----------|-----|
+| Словарь | http://localhost:8753 |
+| Редактор | http://localhost:8753/editor.html |
+| Pipeline | http://localhost:8753/pipeline.html |
+| API docs | http://localhost:8000/docs |
 
 ---
 
-## Архитектура (кратко)
+## Архитектура
 
 ```
-UI (HTML / editor) → FastAPI routes → services / pipeline → PostgreSQL
-                              ↓
-                         Mistral API
+index.html / editor.html / pipeline.html
+              ↓  /api/*
+           nginx → FastAPI → PostgreSQL
+              ↓
+     Mistral (анализ, enrichment) · Grok/DuckDuckGo (discovery)
 ```
+
+Подробнее: [`PIPELINE.md`](PIPELINE.md)
 
 ---
 
-## Скриншоты
+## Тесты
 
-Картинки клади в `docs/screenshots/` и вставляй в README:
-
-```markdown
-![Словарь](docs/screenshots/woerterbuch.png)
+```bash
+cd backend && pip install -r requirements.txt && pytest -v
 ```
 
-| Файл | Что снять |
-|------|-----------|
-| `woerterbuch.png` | главная страница словаря |
-| `word-card.png` | карточка слова с грамматикой |
-| `editor.png` | редактор эссе |
-| `api-docs.png` | Swagger `/docs` |
-| `pipeline.png` | UI или лог пайплайна пополнения слов |
-
-GitHub показывает изображения из репозитория автоматически после commit.
+Покрыто: CRUD эссе, SSE-fallback, фильтры слов/фраз, pipeline API и routing по теме.
