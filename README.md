@@ -86,8 +86,6 @@ index.html / editor.html / pipeline.html
 
 **Структура репо:** в Docker деплоится vanilla HTML/JS (`index.html`, `editor.html`, `pipeline.html`). Папка `editor-extract/` — отдельный React+TipTap модуль для будущей миграции редактора, в compose не входит.
 
-**Спич на собес (~10 мин):** [`INTERVIEW_SPEECH.md`](INTERVIEW_SPEECH.md)
-
 ---
 
 ## Тесты
