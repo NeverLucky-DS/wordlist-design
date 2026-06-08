@@ -10,16 +10,14 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./backend/data/test.db"
-os.environ["MISTRAL_API_KEY"] = ""
-os.environ["CORS_ORIGINS"] = "http://127.0.0.1:8753"
-
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
-
 TEST_DB_PATH = BACKEND_ROOT / "data" / "test.db"
 TEST_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
+os.environ["MISTRAL_API_KEY"] = ""
+os.environ["CORS_ORIGINS"] = "http://127.0.0.1:8753"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db.models import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402

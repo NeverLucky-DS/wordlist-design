@@ -902,6 +902,8 @@ function initDropdowns(){
         dd.classList.remove("open");
         if(dd.id === "ddNiveau") $("#railNiveau").textContent = opt.textContent;
         if(dd.id === "ddNiveau" || dd.id === "ddThema"){
+          updateWbTitle();
+          $("#docEyebrow").textContent = currentThema().toUpperCase();
           const topic = currentThema().toLowerCase();
           const level = ($("#ddNiveau .dd-menu .sel") || {}).textContent || "B1";
           loadBackendWords(topic, level);
@@ -946,6 +948,41 @@ function renderDocHead(){
 function currentThema(){
   const sel = $("#ddThema .dd-menu .sel");
   return sel ? sel.textContent : "Technologie";
+}
+
+function updateWbTitle(){
+  const title = document.querySelector(".rail-right .tool-title");
+  if(title) title.innerHTML = `Wörterbuch <b>· ${escapeHtml(currentThema())}</b>`;
+}
+
+function mergeWordLists(staticWords, backendWords){
+  const merged = new Map();
+  staticWords.forEach((w) => merged.set(w.de.toLowerCase(), w));
+  backendWords.forEach((w) => {
+    if(w.de) merged.set(w.de.toLowerCase(), { ...merged.get(w.de.toLowerCase()), ...w });
+  });
+  return Array.from(merged.values());
+}
+
+function klischeeSourceForSection(sectionId){
+  const staticKli = SECTIONS.find((s) => s.id === sectionId)?.kli || [];
+  const backendPart = state.backendPhrases[sectionId];
+  if(!Array.isArray(backendPart) || !backendPart.length) return staticKli;
+  const seen = new Set();
+  const merged = [];
+  backendPart.forEach((item) => {
+    const key = String(item.de || "").replace(/<\/?em>/g, "").trim();
+    if(!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(item);
+  });
+  staticKli.forEach((item) => {
+    const key = String(item.de || "").replace(/<\/?em>/g, "").trim();
+    if(!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(item);
+  });
+  return merged.length ? merged : staticKli;
 }
 
 /* =====================================================================
@@ -1001,6 +1038,11 @@ function initEditor(){
   $("#editable").addEventListener("input", () => {
     updateCounts();
     saveEditor();
+    const sectionId = SECTIONS[state.section].id;
+    const hasAnnotations = (state.errorsBySection[sectionId] || []).some((e) => !e.orphaned);
+    if(!composing && !hasAnnotations){
+      renderEditorText();
+    }
     if(!composing){
       scheduleReanchor();
     }
@@ -1066,8 +1108,7 @@ function initPomo(){
    ===================================================================== */
 function renderKlischees(){
   const s = SECTIONS[state.section];
-  const backendPart = state.backendPhrases[s.id];
-  const source = (Array.isArray(backendPart) && backendPart.length) ? backendPart : s.kli;
+  const source = klischeeSourceForSection(s.id);
   const pages = Math.max(1, Math.ceil(source.length / KLI_PER_PAGE));
   state.kliPage = Math.min(state.kliPage, pages - 1);
   $("#kliTitle").innerHTML = `Klischees <b>· ${s.title}</b>`;
@@ -1126,7 +1167,12 @@ function initKlischees(){
 function renderWordList(q=""){
   const list = $("#wbList"); list.innerHTML = "";
   const term = q.trim().toLowerCase();
-  const sourceWords = state.backendWords.length ? state.backendWords : WORDS;
+  const topic = currentThema().toLowerCase();
+  const staticForTopic = WORDS.filter((w) => String(w.cat || "").toLowerCase() === topic);
+  const sourceWords = mergeWordLists(
+    staticForTopic.length ? staticForTopic : WORDS,
+    state.backendWords,
+  );
   const items = sourceWords.filter(w =>
     !term || w.de.toLowerCase().includes(term) || w.ru.toLowerCase().includes(term));
   if(!items.length){ list.innerHTML = `<div class="wb-empty">Keine Begriffe gefunden.</div>`; return; }
@@ -1440,6 +1486,7 @@ async function initBackendBridge(){
    ===================================================================== */
 function boot(){
   initDropdowns();
+  updateWbTitle();
   renderMap(); renderDocHead(); loadEditor();
   initEditor();
   bindAnnotationPopoverEvents();
