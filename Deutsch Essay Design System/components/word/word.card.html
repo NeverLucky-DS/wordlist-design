@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="700x320" name="Word rows — the signature" subtitle="Watercolor dictionary entries, painted by level × type" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;background:var(--bg-cool);font-family:var(--font-sans);padding:14px 22px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 26px}
+  .de-wordrow:hover .de-wordrow-wash{opacity:.92!important;
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 70%,rgba(0,0,0,.4) 82%,transparent 92%)!important;
+            mask-image:linear-gradient(90deg,#000 0,#000 70%,rgba(0,0,0,.4) 82%,transparent 92%)!important}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { WordRow } = window.DeutschEssayDesignSystem_3bc91c;
+  const B = '../../assets/brushes/';
+  const words = [
+    {art:'die', de:'Abhängigkeit', ru:'зависимость', pos:'noun', level:'B1'},
+    {art:'der', de:'Algorithmus', ru:'алгоритм', pos:'noun', level:'B2'},
+    {art:'die', de:'Auswirkung', ru:'последствие, влияние', pos:'noun', level:'B1'},
+    {de:'analysieren', ru:'анализировать', pos:'verb', level:'B2'},
+    {art:'der', de:'Fortschritt', ru:'прогресс', pos:'noun', level:'B1', active:true},
+    {de:'nachhaltig', ru:'устойчивый, экологичный', pos:'adj', level:'C1'},
+    {art:'die', de:'Nachhaltigkeit', ru:'устойчивость', pos:'noun', level:'C1'},
+    {de:'wesentlich', ru:'существенный', pos:'adj', level:'B2'},
+  ];
+  function Demo(){
+    return (
+      <div className="grid">
+        {words.map((w,i)=>(<WordRow key={i} {...w} brushBase={B} />))}
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body>
+</html>

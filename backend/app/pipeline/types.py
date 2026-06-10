@@ -19,6 +19,15 @@ class WordCandidate:
     article: str | None = None
     examples: list[str] = field(default_factory=list)
     source_url: str = ""
+    origin: str = "article"  # article | generated | retry
+
+
+@dataclass
+class PhraseCandidate:
+    text_de: str
+    translation_ru: str = ""
+    essay_part: str = ""  # einleitung | argument | gegenargument | beispiel | schluss
+    level: str = "B2"
 
 
 @dataclass
@@ -36,7 +45,7 @@ class EnrichedWord:
 
 @dataclass
 class PipelineError:
-    stage: Literal["fetch", "extract", "wiktionary", "mistral", "db"]
+    stage: Literal["fetch", "extract", "wiktionary", "mistral", "db", "generate", "phrases"]
     item: str
     error: str
     timestamp: datetime = field(default_factory=datetime.utcnow)

@@ -1,0 +1,26 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Corner radii" subtitle="Cards round soft; controls tighter; tags tightest" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;background:var(--bg);font-family:var(--font-sans);padding:24px 28px}
+  .grid{display:flex;gap:16px;align-items:flex-end}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .box{width:74px;height:60px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+  .nm{font-size:10px;font-weight:600;color:var(--ink)}
+  .v{font-size:9.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="box" style="border-radius:var(--radius-sm)"></div><div class="nm">sm</div><div class="v">8px</div></div>
+    <div class="cell"><div class="box" style="border-radius:var(--radius-md)"></div><div class="nm">md</div><div class="v">11px</div></div>
+    <div class="cell"><div class="box" style="border-radius:var(--radius-lg)"></div><div class="nm">lg</div><div class="v">14px</div></div>
+    <div class="cell"><div class="box" style="border-radius:var(--radius-xl)"></div><div class="nm">xl</div><div class="v">18px</div></div>
+    <div class="cell"><div class="box" style="border-radius:var(--radius-2xl)"></div><div class="nm">2xl</div><div class="v">22px</div></div>
+    <div class="cell"><div class="box" style="border-radius:var(--radius-pill);width:60px"></div><div class="nm">pill</div><div class="v">999px</div></div>
+  </div>
+</body>
+</html>

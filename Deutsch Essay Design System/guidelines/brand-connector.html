@@ -1,0 +1,31 @@
+<!-- @dsCard group="Brand" viewport="700x180" name="The live connector" subtitle="A dashed, marching-ants orange line links a card to its source word" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;background:var(--bg-cool);font-family:var(--font-sans);padding:0;height:180px;position:relative;overflow:hidden}
+  .word{position:absolute;left:40px;top:108px;font-family:var(--font-serif);font-size:24px;font-weight:500;color:var(--ink)}
+  .word .art{color:var(--ink-mute)}
+  .card{position:absolute;right:42px;top:34px;width:230px;background:var(--card);border:1px solid var(--hair);border-radius:14px;
+    box-shadow:var(--shadow-lg);padding:16px 18px;text-align:center}
+  .card .lvl{display:inline-block;padding:2px 9px;border-radius:20px;background:var(--rose-soft);color:#9d5a62;font-size:10px;font-weight:700;margin-bottom:8px}
+  .card .w{font-family:var(--font-serif);font-size:26px;font-weight:600;color:var(--ink);line-height:1}
+  svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+  path{fill:none;stroke:var(--orange);stroke-width:2.4;stroke-linecap:round;stroke-dasharray:6 7;
+    filter:drop-shadow(0 1px 1.5px rgba(224,138,60,.5));animation:ants 3.2s linear infinite}
+  circle{fill:var(--orange)}
+  @keyframes ants{to{stroke-dashoffset:-130}}
+</style>
+</head>
+<body>
+  <svg viewBox="0 0 700 180" preserveAspectRatio="none">
+    <path d="M 200 112 C 320 112, 360 70, 452 70"></path>
+    <circle cx="200" cy="112" r="4"></circle>
+    <circle cx="452" cy="70" r="4.5" fill="none" stroke="var(--orange)" stroke-width="2"></circle>
+  </svg>
+  <div class="word"><span class="art">die</span> Abhängigkeit</div>
+  <div class="card"><div class="lvl">B1</div><div class="w">die Abhängigkeit</div></div>
+</body>
+</html>

@@ -64,5 +64,6 @@ async def test_route_words_skips_duplicate_topic_link(db_session):
 
     new_candidates, linked = await _route_words(candidates, "energie", db_session)
 
-    assert linked == 1
+    # Link already exists → not counted again, word not re-enriched
+    assert linked == 0
     assert new_candidates == []

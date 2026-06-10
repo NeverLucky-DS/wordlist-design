@@ -73,7 +73,7 @@ async def test_list_pipeline_runs(client):
 async def test_pipeline_ui_poll_flow_until_completed(client, db_session):
     """Simulates pipeline.html: POST → poll until status=completed."""
 
-    async def _complete_run(run_id: int, topic: str, article_urls: list[str], session_factory):
+    async def _complete_run(run_id: int, topic: str, article_urls: list[str], session_factory, target_words=None):
         run = await db_session.get(PipelineRun, run_id)
         run.status = "completed"
         run.words_added = 3

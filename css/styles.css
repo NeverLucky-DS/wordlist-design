@@ -234,70 +234,76 @@ main.open .detail{animation:cardIn .28s cubic-bezier(.2,.8,.2,1)}
   padding:34px 50px 30px;text-align:center}
 .d-head>*{position:relative;z-index:1}
 
-.d-meta{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:18px}
+.d-meta{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:12px}
 .d-cat{font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
 .d-cat .hl{color:var(--ink);font-weight:700}
 .d-level{display:inline-block;padding:3px 10px;border-radius:20px;background:var(--rose-soft);
   color:#9d5a62;font-size:11.5px;font-weight:700;letter-spacing:.04em}
 
-.d-word{font-family:'Cormorant Garamond',serif;font-size:54px;font-weight:600;line-height:1.0;
-  letter-spacing:-.5px;color:var(--ink);margin-bottom:12px}
+.d-word{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:600;line-height:1.04;
+  letter-spacing:-.5px;color:var(--ink);margin-bottom:8px}
+.d-word.long{font-size:31px}
 .d-word .art{font-size:1em;font-weight:600;font-style:normal;color:var(--ink)}
 
-.d-tools{display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:14px}
+.d-tools{display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:10px}
 .d-ipa{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:14.5px;color:var(--ink-soft);letter-spacing:.2px}
 .d-hear{display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
   color:var(--rose);font-family:inherit;font-size:13px;font-weight:600;padding:0}
 .d-hear:hover{text-decoration:underline}
-.d-ru{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:28px;line-height:1.2;color:var(--ink-soft)}
+.d-ru{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:21px;line-height:1.25;color:var(--ink-soft)}
 
 /* body */
 /* body — editorial rhythm that echoes the centred header:
    centred section labels + definition + quote; structured detail below */
-.d-body{position:relative;padding:30px 38px 34px}
+.d-body{position:relative;padding:22px 30px 26px}
 .d-body>section{position:relative;z-index:1}
-.d-body>section{margin-top:34px}
+.d-body>section{margin-top:20px}
 .d-body>section:first-child{margin-top:0}
 .d-sep{display:none}
 
 /* centred label flanked by hairlines */
-.lab{display:flex;align-items:center;justify-content:center;gap:14px;font-size:11px;letter-spacing:.24em;
-  text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:0 0 24px}
-.lab::before,.lab::after{content:"";height:1px;width:40px;background:var(--hair)}
+.lab{display:flex;align-items:center;justify-content:center;gap:12px;font-size:10px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:0 0 14px}
+.lab::before,.lab::after{content:"";height:1px;width:32px;background:var(--hair)}
 
 /* Bedeutung — centred definition + centred pull-quote */
-.def{font-size:17px;line-height:1.7;color:var(--ink);margin:0 auto;max-width:42ch;text-align:center}
-.pull{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;line-height:1.5;
-  color:var(--ink-soft);text-align:center;max-width:40ch;margin:18px auto 0}
-.pull::before{content:"\201C";display:block;font-size:40px;line-height:0;color:var(--rose);
-  opacity:.55;margin:0 auto 16px;font-style:normal}
+.def{font-size:15.5px;line-height:1.6;color:var(--ink);margin:0 auto;max-width:44ch;text-align:center}
+.pull{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;line-height:1.45;
+  color:var(--ink-soft);text-align:center;max-width:40ch;margin:14px auto 0}
+.pull::before{content:"\201C";display:block;font-size:34px;line-height:0;color:var(--rose);
+  opacity:.55;margin:0 auto 12px;font-style:normal}
 
-/* Grammatik — a centred "spec strip" of key facts, divided by hairlines */
-.g-params{display:flex;justify-content:center;flex-wrap:wrap;gap:0;margin-bottom:28px}
-.g-param{display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 24px;text-align:center}
-.g-param + .g-param{border-left:1px solid var(--hair)}
-.g-k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-.g-param b{font-size:15.5px;color:var(--ink);font-weight:600}
-.g-param i{font-style:normal;color:var(--rose);font-weight:600;padding:0 3px}
+/* Grammatik — compact "spec line": tiny label + serif value, wraps gracefully
+   (gap-based, so a 3rd item never looks orphaned like the old border layout) */
+.g-spec{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;
+  gap:7px 22px;margin-bottom:10px}
+.g-s{display:inline-flex;align-items:baseline;gap:7px;font-family:'Cormorant Garamond',serif;
+  font-size:16px;font-weight:600;color:var(--ink)}
+.g-s i{font-family:inherit;font-style:normal;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:700;font-family:'Inter',system-ui,sans-serif}
+.g-s--wide em{font-style:normal;color:var(--rose);font-weight:600;padding:0 2px}
+/* short Russian grammar hint under the spec line */
+.g-hint{text-align:center;font-size:12.5px;color:var(--ink-soft);font-style:italic;margin:0 0 4px}
 
 /* Verwendung — clean panel: small label, serif "rule" as the hero, quiet
    serif example. --verw-bg can hold a generated background image (set on .g-use). */
 .g-use{position:relative;text-align:center;border:1px solid var(--rose-soft);border-radius:14px;
-  padding:22px 26px;margin:6px 0 0;--verw-bg:url('../images/Verwendung.png');
+  padding:15px 22px;margin:4px 0 0;--verw-bg:url('../images/Verwendung.png');
   background:
     linear-gradient(0deg, rgba(255,255,255,.40), rgba(255,255,255,.40)),
     var(--verw-bg) center/cover no-repeat}
 .g-use-top{display:block}
-.g-use-lab{display:block;font-size:10px;letter-spacing:.24em;text-transform:uppercase;
-  color:var(--rose);font-weight:700;margin-bottom:11px}
-.g-use-rule{display:block;font-family:'Cormorant Garamond',serif;font-size:31px;font-weight:600;
-  color:var(--ink);line-height:1.04}
-.g-use-ex{display:block;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;
-  color:var(--ink-soft);margin-top:9px}
+.g-use-lab{display:block;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--rose);font-weight:700;margin-bottom:7px}
+.g-use-rule{display:block;font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;
+  color:var(--ink);line-height:1.05}
+.g-use-ru{display:block;font-size:11.5px;color:var(--ink-soft);font-style:italic;margin-top:3px}
+.g-use-ex{display:block;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;
+  color:var(--ink-soft);margin-top:6px}
 .g-use-ex em{font-style:italic;font-weight:600;color:inherit}
 
-.g-acc-btn{width:100%;background:none;border:1px solid var(--hair);border-radius:10px;padding:13px 16px;
-  margin-top:26px;display:flex;justify-content:space-between;align-items:center;font-family:inherit;font-size:14px;
+.g-acc-btn{width:100%;background:none;border:1px solid var(--hair);border-radius:10px;padding:10px 14px;
+  margin-top:14px;display:flex;justify-content:space-between;align-items:center;font-family:inherit;font-size:13px;
   font-weight:500;color:var(--ink-soft);cursor:pointer;transition:background .15s,border-color .15s}
 .g-acc-btn:hover{background:var(--bg-2)}
 .g-arrow{font-size:11px;color:var(--rose);transition:transform .2s}
@@ -329,12 +335,12 @@ table.gram em{font-family:'Cormorant Garamond',serif;font-style:normal;font-weig
 .g-extra b{color:var(--rose);font-weight:700}
 
 /* examples — numbered, the keyword-underline treatment the user liked */
-.ex-list{display:flex;flex-direction:column;gap:26px}
-.ex{display:flex;gap:18px;align-items:baseline}
-.ex-n{flex:none;width:24px;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;
+.ex-list{display:flex;flex-direction:column;gap:15px}
+.ex{display:flex;gap:14px;align-items:baseline}
+.ex-n{flex:none;width:20px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;
   color:var(--rose);line-height:1.5}
 .ex-body{flex:1;min-width:0}
-.ex-de{margin:0;font-size:15.5px;line-height:1.6;color:var(--ink)}
+.ex-de{margin:0;font-size:15px;line-height:1.55;color:var(--ink)}
 .ex-de b{font-weight:600;color:var(--ink);border-bottom:2px solid var(--rose);padding-bottom:1px}
 .ex-ru{margin:7px 0 0;font-size:14px;line-height:1.55;color:var(--ink-soft);font-style:italic}
 

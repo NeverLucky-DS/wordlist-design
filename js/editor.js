@@ -223,16 +223,85 @@ function buildEssayTextForBackend(){
   ].join("\n\n");
 }
 
+/* Russian gloss of the governed case, e.g. "von + Dat." → "дательный падеж" */
+function caseGlossRu(rule){
+  const m = /\b(Akk|Dat|Gen|Nom)/i.exec(rule || "");
+  if(!m) return "";
+  return {akk:"винительный падеж",dat:"дательный падеж",gen:"родительный падеж",nom:"именительный падеж"}[m[1].toLowerCase()] || "";
+}
+
+/* highlight the headword + its known inflected forms in an example (escaped HTML) */
+function highlightForms(html, forms){
+  if(/<\/?b>/.test(html)) return html;            // already marked (LLM bold)
+  const list = [...new Set(forms
+    .map(f => String(f||"").replace(/^(der|die|das)\s+/i,"").trim())
+    .filter(f => f.length>=3 && /^\p{L}/u.test(f)))].sort((a,b)=>b.length-a.length);
+  if(!list.length) return html;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  let re; try{ re = new RegExp("(?<!\\p{L})("+list.map(esc).join("|")+")(?!\\p{L})","giu"); }
+  catch(e){ return html; }
+  return html.replace(re, "<b>$1</b>");
+}
+
 function toEditorWord(apiWord){
   const w = apiWord || {};
   const posRaw = (w.word_type || "").toLowerCase();
   const pos = posRaw.includes("verb") ? "verb" : (posRaw.includes("adj") ? "adj" : "noun");
-  const examples = Array.isArray(w.examples) ? w.examples.slice(0, 3) : [];
-  const ex = examples.map((line) => [esc(line), ""]);
   const article = w.article ? String(w.article).toLowerCase() : "";
   const grammar = w.grammar_data || {};
-  const pull = Array.isArray(grammar.examples) && grammar.examples[0] ? grammar.examples[0] : "";
-  const collocations = Array.isArray(grammar.study_phrases_de) ? grammar.study_phrases_de.slice(0, 3) : [];
+  const decl = grammar.declension || {};
+  const base = (w.german || "").replace(/^(der|die|das)\s+/i, "");
+  const formStr = v => (v && typeof v === "object")
+    ? (v["er/sie/es"] || v.ich || Object.values(v)[0] || "") : (v || "");
+
+  const genus = pos === "verb" ? "Verb"
+    : pos === "adj" ? "Adjektiv"
+    : article === "die" ? "Femininum"
+    : article === "der" ? "Maskulinum"
+    : article === "das" ? "Neutrum" : "Substantiv";
+
+  // compact key-forms spec line + the forms we use to highlight examples
+  const spec = [];                       // [label, value, wide?]
+  const forms = new Set([base]);
+  const addForm = s => { s = String(s||"").replace(/^(der|die|das)\s+/i,"").trim(); if(s.length>=3) forms.add(s); };
+  let hint = "";
+
+  if(pos === "noun"){
+    const plural = (decl.Nominativ && decl.Nominativ.plural) || decl.Plural || decl.plural || "";
+    const genitiv = (decl.Genitiv && decl.Genitiv.singular) || decl["Genitiv Singular"] || decl.genitiv_singular || "";
+    spec.push(["Genus", genus]);
+    if(plural && !["–","—"].includes(plural)){ spec.push(["Plural", plural]); addForm(plural); addForm(plural+"n"); }
+    if(genitiv && genitiv!=="–"){ spec.push(["Genitiv", genitiv]); addForm(genitiv); }
+    ["s","es","e","en","n","ern","er"].forEach(suf => addForm(base+suf));
+    const g = {der:"мужской род",die:"женский род",das:"средний род"}[article]; if(g) hint = g;
+  } else if(pos === "verb"){
+    const pres = decl.Präsens || decl.praesens || decl.present || {};
+    const er = pres["er/sie/es"] || pres.er || "";
+    const praet = formStr(decl["Präteritum"] || decl.prateritum || decl.simple_past);
+    const part = formStr(decl["Partizip II"] || decl.partizip2 || decl.perfect);
+    const hilf = decl.hilfsverb || decl.Hilfsverb || "haben";
+    spec.push(["Hilfsverb", hilf]);
+    if(er){ spec.push(["Präsens (er)", er]); addForm(er.split(" ")[0]); }
+    if(praet){ spec.push(["Präteritum", praet]); addForm(String(praet).split(" ")[0]); }
+    if(part){ spec.push(["Perfekt", (hilf==="sein"?"ist ":"hat ")+part]); addForm(part); }
+    hint = "вспом. глагол «"+hilf+"»";
+  } else { // adjective
+    const positiv = decl.positiv || decl.Positiv || base;
+    const komp = decl.komparativ || decl.Komparativ || "—";
+    const sup  = decl.superlativ || decl.Superlativ || "—";
+    spec.push(["Steigerung", `${positiv} → ${komp} → ${sup}`, true]);
+    ["","e","er","es","en","em","ere","eren","sten"].forEach(suf => addForm(base+suf));
+    [positiv,komp,sup].forEach(addForm);
+  }
+
+  const examples = Array.isArray(w.examples) ? w.examples.slice(0, 3) : [];
+  const ex = examples.map((e) => {
+    const txt = (e && typeof e === "object") ? (e.text_de || "") : String(e || "");
+    const ru  = (e && typeof e === "object") ? (e.text_ru || "") : "";
+    const html = esc(txt).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    return [highlightForms(html, [...forms]), esc(ru)];
+  });
+
   return {
     de: w.german || "",
     art: article,
@@ -240,12 +309,12 @@ function toEditorWord(apiWord){
     cat: (Array.isArray(w.topics) && w.topics[0]) ? w.topics[0] : "Thema",
     level: w.level || "B1",
     ru: w.translation_ru || "",
-    ipa: "",
-    genus: article || (pos === "noun" ? "Substantiv" : pos === "verb" ? "Verb" : "Adjektiv"),
-    plural: (grammar && grammar.plural) ? grammar.plural : "—",
-    def: (grammar && grammar.definition) ? grammar.definition : "Definition wird geladen.",
-    pull,
-    koll: collocations,
+    ipa: grammar.ipa || "",
+    spec,
+    hint,
+    rektion: grammar.rektion || "",
+    readyPhrase: grammar.ready_phrase || "",
+    def: grammar.definition || "",
     ex,
   };
 }
@@ -304,8 +373,21 @@ function applyPartFeedback(event){
   if(sectionIdx < 0) return;
   const section = SECTIONS[sectionIdx];
   if(event.feedback_ru){
-    section.sub = event.feedback_ru;
-    if(state.section === sectionIdx) $("#docSub").textContent = section.sub;
+    section.feedback = event.feedback_ru;
+    if(state.section === sectionIdx) renderVerdict();
+  }
+}
+
+/* the tutor's verdict — rendered at the END of the section text */
+function renderVerdict(){
+  const s = SECTIONS[state.section];
+  const box = $("#partVerdict");
+  if(!box) return;
+  if(s && s.feedback){
+    $("#verdictText").textContent = s.feedback;
+    box.removeAttribute("hidden");
+  }else{
+    box.setAttribute("hidden", "");
   }
 }
 
@@ -748,12 +830,6 @@ function computePopoverPosition(anchorRect, cardHeight){
   return { top, left, side };
 }
 
-function getSelectedError(){
-  if(!state.selectedAnnotation) return null;
-  const list = state.errorsBySection[state.selectedAnnotation.sectionId] || [];
-  return list.find((e) => e.error_id === state.selectedAnnotation.error_id && !e.orphaned) || null;
-}
-
 function closeAnnotationPopover(){
   state.selectedAnnotation = null;
   state.annotationRuleOpen = false;
@@ -944,6 +1020,7 @@ function renderDocHead(){
   $("#docTitle").textContent = s.title;
   $("#docSub").textContent = s.sub;
   $("#editable").setAttribute("data-placeholder", s.ph);
+  renderVerdict();
 }
 function currentThema(){
   const sel = $("#ddThema .dd-menu .sel");
@@ -1120,7 +1197,7 @@ function renderKlischees(){
   source.slice(start, start + KLI_PER_PAGE).forEach(k => {
     const div = document.createElement("div");
     div.className = "kli";
-    div.innerHTML = `<div class="kli-de">${k.de}</div><div class="kli-ru">${escapeHtml(k.ru)}</div>`;
+    div.innerHTML = `<div class="kli-de">${k.de}</div><div class="kli-ru">${escapeHtml(k.ru)}</div><span class="kli-add">Einfügen</span>`;
     div.title = "Zum Einfügen klicken";
     div.onclick = () => insertCliche(k.de);
     list.appendChild(div);
@@ -1214,20 +1291,28 @@ function cardHTML(w){
     level: escapeHtml(w.level || ""),
     ipa: escapeHtml(w.ipa || ""),
     ru: escapeHtml(w.ru || ""),
-    genus: escapeHtml(w.genus || ""),
-    plural: escapeHtml(w.plural || "—"),
   };
   const art = w.art ? `<span class="art">${safe.art}</span> ` : "";
   const posLabel = w.pos === "verb" ? "Verb" : w.pos === "adj" ? "Adjektiv" : "Substantiv";
-  const params = w.pos === "noun"
-    ? `<div class="g-param"><span class="g-k">Genus</span><b>${safe.genus}</b></div>
-       <div class="g-param"><span class="g-k">Plural</span><b>${safe.plural}</b></div>`
-    : `<div class="g-param"><span class="g-k">Wortart</span><b>${safe.genus}</b></div>`;
-  const koll = w.koll || [];
-  const useBlock = koll.length ? `
+  const longCls = ((w.art ? w.art.length+1 : 0) + (w.de||"").length) > 16 ? " long" : "";
+
+  // compact key-forms spec line
+  const spec = (w.spec || []).map(([label, value, wide]) => {
+    let v = escapeHtml(value);
+    if(wide) v = v.replace(/→/g, "<em>→</em>");
+    return `<span class="g-s${wide ? " g-s--wide" : ""}"><i>${escapeHtml(label)}</i>${v}</span>`;
+  }).join("");
+  const specBlock = spec ? `<div class="g-spec">${spec}</div>` : "";
+  const hintBlock = w.hint ? `<div class="g-hint">${escapeHtml(w.hint)}</div>` : "";
+
+  // Verwendung — rektion rule + RU case gloss + ready_phrase
+  const ruCase = caseGlossRu(w.rektion);
+  const useBlock = (w.rektion || w.readyPhrase) ? `
     <div class="g-use"><span class="g-use-lab">Verwendung</span>
-      <span class="g-use-rule">${escapeHtml(koll[0])}</span>
-      ${koll[1] ? `<span class="g-use-ex">${escapeHtml(koll[1])}</span>` : ""}</div>` : "";
+      ${w.rektion ? `<span class="g-use-rule">${escapeHtml(w.rektion)}</span>` : ""}
+      ${ruCase ? `<span class="g-use-ru">${ruCase}</span>` : ""}
+      ${w.readyPhrase ? `<span class="g-use-ex">${escapeHtml(w.readyPhrase)}</span>` : ""}</div>` : "";
+
   const examples = (w.ex || []).map(([de,ru],i) => `
     <div class="ex"><span class="ex-n">${String(i+1).padStart(2,"0")}</span>
       <div class="ex-body"><p class="ex-de">${de}</p>${ru ? `<p class="ex-ru">${ru}</p>` : ""}</div></div>`).join("");
@@ -1237,7 +1322,7 @@ function cardHTML(w){
     </button>
     <div class="d-head">
       <div class="d-meta"><span class="d-cat"><span class="hl">${posLabel}</span> · ${safe.cat}</span><span class="d-level">${safe.level}</span></div>
-      <div class="d-word">${art}${safe.de}</div>
+      <div class="d-word${longCls}">${art}${safe.de}</div>
       <div class="d-tools">
         <span class="d-ipa">${safe.ipa}</span>
         <button class="d-hear" id="dHear" type="button">
@@ -1248,10 +1333,8 @@ function cardHTML(w){
       <div class="d-ru">${safe.ru}</div>
     </div>
     <div class="d-body">
-      <section><div class="lab">Bedeutung</div><p class="def">${w.def || ""}</p>
-        ${w.pull ? `<blockquote class="pull">${w.pull}</blockquote>` : ""}</section>
-      <section><div class="lab">Grammatik</div>
-        <div class="g-params">${params}</div>${useBlock}</section>
+      ${w.def ? `<section><div class="lab">Bedeutung</div><p class="def">${w.def}</p></section>` : ""}
+      <section><div class="lab">Grammatik</div>${specBlock}${hintBlock}${useBlock}</section>
       ${examples ? `<section><div class="lab">Beispiele</div><div class="ex-list">${examples}</div></section>` : ""}
     </div>`;
 }

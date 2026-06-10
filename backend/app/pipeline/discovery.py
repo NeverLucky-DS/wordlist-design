@@ -66,12 +66,14 @@ def _extract_json_array(text: str) -> list[dict]:
 
 def _grok_discover_sync(topic: str, grok_api_key: str) -> tuple[list[SourceItem], str | None]:
     """Synchronous Grok call — run inside asyncio.to_thread."""
+    from app.config import settings
+
     headers = {
         "Authorization": f"Bearer {grok_api_key}",
         "Content-Type": "application/json",
     }
     payload: dict[str, Any] = {
-        "model": "grok-3",
+        "model": settings.grok_model,
         "messages": [
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": _USER_TMPL.format(topic=topic)},

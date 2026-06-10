@@ -1,0 +1,10 @@
+/* =====================================================================
+   Deutsch Essay — design system entry point
+   ---------------------------------------------------------------------
+   Consumers link THIS one file. It is a manifest of @imports only — every
+   token and font reachable from here ships to the consuming project.
+   ===================================================================== */
+@import url('tokens/fonts.css');
+@import url('tokens/colors.css');
+@import url('tokens/typography.css');
+@import url('tokens/spacing.css');

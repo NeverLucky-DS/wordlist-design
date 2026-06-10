@@ -143,6 +143,43 @@ class PipelineRun(Base):
     status: Mapped[str] = mapped_column(String(32), default="running")  # running|completed|failed
     words_added: Mapped[int] = mapped_column(Integer, default=0)
     words_linked: Mapped[int] = mapped_column(Integer, default=0)
+    phrases_added: Mapped[int] = mapped_column(Integer, default=0)
+    target_words: Mapped[int] = mapped_column(Integer, default=0)
     errors_json: Mapped[list] = mapped_column(JSON_TYPE, default=list)
     started_at: Mapped[datetime] = mapped_column(server_default=func.now())
     finished_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
+
+class WordFailure(Base):
+    """Words that failed enrichment — retried automatically on the next run."""
+
+    __tablename__ = "word_failures"
+    __table_args__ = (UniqueConstraint("word", "topic", name="uq_failure_word_topic"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    word: Mapped[str] = mapped_column(String(255))
+    topic: Mapped[str] = mapped_column(String(128))
+    pos: Mapped[str] = mapped_column(String(32), default="Other")
+    article: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    examples: Mapped[list] = mapped_column(JSON_TYPE, default=list)
+    stage: Mapped[str] = mapped_column(String(32), default="mistral")
+    error: Mapped[str] = mapped_column(Text, default="")
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class TopicQueueItem(Base):
+    """Autonomous mode: topics waiting to be processed by the scheduler."""
+
+    __tablename__ = "topic_queue"
+    __table_args__ = (UniqueConstraint("topic", name="uq_topic_queue_topic"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    topic: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending|running|done|failed
+    target_words: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

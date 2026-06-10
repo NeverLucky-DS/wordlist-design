@@ -1,0 +1,34 @@
+<!-- @dsCard group="Brand" viewport="700x240" name="Decor & texture — paper, column, marks" subtitle="Watercolor column, lilac wash, editorial corner marks" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;background:var(--bg);font-family:var(--font-sans);padding:20px 24px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .cell{border-radius:12px;border:1px solid var(--line);overflow:hidden;background:var(--card)}
+  .img{height:130px;background-size:cover;background-position:center}
+  .cap{padding:8px 10px;font-size:10px;color:var(--ink-soft);font-weight:600}
+  .mark{height:130px;position:relative;background:var(--card)}
+  .mark::before{content:"";position:absolute;inset:0;background:var(--accent);opacity:.55;
+    -webkit-mask:url('../assets/images/decor-head.png') no-repeat center/contain;
+            mask:url('../assets/images/decor-head.png') no-repeat center/contain}
+  /* soft orchid watercolor field — layered washes (rose × lavender) */
+  .wash{height:130px;
+    background:
+      radial-gradient(68% 58% at 24% 28%, color-mix(in oklab, var(--rose) 55%, white) 0%, transparent 60%),
+      radial-gradient(78% 70% at 80% 34%, color-mix(in oklab, var(--lav) 55%, white) 0%, transparent 60%),
+      radial-gradient(95% 85% at 52% 96%, color-mix(in oklab, var(--accent) 42%, white) 0%, transparent 64%),
+      var(--accent-bg)}
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="img" style="background-image:url('../assets/images/abstract-watercolor-column.png')"></div><div class="cap">Watercolor column</div></div>
+    <div class="cell"><div class="wash"></div><div class="cap">Lilac wash · paint</div></div>
+    <div class="cell"><div class="img" style="background-image:url('../assets/images/paper-texture.png')"></div><div class="cap">Paper texture</div></div>
+    <div class="cell"><div class="mark"></div><div class="cap">Corner mark · plum</div></div>
+  </div>
+</body>
+</html>

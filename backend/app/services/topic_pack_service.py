@@ -237,12 +237,16 @@ def _apply_word_row(word: Word, row: dict, topic_slug: str, *, is_new: bool) -> 
     return changed
 
 
+_BRACKETS_RE = __import__("re").compile(r"\s*\([^)]*\)|\s*\[[^\]]*\]")
+
+
 async def fix_word_lemmas(session: AsyncSession) -> int:
-    """Приводит german к лемме без дублирующего артикля."""
+    """Приводит german к лемме: без артикля, скобок и LLM-аннотаций."""
     result = await session.execute(select(Word))
     fixed = 0
     for word in result.scalars().all():
-        new_german, new_article = normalize_german_lemma(word.german, word.article)
+        cleaned = _BRACKETS_RE.sub("", word.german).strip(" ,;.:-–—")
+        new_german, new_article = normalize_german_lemma(cleaned, word.article)
         if new_german != word.german or new_article != word.article:
             word.german = new_german
             word.article = new_article
@@ -250,6 +254,36 @@ async def fix_word_lemmas(session: AsyncSession) -> int:
     if fixed:
         await session.commit()
     return fixed
+
+
+async def normalize_topic_case(session: AsyncSession) -> int:
+    """Приводит topic в word_topics/phrases к lowercase (наследие v1)."""
+    changed = 0
+    result = await session.execute(select(WordTopic))
+    for link in result.scalars().all():
+        lower = link.topic.strip().lower()
+        if link.topic == lower:
+            continue
+        dup = await session.execute(
+            select(WordTopic).where(
+                WordTopic.word_id == link.word_id, WordTopic.topic == lower
+            )
+        )
+        if dup.scalar_one_or_none():
+            await session.delete(link)  # lowercase link already exists
+        else:
+            link.topic = lower
+        changed += 1
+
+    result = await session.execute(select(Phrase))
+    for phrase in result.scalars().all():
+        if phrase.topic and phrase.topic != phrase.topic.strip().lower():
+            phrase.topic = phrase.topic.strip().lower()
+            changed += 1
+
+    if changed:
+        await session.commit()
+    return changed
 
 
 async def dedupe_words_by_german(session: AsyncSession) -> int:
@@ -270,6 +304,8 @@ async def dedupe_words_by_german(session: AsyncSession) -> int:
 
         for link in list(word.topics):
             await ensure_word_topic(session, keeper.id, link.topic)
+            await session.delete(link)
+        await session.flush()
         await session.delete(word)
         removed += 1
 
