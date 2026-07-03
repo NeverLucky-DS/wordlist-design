@@ -1,22 +1,10 @@
 # Deutsch Essay Trainer
 
-Full-stack прототип тренажёра немецкого: тематический словарь B1–C1, AI-редактор эссе и pipeline автоматического обогащения слов по теме.
+**NLP / LLM** прототип для немецкого B1–C1: тематический словарь, streaming AI-разбор эссе, pipeline обогащения слов по теме.
 
 **Репо:** https://github.com/NeverLucky-DS/wordlist-design
 
-Пет-проект уровня production-prototype: REST API, PostgreSQL, LLM-интеграция, тесты.
-
-| Навык | Реализация |
-|-------|------------|
-| Python | backend, pipeline |
-| FastAPI | REST API, SSE-стриминг, OpenAPI |
-| PostgreSQL | слова, эссе, фразы, прогресс pipeline |
-| Тесты | pytest — 16 тестов (`backend/tests/`) |
-| LLM / агенты | Mistral (анализ эссе, enrichment) · Grok (discovery) |
-| Async | SQLAlchemy async, httpx, `asyncio.gather` |
-| Docker | docker-compose: nginx + FastAPI + PostgreSQL |
-
----
+**Стек:** Mistral · Grok discovery · PostgreSQL · FastAPI · Docker · pytest (16)
 
 ## Демонстрация
 
