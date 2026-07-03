@@ -79,7 +79,9 @@ Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Bru
 | Folder | Count | Usage |
 |--------|-------|-------|
 | [`worte/`](../worte/) | 15 PNG | Level×POS watercolor brushes (`B1_Adjectives_...`, etc.) |
-| [`images/`](../images/) | 14 PNG | Decor: column, decor-head, Verwendung, Deklination, kli-1/2/3, autumn, mountains-corner, timer-wash, roadmap-leaf-1/2/3 |
+| [`images/`](../images/) | 18 PNG | Decor: column, decor-head, Verwendung, Deklination, kli-1/2/3, autumn, mountains-corner, timer-wash, roadmap-leaf-1/2/3 |
+
+**Unwired assets (in repo, not yet in CSS/HTML):** `drawer-head-wash.png`, `tool-card-wash.png`, `tool-hilfen.png`, `tool-woerterbuch.png` — likely intended for schreiben drawer/tool cards.
 
 ## Frontend ↔ Backend matrix
 
