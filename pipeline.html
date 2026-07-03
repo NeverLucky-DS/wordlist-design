@@ -3,614 +3,489 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pipeline · Deutsch Essay</title>
+<title>Deutsch Essay · Pipeline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/site-header.css?v=4">
-<style>
-:root {
-  --ink:#1a1a1a; --paper:#faf8f5; --rose:#c9a0a0; --blue:#8fafc2;
-  --lav:#b0a9cc; --sage:#9ab5a0; --sand:#c8b99a; --orange:#d4905a;
-  --muted:#888; --border:#e8e3dc; --card:#fff; --radius:12px;
-  --font-serif:'Cormorant Garamond',serif; --font-sans:'Inter',sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:14px;line-height:1.6;min-height:100vh;}
-
-.page{max-width:900px;margin:0 auto;padding:32px 24px 80px;}
-h1{font-family:var(--font-serif);font-size:clamp(2rem,5vw,3rem);font-weight:500;line-height:1.1;margin-bottom:4px;}
-.subtitle{color:var(--muted);font-size:13px;margin-bottom:32px;}
-
-/* ── form ── */
-.add-form{display:flex;gap:10px;margin-bottom:36px;}
-.add-form input{
-  flex:1;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;
-  font-family:var(--font-sans);font-size:14px;color:var(--ink);background:#fff;
-  outline:none;transition:border-color .15s;
-}
-.add-form input:focus{border-color:var(--orange);}
-.btn{
-  padding:10px 22px;border-radius:8px;border:none;cursor:pointer;
-  font-family:var(--font-sans);font-size:14px;font-weight:500;
-  background:var(--orange);color:#fff;transition:opacity .15s;white-space:nowrap;
-}
-.btn:hover{opacity:.85;}
-.btn:disabled{opacity:.4;cursor:default;}
-.btn-sm{padding:6px 14px;font-size:12px;}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
-.btn-ghost:hover{border-color:var(--rose);color:var(--rose);opacity:1;}
-
-/* ── section header ── */
-.sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
-.sec-title{font-family:var(--font-serif);font-size:1.5rem;font-weight:500;}
-.sec-badge{font-size:11px;color:var(--muted);background:var(--border);padding:2px 8px;border-radius:10px;}
-
-/* ── stack ── */
-.stack{display:flex;flex-direction:column;gap:8px;}
-
-/* ── topic card ── */
-.topic-card{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-  overflow:hidden;transition:border-color .25s,box-shadow .25s;
-}
-.topic-card.is-running{border-color:var(--orange);box-shadow:0 0 0 3px rgba(212,144,90,.1);}
-.topic-card.is-done   {border-color:var(--sage);}
-.topic-card.is-error  {border-color:var(--rose);}
-
-/* head row */
-.tc-head{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;user-select:none;}
-.tc-icon{
-  width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:700;flex-shrink:0;background:var(--border);color:var(--muted);
-  transition:background .2s;
-}
-.is-running .tc-icon{background:#fff3e0;color:#e67e22;}
-.is-done    .tc-icon{background:#e8f5e9;color:#2e7d32;}
-.is-error   .tc-icon{background:#fce4ec;color:#c62828;}
-
-.tc-name{font-weight:600;font-size:15px;flex:1;min-width:0;}
-.tc-mini-stats{font-size:12px;color:var(--muted);white-space:nowrap;}
-.tc-pill{
-  font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;
-}
-.is-waiting .tc-pill{background:var(--border);color:var(--muted);}
-.is-running .tc-pill{background:#fff3e0;color:#e67e22;}
-.is-done    .tc-pill{background:#e8f5e9;color:#2e7d32;}
-.is-error   .tc-pill{background:#fce4ec;color:#c62828;}
-
-.tc-rm{
-  width:22px;height:22px;border:none;background:none;cursor:pointer;
-  color:var(--muted);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;
-  flex-shrink:0;
-}
-.tc-rm:hover{background:#fce4ec;color:var(--rose);}
-.tc-chevron{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
-.tc-head.open .tc-chevron{transform:rotate(180deg);}
-
-/* spin */
-.spin{
-  width:13px;height:13px;border:2px solid #e67e22;border-top-color:transparent;
-  border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* body */
-.tc-body{border-top:1px solid var(--border);}
-
-/* pipeline steps */
-.tc-steps{padding:12px 18px 6px;display:flex;flex-direction:column;gap:4px;}
-.step-row{
-  display:flex;align-items:flex-start;gap:10px;padding:7px 10px;
-  border-radius:8px;transition:background .15s;
-}
-.step-row.s-active{background:#fff8f4;}
-.step-row.s-done  {background:#f5fbf5;}
-.step-row.s-error {background:#fff8f8;}
-.step-dot{
-  width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;
-  background:var(--border);color:var(--muted);margin-top:1px;
-}
-.step-row.s-active .step-dot{background:var(--orange);color:#fff;}
-.step-row.s-done   .step-dot{background:var(--sage);color:#fff;}
-.step-row.s-error  .step-dot{background:var(--rose);color:#fff;}
-.step-info{flex:1;}
-.step-label{font-size:12px;font-weight:600;}
-.step-sub{font-size:11px;color:var(--muted);margin-top:1px;}
-.step-badge{font-size:11px;font-weight:600;margin-top:2px;white-space:nowrap;}
-.step-row.s-active .step-badge{color:#e67e22;}
-.step-row.s-done   .step-badge{color:#2e7d32;}
-.step-row.s-error  .step-badge{color:#c62828;}
-
-/* stats bar */
-.tc-statsbar{
-  display:flex;gap:0;border-top:1px solid var(--border);background:#f9f8f6;
-}
-.tc-stat{
-  flex:1;padding:12px 18px;display:flex;flex-direction:column;gap:1px;
-  border-right:1px solid var(--border);
-}
-.tc-stat:last-child{border-right:none;}
-.stat-v{font-family:var(--font-serif);font-size:1.5rem;font-weight:500;line-height:1;}
-.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-
-/* words section */
-.tc-words{padding:14px 18px;border-top:1px solid var(--border);}
-.tc-words-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
-.chip-grid{display:flex;flex-wrap:wrap;gap:6px;}
-.w-chip{
-  font-size:12px;padding:3px 10px;border-radius:20px;
-  background:var(--border);color:var(--ink);
-}
-.w-chip.lvl-B1{background:#e3f0ff;color:#3a6fa0;}
-.w-chip.lvl-B2{background:#f3e8ff;color:#7c4d9f;}
-.w-chip.lvl-C1{background:#fdecea;color:#c0392b;}
-
-/* errors */
-.tc-errs{padding:0 18px 14px;}
-.err-btn{
-  background:none;border:1px solid var(--border);border-radius:6px;
-  padding:4px 12px;font-size:12px;cursor:pointer;color:var(--muted);
-}
-.err-btn:hover{border-color:var(--rose);color:var(--rose);}
-.err-list{margin-top:8px;display:none;max-height:200px;overflow-y:auto;}
-.err-list.open{display:block;}
-.err-item{
-  background:#fff8f8;border:1px solid #fdd;border-radius:5px;
-  padding:6px 10px;margin-bottom:4px;font-size:11px;
-}
-.err-stage{font-weight:700;color:var(--rose);text-transform:uppercase;font-size:10px;}
-.err-msg{color:#c0392b;}
-
-/* elapsed */
-.tc-elapsed{padding:6px 18px 12px;font-size:11px;color:var(--muted);}
-
-/* empty state */
-.empty-state{
-  text-align:center;color:var(--muted);padding:40px 24px;
-  border:1.5px dashed var(--border);border-radius:var(--radius);
-}
-.empty-state p{font-size:13px;}
-
-/* history sep */
-.history-section{margin-top:44px;}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site-header.css?v=5">
+<link rel="stylesheet" href="css/pipeline.css?v=1">
 </head>
 <body>
 
+  <!-- left edge decoration — watercolor strip + vertical label -->
+  <div class="bg-column" aria-hidden="true"></div>
+  <div class="side-label">SAMMELN</div>
 
-<div class="page">
+  <!-- ===================== Top bar (shared 1:1 site-wide) ===================== -->
+  <header class="topbar">
+    <a class="brand" href="index.html"><span>Deutsch</span><span>Essay</span></a>
+    <span class="brand-rule" aria-hidden="true"></span>
 
-  <h1>Wörter sammeln</h1>
-  <p class="subtitle">Themen einreihen — die Pipeline arbeitet sie nacheinander ab.</p>
-
-  <!-- ── Add form ── -->
-  <div class="add-form">
-    <input type="text" id="topicInput"
-      placeholder="Thema eingeben, z. B. Migration, KI, Bildung …"
-      autocomplete="off">
-    <button class="btn" id="addBtn" onclick="addTopic()">+ Einreihen</button>
-  </div>
-
-  <!-- ── Active queue ── -->
-  <div class="sec-head">
-    <span class="sec-title">Warteschlange</span>
-    <span class="sec-badge" id="qBadge">0</span>
-    <button class="btn btn-sm" id="startBtn" style="margin-left:auto" onclick="startNext()" disabled>
-      Starten
-    </button>
-  </div>
-  <div class="stack" id="queueStack">
-    <div class="empty-state" id="emptyQueue">
-      <p>Keine Themen in der Warteschlange.<br>Gib oben ein Thema ein und klicke <em>Einreihen</em>.</p>
-    </div>
-  </div>
-
-  <!-- ── History ── -->
-  <div class="history-section">
-    <div class="sec-head">
-      <span class="sec-title">Verlauf</span>
-      <span class="sec-badge" id="histBadge"></span>
-    </div>
-    <div class="stack" id="histStack">
-      <div class="empty-state" id="emptyHist">
-        <p>Noch keine abgeschlossenen Läufe.</p>
+    <nav class="nav">
+      <a href="#">Dashboard</a>
+      <a href="editor.html">Schreiben</a>
+      <div class="nav-drop">
+        <button type="button">Lernen
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-menu">
+          <a href="index.html">Wörterbuch</a>
+          <a href="#">Übung</a>
+          <a href="#">Grammatik</a>
+        </div>
       </div>
+      <a href="#">Verlauf</a>
+      <a href="pipeline.html" class="active">Pipeline</a>
+    </nav>
+
+    <div class="top-right">
+      <button class="icon-btn" id="themeBtn" aria-label="Theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <button class="lang-pill">DE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg></button>
+      <span class="top-rule" aria-hidden="true"></span>
+      <div class="avatar">D</div>
     </div>
-  </div>
+  </header>
 
-</div>
+  <!-- ===================== Page ===================== -->
+  <main class="page">
 
+    <div class="eyebrow">Pipeline</div>
+    <h1 class="title">Wörter sammeln</h1>
+    <p class="lede">Die Pipeline liest Quellen, sammelt Wortschatz und Redemittel zu jedem
+      Thema — und arbeitet von selbst weiter, bis die Sammlung vollständig ist.</p>
+    <div class="autopilot" id="autopilot" hidden>
+      <span class="ap-dot"></span><span id="autopilotText">Autopilot aktiv</span>
+    </div>
+
+    <!-- compose -->
+    <div class="compose">
+      <label class="field">
+        <span class="ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <input id="topicInput" type="text" autocomplete="off"
+          placeholder="Neues Thema, z. B. „Plastikmüll“ oder „Work-Life-Balance“ …">
+      </label>
+      <button class="btn-queue" id="queueBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M19 15v6M16 18h6"/></svg>
+        Einreihen
+      </button>
+    </div>
+    <div class="suggest" id="suggest" hidden>
+      <span class="sg-cap">Vorschläge</span>
+    </div>
+
+    <!-- ── Warteschlange ── -->
+    <section class="sec">
+      <div class="sec-head">
+        <span class="sec-title">Warteschlange</span>
+        <span class="sec-count" id="queueCount"></span>
+      </div>
+      <div class="queue-stack" id="queueStack">
+        <div class="empty"><p>Die Warteschlange ist leer — der Autopilot ergänzt
+          bei Bedarf <b>neue Themen von selbst</b>.</p></div>
+      </div>
+    </section>
+
+    <!-- ── Sammlung ── -->
+    <section class="sec">
+      <div class="sec-head">
+        <span class="sec-title">Sammlung</span>
+        <span class="sec-count" id="shelfCount"></span>
+      </div>
+      <p class="sec-note">Jedes Thema wird bis zum Ziel aufgefüllt — Wörter, dazu Redemittel für alle Essay-Teile.</p>
+      <div class="shelf" id="shelf">
+        <div class="empty" style="grid-column:1/-1"><p>Noch keine Themen in der Sammlung.</p></div>
+      </div>
+    </section>
+
+    <!-- ── Verlauf ── -->
+    <section class="sec">
+      <div class="sec-head">
+        <span class="sec-title">Verlauf</span>
+        <span class="sec-count" id="logCount"></span>
+      </div>
+      <div class="log-stack" id="logStack">
+        <div class="empty"><p>Noch keine abgeschlossenen Läufe.</p></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== Right rail — totals ===================== -->
+  <aside class="rail">
+    <div class="rail-label">Sammlung</div>
+    <div class="rail-big"><b id="railWords">–</b><span>Wörter in Themen</span></div>
+    <div class="rail-duo">
+      <div><b id="railTopics">–</b><span>Themen</span></div>
+      <div><b id="railPhrases">–</b><span>Redemittel</span></div>
+    </div>
+    <div class="rail-duo">
+      <div><b id="railTarget">–</b><span>Ziel je Thema</span></div>
+      <div class="warn-v"><b id="railFails">–</b><span>Offene Fehler</span></div>
+    </div>
+    <div class="rail-hr"></div>
+    <div class="rail-auto" id="railAuto">
+      <span class="st"><span class="d"></span> Autopilot</span><br>
+      <span id="railAutoText">–</span>
+    </div>
+    <div class="rail-hr"></div>
+    <div class="rail-quote">Wer fremde Sprachen nicht kennt, weiß nichts von seiner eigenen.
+      <span class="au">Goethe</span></div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+
+<script src="js/site-header.js?v=5"></script>
 <script>
+/* =====================================================================
+   Pipeline page — talks to /api/pipeline/{overview,queue,runs,run}
+   ===================================================================== */
 const API = "";
 
-/* ─── state ──────────────────────────────────────────────────────────────── */
-// item shape: { id, topic, status:'waiting'|'running'|'done'|'error',
-//              runId, data, expanded, startTime, _words }
-const queue   = [];   // waiting + running
-const history = [];   // completed (backend history + finished queue items)
+/* watercolor washes for the topic shelf (cycled, stable per topic) */
+const WASHES = [
+  "worte/B1_Adjectives_Lavender_BG-Wash.png",
+  "worte/B1_Der_Powdery-Blue_Horizontal-Soft.png",
+  "worte/B1_Die_Powdery-Pink_BG-Wash.png",
+  "worte/B1_Das_Pale-Green_BG-Wash.png",
+  "worte/B1_Verbs_Sandy-Ochre_BG-Wash.png",
+  "worte/B2_Adjectives_Amethyst_BG-Wash.png",
+  "worte/B2_Das_Grass-Green_BG-Wash.png",
+  "worte/B2_Verbs_Terracotta_BG-Wash.png",
+];
 
-let runningItem = null;
-let pollTimer   = null;
-let _uid        = 0;
+/* mirror of the backend's curated catalog — for the suggestion chips */
+const CATALOG = ["Klimawandel","Digitalisierung","Migration","Soziale Medien",
+  "Künstliche Intelligenz","Globalisierung","Bildungssystem","Arbeitswelt der Zukunft",
+  "Umweltschutz","Energiewende","Massentourismus","Datenschutz","Homeoffice",
+  "Konsumgesellschaft","Generationenkonflikt","Sprachenlernen"];
 
-/* ─── init ───────────────────────────────────────────────────────────────── */
-async function loadHistory() {
-  try {
-    const runs = await apiFetch("/api/pipeline/runs");
-    if (!Array.isArray(runs)) return;
-    runs.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
-    runs.forEach(run => {
-      history.push({
-        id: "h" + run.id,
-        topic: run.topic,
-        status: run.status === "completed" ? "done" : run.status === "failed" ? "error" : "done",
-        runId: run.id,
-        data: {
-          words_added: run.words_added,
-          words_linked: run.words_linked,
-          errors: run.errors_json || [],
-          status: run.status,
-        },
-        expanded: false,
-        startTime: run.started_at ? new Date(run.started_at).getTime() : null,
-        _finishTime: run.finished_at ? new Date(run.finished_at).getTime() : null,
-        _words: null,
-      });
-    });
-    renderHistory();
-  } catch (_) {}
-}
+let overview = null, runs = [], queueItems = [];
+const openRuns = new Set();
+let pollTimer = null;
 
-/* ─── queue management ───────────────────────────────────────────────────── */
-function addTopic() {
-  const input = document.getElementById("topicInput");
-  const topic = input.value.trim();
-  if (!topic) { input.focus(); return; }
-  input.value = "";
-
-  // Prevent duplicate topic already in queue
-  if (queue.some(i => i.topic.toLowerCase() === topic.toLowerCase())) {
-    input.value = topic;
-    input.focus();
-    return;
-  }
-
-  queue.push({
-    id: "q" + (++_uid), topic,
-    status: "waiting", runId: null, data: null,
-    expanded: false, startTime: null, _words: null,
-  });
-  renderQueue();
-  if (!runningItem) startNext();
-}
-
-function removeTopic(id) {
-  const idx = queue.findIndex(i => i.id === id && i.status === "waiting");
-  if (idx >= 0) { queue.splice(idx, 1); renderQueue(); }
-}
-
-function startNext() {
-  if (runningItem) return;
-  const next = queue.find(i => i.status === "waiting");
-  if (!next) return;
-  runningItem = next;
-  next.status = "running";
-  next.startTime = Date.now();
-  next.expanded = true;
-  renderQueue();
-  launch(next);
-}
-
-async function launch(item) {
-  try {
-    const res = await apiFetch("/api/pipeline/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: item.topic, article_urls: [] }),
-    });
-    item.runId = res.run_id;
-    renderQueue();
-    startPolling(item);
-  } catch (e) {
-    item.status = "error";
-    item.data = { words_added: 0, words_linked: 0, errors: [{ stage: "start", item: item.topic, error: String(e) }] };
-    runningItem = null;
-    renderQueue();
-    startNext();
-  }
-}
-
-function startPolling(item) {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    if (!item.runId) return;
-    try {
-      const data = await apiFetch("/api/pipeline/run/" + item.runId);
-      item.data = { ...data, errors: data.errors || [] };
-      if (data.status === "completed" || data.status === "failed") {
-        item.status = data.status === "completed" ? "done" : "error";
-        item._finishTime = Date.now();
-        clearInterval(pollTimer); pollTimer = null;
-        runningItem = null;
-        history.unshift({ ...item, id: "h" + item.id });
-        queue.splice(queue.indexOf(item), 1);
-        renderQueue();
-        renderHistory();
-        startNext();
-      } else {
-        refreshRunningCard(item);
-      }
-    } catch (_) {}
-  }, 3000);
-}
-
-/* ─── helpers ────────────────────────────────────────────────────────────── */
-function apiFetch(path, opts) {
+/* ─── api ─────────────────────────────────────────────────────────── */
+function api(path, opts) {
   return fetch(API + path, opts).then(r => {
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r.json();
   });
 }
 
-function formatDur(ms) {
-  const s = Math.round(ms / 1000);
-  if (s < 60) return s + "s";
-  return Math.floor(s / 60) + "m " + (s % 60) + "s";
+/* ─── refresh loop ────────────────────────────────────────────────── */
+async function refresh() {
+  try {
+    const [ov, rs, q] = await Promise.all([
+      api("/api/pipeline/overview"),
+      api("/api/pipeline/runs"),
+      api("/api/pipeline/queue"),
+    ]);
+    overview = ov; runs = rs; queueItems = q;
+    render();
+  } catch (e) { /* backend asleep — keep last view */ }
+  schedule();
+}
+function schedule() {
+  clearTimeout(pollTimer);
+  const busy = runs.some(r => r.status === "running") ||
+               queueItems.some(i => i.status === "running");
+  pollTimer = setTimeout(refresh, busy ? 3000 : 9000);
 }
 
-function realErrors(errs) {
-  return (errs || []).filter(e => e.error && !e.error.includes("429") && e.stage !== "wiktionary");
+/* ─── actions ─────────────────────────────────────────────────────── */
+async function queueTopic() {
+  const input = document.getElementById("topicInput");
+  const topic = input.value.trim();
+  if (!topic) { input.focus(); return; }
+  const btn = document.getElementById("queueBtn");
+  btn.disabled = true;
+  try {
+    const res = await api("/api/pipeline/queue", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topics: [topic] }),
+    });
+    input.value = "";
+    toast(res.queued?.length ? `„${topic}“ eingereiht` : `„${topic}“ ist bereits in der Warteschlange`);
+    await refresh();
+  } catch (e) { toast("Fehler: " + e.message); }
+  btn.disabled = false;
 }
 
-function inferActiveStep(item) {
-  const errs = item.data?.errors || [];
-  if ((item.data?.words_added || 0) > 0) return 5;
-  if (errs.some(e => e.stage === "wiktionary" || e.stage === "mistral")) return 4;
-  if (errs.some(e => e.stage === "extract")) return 3;
-  if (errs.some(e => e.stage === "fetch" && !String(e.item||"").includes("grok"))) return 2;
-  return 1;
+async function startNow(topic, btnEl) {
+  if (btnEl) btnEl.disabled = true;
+  try {
+    await api("/api/pipeline/run", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, article_urls: [] }),
+    });
+    toast(`„${topic}“ gestartet`);
+    await refresh();
+  } catch (e) { toast("Fehler: " + e.message); if (btnEl) btnEl.disabled = false; }
 }
 
-/* ─── render ─────────────────────────────────────────────────────────────── */
+/* ─── render ──────────────────────────────────────────────────────── */
+function render() {
+  renderAutopilot();
+  renderSuggest();
+  renderQueue();
+  renderShelf();
+  renderLog();
+  renderRail();
+}
+
+function renderAutopilot() {
+  const s = overview?.settings;
+  const el = document.getElementById("autopilot");
+  if (!s) { el.hidden = true; return; }
+  el.hidden = false;
+  el.classList.toggle("off", !s.autorun);
+  document.getElementById("autopilotText").textContent = s.autorun
+    ? `Autopilot aktiv — prüft alle ${s.interval_minutes} Min${s.auto_topics ? ", ergänzt Themen von selbst" : ""}`
+    : "Autopilot pausiert";
+}
+
+function renderSuggest() {
+  const host = document.getElementById("suggest");
+  const known = new Set([
+    ...(overview?.topics || []).map(t => t.topic.toLowerCase()),
+    ...queueItems.map(i => i.topic.trim().toLowerCase()),
+  ]);
+  const fresh = CATALOG.filter(t => !known.has(t.toLowerCase())).slice(0, 5);
+  host.querySelectorAll(".sg-chip").forEach(c => c.remove());
+  host.hidden = fresh.length === 0;
+  fresh.forEach(t => {
+    const chip = document.createElement("button");
+    chip.className = "sg-chip"; chip.type = "button"; chip.textContent = t;
+    chip.onclick = () => {
+      const input = document.getElementById("topicInput");
+      input.value = t; input.focus();
+    };
+    host.appendChild(chip);
+  });
+}
+
 function renderQueue() {
   const stack = document.getElementById("queueStack");
-  const empty = document.getElementById("emptyQueue");
-  document.getElementById("qBadge").textContent = queue.length;
-  const startBtn = document.getElementById("startBtn");
-  startBtn.disabled = !!runningItem || !queue.some(i => i.status === "waiting");
-  startBtn.textContent = runningItem ? "läuft…" : "Starten";
-
-  stack.querySelectorAll(".topic-card").forEach(el => el.remove());
-  empty.style.display = queue.length ? "none" : "block";
-  queue.forEach(item => stack.appendChild(buildCard(item)));
-}
-
-function renderHistory() {
-  const stack = document.getElementById("histStack");
-  const empty = document.getElementById("emptyHist");
-  const badge = document.getElementById("histBadge");
-  badge.textContent = history.length || "";
-
-  stack.querySelectorAll(".topic-card").forEach(el => el.remove());
-  empty.style.display = history.length ? "none" : "block";
-  history.forEach(item => stack.appendChild(buildCard(item)));
-}
-
-function refreshRunningCard(item) {
-  const card = document.getElementById("card-" + item.id);
-  if (!card) return;
-  // Redraw only the step rows without full rebuild
-  const stepEl = card.querySelector(".tc-steps");
-  if (stepEl) {
-    const fresh = buildSteps(item);
-    stepEl.replaceWith(fresh);
+  const active = queueItems.filter(i => i.status === "pending" || i.status === "running");
+  document.getElementById("queueCount").textContent = active.length || "";
+  stack.innerHTML = "";
+  if (!active.length) {
+    stack.innerHTML = `<div class="empty"><p>Die Warteschlange ist leer — der Autopilot ergänzt
+      bei Bedarf <b>neue Themen von selbst</b>.</p></div>`;
+    return;
   }
-  // Update elapsed
-  const elapsed = card.querySelector(".tc-elapsed");
-  if (elapsed && item.startTime) elapsed.textContent = "Läuft seit " + formatDur(Date.now() - item.startTime);
-}
-
-function buildCard(item) {
-  const card = document.createElement("div");
-  card.className = "topic-card is-" + item.status;
-  card.id = "card-" + item.id;
-
-  // ── head
-  const head = document.createElement("div");
-  head.className = "tc-head" + (item.expanded ? " open" : "");
-
-  const icon = { waiting:"–", running:"", done:"✓", error:"✗" }[item.status];
-  const pill = { waiting:"Wartend", running:"Läuft …", done:"Fertig", error:"Fehler" }[item.status];
-  const d = item.data;
-  const miniStats = (item.status === "done" || item.status === "error") && d
-    ? `${d.words_added ?? 0} neu · ${d.words_linked ?? 0} verknüpft`
-    : "";
-
-  head.innerHTML = `
-    <div class="tc-icon">${item.status === "running" ? '<span class="spin"></span>' : icon}</div>
-    <div class="tc-name">${item.topic}</div>
-    ${miniStats ? `<div class="tc-mini-stats">${miniStats}</div>` : ""}
-    <span class="tc-pill">${pill}</span>
-    ${item.status === "waiting" ? `<button class="tc-rm" title="Entfernen" onclick="removeTopic('${item.id}');event.stopPropagation()">×</button>` : ""}
-    <span class="tc-chevron">▼</span>
-  `;
-  head.onclick = e => {
-    if (e.target.classList.contains("tc-rm")) return;
-    toggleCard(item, card);
-  };
-  card.appendChild(head);
-
-  if (item.expanded) card.appendChild(buildBody(item));
-  return card;
-}
-
-function buildBody(item) {
-  const body = document.createElement("div");
-  body.className = "tc-body";
-
-  // Steps (always show for running/done/error)
-  if (item.status !== "waiting") body.appendChild(buildSteps(item));
-
-  // Stats bar (completed only)
-  if (item.status === "done" || item.status === "error") {
-    const d = item.data || {};
-    const dur = (item._finishTime && item.startTime) ? formatDur(item._finishTime - item.startTime) : "—";
-    const sb = document.createElement("div");
-    sb.className = "tc-statsbar";
-    sb.innerHTML = `
-      <div class="tc-stat"><div class="stat-v">${d.words_added ?? 0}</div><div class="stat-l">Neu hinzugefügt</div></div>
-      <div class="tc-stat"><div class="stat-v">${d.words_linked ?? 0}</div><div class="stat-l">Thema verknüpft</div></div>
-      <div class="tc-stat"><div class="stat-v">${realErrors(d.errors).length}</div><div class="stat-l">Fehler</div></div>
-      <div class="tc-stat"><div class="stat-v" style="font-size:1.1rem;padding-top:3px">${dur}</div><div class="stat-l">Dauer</div></div>
+  active.forEach(item => {
+    const running = item.status === "running";
+    const card = document.createElement("div");
+    card.className = "q-card" + (running ? " is-running" : "");
+    const attempts = item.attempts > 1 ? ` · Versuch ${item.attempts}/3` : "";
+    card.innerHTML = `
+      ${running ? '<span class="spin"></span>' : ""}
+      <div class="q-name">${esc(item.topic)}</div>
+      <div class="q-meta">${item.target_words ? "Ziel " + item.target_words + attempts : (attempts ? attempts.slice(3) : "")}</div>
+      <span class="pill ${running ? "p-run" : "p-wait"}">${running ? "Läuft" : "Wartet"}</span>
     `;
-    body.appendChild(sb);
-
-    // Words
-    if (item._words?.length) {
-      const wd = document.createElement("div");
-      wd.className = "tc-words";
-      wd.innerHTML = `<div class="tc-words-label">${item._words.length} Wörter</div>`;
-      const cg = document.createElement("div");
-      cg.className = "chip-grid";
-      item._words.forEach(w => {
-        const chip = document.createElement("span");
-        chip.className = `w-chip lvl-${w.level || "B2"}`;
-        chip.textContent = (w.article ? w.article + " " : "") + w.german;
-        cg.appendChild(chip);
-      });
-      wd.appendChild(cg);
-      body.appendChild(wd);
-    } else if (item._words === null && (d.words_added > 0)) {
-      // Placeholder — will load when expanded
-      const wd = document.createElement("div");
-      wd.className = "tc-words";
-      wd.innerHTML = `<div class="tc-words-label" style="color:var(--muted)">Wörter werden geladen…</div>`;
-      body.appendChild(wd);
+    if (!running) {
+      const btn = document.createElement("button");
+      btn.className = "q-start"; btn.type = "button";
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Jetzt starten`;
+      btn.onclick = () => startNow(item.topic, btn);
+      card.appendChild(btn);
     }
-
-    // Errors
-    const errs = realErrors(d.errors);
-    if (errs.length) {
-      const ed = document.createElement("div");
-      ed.className = "tc-errs";
-      ed.innerHTML = `
-        <button class="err-btn" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'Verbergen':'${errs.length} Fehler anzeigen'">
-          ${errs.length} Fehler anzeigen
-        </button>
-        <div class="err-list">
-          ${errs.map(e=>`<div class="err-item"><div class="err-stage">${e.stage}</div><div class="err-msg">${(e.error||"").slice(0,140)}</div></div>`).join("")}
-        </div>
-      `;
-      body.appendChild(ed);
-    }
-  }
-
-  // Elapsed (running only)
-  if (item.status === "running") {
-    const et = document.createElement("div");
-    et.className = "tc-elapsed";
-    et.textContent = item.startTime ? "Läuft seit " + formatDur(Date.now() - item.startTime) : "";
-    body.appendChild(et);
-  }
-
-  return body;
+    stack.appendChild(card);
+  });
 }
 
-function buildSteps(item) {
-  const STEPS = [
-    { label:"Quellen suchen",           sub:"Grok / DuckDuckGo" },
-    { label:"Artikel parsen & Wörter",  sub:"requests + Mistral" },
-    { label:"Router",                   sub:"neu oder verknüpfen" },
-    { label:"Anreicherung",             sub:"Wiktionary + DWDS + Mistral" },
-    { label:"Datenbank",                sub:"PostgreSQL schreiben" },
-  ];
-
-  const wrap = document.createElement("div");
-  wrap.className = "tc-steps";
-
-  const isDone  = item.status === "done" || item.status === "error";
-  const active  = isDone ? 6 : inferActiveStep(item);
-  const errs    = item.data?.errors || [];
-  const d       = item.data || {};
-
-  STEPS.forEach((s, i) => {
-    const n = i + 1;
-    let state = "";
-    if (isDone) state = "s-done";
-    else if (n < active) state = "s-done";
-    else if (n === active) state = "s-active";
-
-    let detail = s.sub;
-    if (isDone || n < active || n === active) {
-      if (n === 1) {
-        const grokFail = errs.some(e => String(e.item||"").includes("grok"));
-        if (grokFail) detail = "Grok nicht verfügbar → DuckDuckGo Fallback";
-      }
-      if (n === 3 && d.words_added !== undefined) {
-        detail = `${d.words_added} neu · ${d.words_linked ?? 0} verknüpft`;
-      }
-      if (n === 4) {
-        const wikiMiss = errs.filter(e => e.stage === "wiktionary").length;
-        if (wikiMiss) detail = `${wikiMiss} Wörter ohne Wiktionary → DWDS Fallback`;
-      }
-      if (n === 5 && (d.words_added || 0) > 0) {
-        detail = `${d.words_added} Wörter gespeichert`;
-      }
-    }
-
-    const badge = state === "s-done" ? "✓" : state === "s-active" ? "⏳" : "—";
-
-    const row = document.createElement("div");
-    row.className = "step-row " + state;
-    row.innerHTML = `
-      <div class="step-dot">${state === "s-active" ? '<span class="spin" style="width:11px;height:11px;"></span>' : n}</div>
-      <div class="step-info">
-        <div class="step-label">${s.label}</div>
-        <div class="step-sub">${detail}</div>
+function renderShelf() {
+  const shelf = document.getElementById("shelf");
+  const topics = (overview?.topics || []).filter(t => t.words > 0 || t.queue_status);
+  document.getElementById("shelfCount").textContent = topics.length || "";
+  shelf.innerHTML = "";
+  if (!topics.length) {
+    shelf.innerHTML = `<div class="empty" style="grid-column:1/-1"><p>Noch keine Themen in der Sammlung.</p></div>`;
+    return;
+  }
+  topics.forEach(t => {
+    const target = t.target_words || overview?.settings?.target_words || 60;
+    const pct = Math.min(100, Math.round(100 * t.words / target));
+    const full = t.words >= target;
+    const tile = document.createElement("div");
+    tile.className = "tile" + (full ? " t-full" : "");
+    tile.style.setProperty("--wash", `url('${WASHES[hashIdx(t.topic, WASHES.length)]}')`);
+    tile.innerHTML = `
+      <div class="tile-top">
+        <div class="tile-name" title="${esc(t.topic)}">${esc(t.topic)}</div>
+        ${tilePill(t, full)}
       </div>
-      <div class="step-badge">${badge}</div>
+      <div class="tile-frac"><b>${t.words}</b><span class="of">/ ${target} Wörter</span></div>
+      <div class="tile-track"><div class="tile-fill" style="width:${pct}%"></div></div>
+      <div class="tile-meta">
+        <span>${t.phrases} Redemittel</span>
+        ${t.failures_open ? `<span class="dot-sep"></span><span class="warn">${t.failures_open} offene Fehler</span>` : ""}
+      </div>
     `;
-    wrap.appendChild(row);
+    shelf.appendChild(tile);
   });
-
-  return wrap;
 }
 
-async function toggleCard(item, cardEl) {
-  item.expanded = !item.expanded;
-  cardEl.querySelector(".tc-head").classList.toggle("open", item.expanded);
+function tilePill(t, full) {
+  if (t.queue_status === "running") return `<span class="pill p-run">In Arbeit</span>`;
+  if (t.queue_status === "pending") return `<span class="pill p-wait">Wartet</span>`;
+  if (t.queue_status === "failed")  return `<span class="pill p-err">Fehler</span>`;
+  if (full)                         return `<span class="pill p-ok">Vollständig</span>`;
+  if (t.queue_status === "done")    return `<span class="pill p-part">Teilweise</span>`;
+  return "";
+}
 
-  const oldBody = cardEl.querySelector(".tc-body");
-  if (oldBody) oldBody.remove();
+function renderLog() {
+  const stack = document.getElementById("logStack");
+  const list = runs.slice(0, 20);
+  document.getElementById("logCount").textContent = runs.length || "";
+  stack.innerHTML = "";
+  if (!list.length) {
+    stack.innerHTML = `<div class="empty"><p>Noch keine abgeschlossenen Läufe.</p></div>`;
+    return;
+  }
+  list.forEach(r => stack.appendChild(buildRun(r)));
+}
 
-  if (item.expanded) {
-    // Lazy-load words for completed items
-    if ((item.status === "done" || item.status === "error") && item._words === null) {
-      try {
-        const words = await apiFetch("/api/words?topic=" + encodeURIComponent(item.topic) + "&limit=200");
-        item._words = (words || []).filter(w => w.source === "pipeline");
-      } catch (_) { item._words = []; }
-    }
-    cardEl.appendChild(buildBody(item));
+function buildRun(r) {
+  const cls = r.status === "completed" ? "r-ok" : r.status === "failed" ? "r-err" : "r-run";
+  const glyph = r.status === "completed" ? "✓" : r.status === "failed" ? "✗" : `<span class="spin"></span>`;
+  const open = openRuns.has(r.run_id);
+  const el = document.createElement("div");
+  el.className = `run ${cls}` + (open ? " is-open" : "");
+
+  const bits = [];
+  bits.push(`<b>${r.words_added}</b>&nbsp;neu`);
+  if (r.words_linked) bits.push(`<b>${r.words_linked}</b>&nbsp;verknüpft`);
+  if (r.phrases_added) bits.push(`<b>${r.phrases_added}</b>&nbsp;Redemittel`);
+  if (r.errors_count) bits.push(`${r.errors_count}&nbsp;Hinweise`);
+  const stats = bits.join('<span style="color:var(--muted-2)">&nbsp;·&nbsp;</span>');
+
+  el.innerHTML = `
+    <div class="run-head">
+      <div class="run-glyph">${glyph}</div>
+      <div class="run-name" title="${esc(r.topic)}">${esc(r.topic)}</div>
+      <div class="run-stats">${stats}</div>
+      <div class="run-when">${fmtWhen(r)}</div>
+      <svg class="run-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  `;
+  el.querySelector(".run-head").onclick = () => toggleRun(r, el);
+  if (open) loadRunBody(r, el);
+  return el;
+}
+
+async function toggleRun(r, el) {
+  if (openRuns.has(r.run_id)) {
+    openRuns.delete(r.run_id);
+    el.classList.remove("is-open");
+    el.querySelector(".run-body")?.remove();
+  } else {
+    openRuns.add(r.run_id);
+    el.classList.add("is-open");
+    loadRunBody(r, el);
   }
 }
 
-/* ─── live elapsed timer ─────────────────────────────────────────────────── */
-setInterval(() => {
-  if (!runningItem) return;
-  const el = document.querySelector("#card-" + runningItem.id + " .tc-elapsed");
-  if (el && runningItem.startTime) el.textContent = "Läuft seit " + formatDur(Date.now() - runningItem.startTime);
-}, 1000);
+async function loadRunBody(r, el) {
+  el.querySelector(".run-body")?.remove();
+  const body = document.createElement("div");
+  body.className = "run-body";
+  const dur = fmtDur(r);
+  body.innerHTML = `
+    <div class="run-strip">
+      <div class="rs-cell"><div class="rs-v">${r.words_added}</div><div class="rs-l">Neu</div></div>
+      <div class="rs-cell"><div class="rs-v">${r.words_linked}</div><div class="rs-l">Verknüpft</div></div>
+      <div class="rs-cell"><div class="rs-v">${r.phrases_added ?? 0}</div><div class="rs-l">Redemittel</div></div>
+      <div class="rs-cell"><div class="rs-v">${dur}</div><div class="rs-l">Dauer</div></div>
+    </div>`;
+  el.appendChild(body);
 
-/* ─── enter key ──────────────────────────────────────────────────────────── */
+  if (r.errors_count) {
+    try {
+      const detail = await api("/api/pipeline/run/" + r.run_id);
+      const errs = (detail.errors || []).filter(e => e.error);
+      if (errs.length && openRuns.has(r.run_id)) {
+        const host = document.createElement("div");
+        host.className = "run-errs";
+        errs.slice(0, 12).forEach(e => {
+          const n = document.createElement("div");
+          n.className = "err-note";
+          n.innerHTML = `<span class="e-stage">${esc(e.stage || "")}</span>${esc(trim(e.item, 38))} — ${esc(trim(e.error, 130))}`;
+          host.appendChild(n);
+        });
+        if (errs.length > 12) {
+          const more = document.createElement("div");
+          more.className = "err-more";
+          more.textContent = `… und ${errs.length - 12} weitere`;
+          host.appendChild(more);
+        }
+        body.appendChild(host);
+      }
+    } catch (_) {}
+  }
+}
+
+function renderRail() {
+  if (!overview) return;
+  const topics = overview.topics || [];
+  const sum = k => topics.reduce((a, t) => a + (t[k] || 0), 0);
+  document.getElementById("railWords").textContent = sum("words");
+  document.getElementById("railTopics").textContent = topics.filter(t => t.words > 0).length;
+  document.getElementById("railPhrases").textContent = sum("phrases");
+  document.getElementById("railFails").textContent = sum("failures_open");
+  document.getElementById("railTarget").textContent = overview.settings?.target_words ?? "–";
+  const auto = document.getElementById("railAuto");
+  const s = overview.settings || {};
+  auto.classList.toggle("off", !s.autorun);
+  document.getElementById("railAutoText").textContent = s.autorun
+    ? `prüft alle ${s.interval_minutes} Min${s.auto_topics ? " · ergänzt Themen" : ""}`
+    : "pausiert";
+}
+
+/* ─── helpers ─────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+function trim(s, n) { s = String(s ?? ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+function hashIdx(s, mod) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % mod;
+}
+function fmtWhen(r) {
+  if (!r.started_at) return "";
+  const d = new Date(r.started_at);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " · " +
+         d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+}
+function fmtDur(r) {
+  if (!r.started_at) return "—";
+  const end = r.finished_at ? new Date(r.finished_at) : new Date();
+  const s = Math.max(0, Math.round((end - new Date(r.started_at)) / 1000));
+  if (s < 60) return s + "s";
+  return Math.floor(s / 60) + "m";
+}
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+/* ─── init ────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
-  if (window.SiteHeader) SiteHeader.mount?.();
+  document.getElementById("queueBtn").addEventListener("click", queueTopic);
   document.getElementById("topicInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") addTopic();
+    if (e.key === "Enter") queueTopic();
   });
-  loadHistory();
+  refresh();
 });
 </script>
 </body>

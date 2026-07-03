@@ -1,63 +1,81 @@
 /* =====================================================================
    Shared site header  ·  identical across Editor and Wörterbuch
    ---------------------------------------------------------------------
+   A left-aligned editorial masthead (per the design system): a two-tone
+   serif wordmark, a hairline rule, then uppercase letter-tracked nav with
+   a quiet active tick. The right cluster (theme · language · avatar)
+   stays minimal and neutral — ghost icons, plain-text language toggle.
    Self-contained: every colour is hard-coded (not via a page :root), so
    the bar renders the same on any page that links this file. Everything
    is scoped under .topbar so it never collides with a page's own nav/
    avatar/top-right rules.
    ===================================================================== */
-.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:40px;
-  padding:18px 40px;background:rgba(250,248,244,.82);
-  -webkit-backdrop-filter:saturate(140%) blur(14px);backdrop-filter:saturate(140%) blur(14px);
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:0;
+  height:66px;padding:0 38px;background:rgba(250,248,244,.85);
+  -webkit-backdrop-filter:saturate(150%) blur(16px);backdrop-filter:saturate(150%) blur(16px);
   border-bottom:1px solid #ECE7DE}
 
-.topbar .brand{font-family:'Cormorant Garamond',Georgia,serif;font-size:23px;font-weight:600;
-  line-height:1.0;letter-spacing:.2px;flex:none;color:#2A2420;text-decoration:none}
-.topbar .brand span{display:block}
+/* two-tone wordmark on one baseline: "Deutsch" upright ink, "Essay" italic */
+.topbar .brand{display:flex;align-items:baseline;gap:14px;flex:none;
+  font-family:'Cormorant Garamond',Georgia,serif;line-height:1;text-decoration:none}
+.topbar .brand span{display:inline;font-size:23px;font-weight:600;color:#2A2420;letter-spacing:.2px}
+.topbar .brand span+span{font-weight:500;font-style:italic;color:#5B534A}
 
-/* center nav */
-.topbar .nav{display:flex;align-items:center;gap:6px;margin:0 auto}
+/* hairline rule between the masthead and the nav */
+.topbar .brand-rule{width:1px;height:26px;background:#ECE7DE;margin:0 26px;flex:none}
+
+/* left-aligned nav — uppercase, tracked, quiet active tick */
+.topbar .nav{display:flex;align-items:center;gap:28px;margin-right:auto}
 .topbar .nav a,
-.topbar .nav .nav-drop>button{position:relative;display:inline-flex;align-items:center;gap:6px;
-  text-decoration:none;color:#8C8377;font-size:14px;font-weight:500;font-family:inherit;
-  padding:9px 15px;border-radius:11px;border:1px solid transparent;background:none;cursor:pointer;
-  transition:color .18s,background .18s,border-color .18s}
+.topbar .nav .nav-drop>button{position:relative;display:inline-flex;align-items:center;gap:5px;
+  text-decoration:none;color:#8C8377;font-size:11.5px;font-weight:600;font-family:inherit;
+  letter-spacing:.15em;text-transform:uppercase;
+  padding:22px 1px;border:0;background:none;cursor:pointer;transition:color .18s}
 .topbar .nav a:hover,
-.topbar .nav .nav-drop>button:hover{color:#2A2420;background:#FBFAF6;border-color:#ECE7DE}
+.topbar .nav .nav-drop>button:hover{color:#2A2420}
 .topbar .nav a.active,
-.topbar .nav .nav-drop>button.active{color:#2A2420;font-weight:600}
+.topbar .nav .nav-drop>button.active{color:#2A2420}
+.topbar .nav a::after,
+.topbar .nav .nav-drop>button::after{content:"";position:absolute;left:0;right:0;bottom:0;
+  height:2px;border-radius:2px;background:#C8C1B6;opacity:0;transform:scaleX(.3);
+  transform-origin:center;transition:opacity .18s,transform .18s}
+.topbar .nav a:hover::after,
+.topbar .nav .nav-drop>button:hover::after{opacity:.55;transform:scaleX(1)}
 .topbar .nav a.active::after,
-.topbar .nav .nav-drop>button.active::after{content:"";position:absolute;left:15px;right:15px;bottom:3px;
-  height:2px;border-radius:2px;background:linear-gradient(90deg,#C4622D,#E08A3C)}
-.topbar .nav .chev{width:13px;height:13px;opacity:.7;transition:transform .2s}
+.topbar .nav .nav-drop>button.active::after{opacity:1;transform:scaleX(1);
+  background:linear-gradient(90deg,#6C6580,#8A8299)}
+.topbar .nav .chev{width:11px;height:11px;opacity:.65;transition:transform .2s}
 .topbar .nav-drop{position:relative}
 .topbar .nav-drop.open .chev{transform:rotate(180deg)}
-.topbar .nav-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:190px;background:#FFFFFF;
+.topbar .nav-menu{position:absolute;top:calc(100% + 2px);left:0;min-width:190px;background:#FFFFFF;
   border:1px solid #ECE7DE;border-radius:14px;padding:7px;
   box-shadow:0 12px 34px -16px rgba(60,40,20,.4),0 4px 12px rgba(60,40,20,.06);
   opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .16s,transform .16s,visibility .16s}
 .topbar .nav-drop.open .nav-menu{opacity:1;visibility:visible;transform:none}
 .topbar .nav-menu a{display:flex;width:100%;padding:10px 12px;border-radius:9px;font-size:13.5px;
-  color:#5B534A;border:1px solid transparent}
-.topbar .nav-menu a:hover{background:#FBF1EA;color:#A44E20;border-color:transparent}
+  font-weight:500;letter-spacing:0;text-transform:none;color:#5B534A;border:0}
+.topbar .nav-menu a::after{display:none}
+.topbar .nav-menu a:hover{background:#F0EFF3;color:#524C63}
 
-/* right cluster */
-.topbar .top-right{display:flex;align-items:center;gap:10px;flex:none}
-.topbar .icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid #ECE7DE;background:#FFFFFF;
-  color:#5B534A;display:flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:border-color .18s,color .18s,box-shadow .18s}
+/* right cluster — ghost icon · plain-text language · hairline · avatar */
+.topbar .top-right{display:flex;align-items:center;gap:8px;flex:none}
+.topbar .icon-btn{width:36px;height:36px;border-radius:11px;border:0;background:transparent;
+  color:#8C8377;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:color .18s,background .18s}
 .topbar .icon-btn svg{width:18px;height:18px}
-.topbar .icon-btn:hover{border-color:#E7B48F;color:#C4622D;box-shadow:0 6px 16px -10px rgba(196,98,45,.5)}
-.topbar .avatar{width:38px;height:38px;border-radius:50%;background:#33312C;color:#fff;display:flex;
+.topbar .icon-btn:hover{background:#FBFAF6;color:#2A2420}
+.topbar .lang-pill{display:flex;align-items:center;gap:5px;padding:8px 4px;height:36px;
+  border:0;background:none;color:#5B534A;font-size:11.5px;font-weight:700;letter-spacing:.12em;
+  font-family:inherit;cursor:pointer;transition:color .18s}
+.topbar .lang-pill:hover{color:#2A2420}
+.topbar .lang-pill svg{width:11px;height:11px;opacity:.65}
+.topbar .top-rule{width:1px;height:22px;background:#ECE7DE;margin:0 8px;flex:none}
+.topbar .avatar{width:36px;height:36px;border-radius:50%;background:#33312C;color:#fff;display:flex;
   align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;
-  font-size:17px;font-weight:600;flex:none}
-.topbar .lang-pill{display:flex;align-items:center;gap:6px;padding:0 12px;height:38px;border-radius:11px;
-  border:1px solid #ECE7DE;background:#FFFFFF;color:#5B534A;font-size:13px;font-weight:600;
-  font-family:inherit;cursor:pointer;transition:border-color .18s,color .18s}
-.topbar .lang-pill:hover{border-color:#E7B48F;color:#C4622D}
-.topbar .lang-pill svg{width:12px;height:12px;opacity:.7}
+  font-size:16px;font-weight:600;flex:none}
 
 @media (max-width:1080px){
-  .topbar{gap:18px;padding:16px 24px}
-  .topbar .nav{display:none}
+  .topbar{padding:0 24px}
+  .topbar .brand-rule,.topbar .nav{display:none}
+  .topbar .brand{margin-right:auto}
 }

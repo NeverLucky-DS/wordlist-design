@@ -1,0 +1,25 @@
+<!-- @dsCard group="Spacing" viewport="700x200" name="Shadows — warm paper light" subtitle="Long, warm, layered — light falling on paper" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;background:var(--bg);font-family:var(--font-sans);padding:30px 30px}
+  .grid{display:flex;gap:26px;align-items:center}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .box{width:96px;height:66px;background:var(--card);border-radius:14px}
+  .accent{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+  .nm{font-size:10.5px;font-weight:600;color:var(--ink)}
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-sm)"></div><div class="nm">sm</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-md)"></div><div class="nm">md</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-lg)"></div><div class="nm">lg</div></div>
+    <div class="cell"><div class="box" style="box-shadow:var(--shadow-sheet)"></div><div class="nm">sheet</div></div>
+    <div class="cell"><div class="box accent" style="box-shadow:var(--shadow-accent)"></div><div class="nm">accent</div></div>
+  </div>
+</body>
+</html>

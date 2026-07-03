@@ -302,7 +302,6 @@ function filtered(){
     return c&&m;
   });
 }
-function indexOfFirst(){const f=filtered();return f.length?WORDS.indexOf(f[0]):-1;}
 function speak(t){ if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);} }
 function posLabel(w){return w.pos==="verb"?"Verb":(w.pos==="adj"?"Adjektiv":"Substantiv");}
 
@@ -388,10 +387,25 @@ function renderPager(total){
 
 /* ---------- grammar ---------- */
 function useBlock(w){
-  const g=GOV[w.de]; if(!g) return "";
+  // Prefer the curated GOV table for seed words; fall back to the rektion /
+  // ready_phrase that the pipeline stores on each enriched word.
+  let rule="", ex="";
+  const g=GOV[w.de];
+  if(g){ rule=g.rule; ex=g.ex; }
+  else { rule=w._rektion||""; ex=w._readyPhrase||""; }
+  if(!rule && !ex) return "";
+  const ru=caseGlossRu(rule);
   return `<div class="g-use">
-    <div class="g-use-top"><span class="g-use-lab">Verwendung</span><span class="g-use-rule">${g.rule}</span></div>
-    <div class="g-use-ex">${g.ex}</div></div>`;
+    <div class="g-use-top"><span class="g-use-lab">Verwendung</span>${rule?`<span class="g-use-rule">${rule}</span>`:""}</div>
+    ${ru?`<div class="g-use-ru">${ru}</div>`:""}
+    ${ex?`<div class="g-use-ex">${ex}</div>`:""}</div>`;
+}
+
+/* Russian gloss of the governed case, e.g. "von + Dat." → "дательный падеж" */
+function caseGlossRu(rule){
+  const m=/\b(Akk|Dat|Gen|Nom)/i.exec(rule||"");
+  if(!m) return "";
+  return {akk:"винительный падеж",dat:"дательный падеж",gen:"родительный падеж",nom:"именительный падеж"}[m[1].toLowerCase()]||"";
 }
 /* collapsible paradigm (verb conjugation / noun & adjective declension) */
 function toggleAcc(btn){
@@ -405,39 +419,102 @@ function accBlock(title,inner){
       <span>${title}</span><span class="g-arrow">▼</span></button>
     <div class="g-acc">${inner}</div>`;
 }
+function specChip(label,value){
+  return `<span class="g-s"><i>${label}</i>${value}</span>`;
+}
+
+/* short Russian grammar hints — gender / aux / Rektion, in quiet grey */
+function ruGrammarHint(w){
+  const bits=[];
+  if(w.pos==="noun"){
+    const gx={der:"мужской род",die:"женский род",das:"средний род"}[w.art]||"";
+    if(gx) bits.push(gx);
+  } else if(w.pos==="verb" && w.gram && w.gram.hilfsverb){
+    bits.push("вспом. глагол «"+w.gram.hilfsverb+"»");
+  }
+  return bits.join(" · ");
+}
+
+/* highlight the headword + its known inflected forms in an example sentence */
+function highlightForms(text,w){
+  if(/<\/?b>/.test(text)) return text;            // already marked (LLM bold)
+  const base=w.de;
+  const forms=new Set();
+  const add=s=>{ s=String(s||"").replace(/^(der|die|das)\s+/i,"").trim();
+    if(s.length>=3 && /^\p{L}/u.test(s)) forms.add(s); };
+  add(base);
+  const g=w.gram||{};
+  if(w.pos==="noun"){
+    add(g.plural); add(g.genitiv);
+    if(g.rows) g.rows.forEach(r=>{ add(r[1]); add(r[2]); });
+    ["s","es","e","en","n","ern","er"].forEach(suf=>add(base+suf));
+    if(g.plural) add(String(g.plural).replace(/^(der|die|das)\s+/i,"")+"n");  // Dativ Plural
+  } else if(w.pos==="adj"){
+    ["","e","er","es","en","em","ere","eren","sten"].forEach(suf=>add(base+suf));
+    if(g.steigerung) g.steigerung.forEach(add);
+  } else if(w.pos==="verb"){
+    add(g.partizip);
+    if(g.praeteritum) add(String(g.praeteritum).split(" ")[0]);
+    if(g.praesens) g.praesens.forEach(p=>add(String(p[1]).split(" ")[0]));
+  }
+  const list=[...forms].filter(Boolean).sort((a,b)=>b.length-a.length);
+  if(!list.length) return text;
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  let re;
+  try{ re=new RegExp("(?<!\\p{L})("+list.map(esc).join("|")+")(?!\\p{L})","giu"); }
+  catch(e){ return text; }
+  return text.replace(re,"<b>$1</b>");
+}
+
+/* Grammatik — compact "spec line" of key forms; the full paradigm lives behind
+   an "alle Formen" toggle. Forms that don't apply are simply omitted. */
 function gramBlock(w){
   const g=w.gram;
-  if(!g) return `<div class="g-params"><div class="g-param"><span class="g-k">Wortart</span><b>${w.pos==="verb"?"Verb":w.pos==="adj"?"Adjektiv":"Substantiv"}</b></div></div>`+useBlock(w);
-  let params="",title="",table="",extra="";
+  if(!g) return `<div class="g-spec">${specChip("Wortart",posLabel(w))}</div>`+useBlock(w);
+  let chips=[],title="",table="",extra="",hasTable=false;
+
   if(g.type==="noun"){
-    params=`<div class="g-param"><span class="g-k">Genus</span><b>${w.genus}</b></div><div class="g-param"><span class="g-k">Plural</span><b>${g.plural}</b></div>`;
-    title="Deklination — alle Formen";
-    const order=[0,3,2,1]; // Nominativ · Akkusativ · Dativ · Genitiv
-    const rows=order.map(i=>g.rows[i]).map(r=>`<tr><th>${r[0]}</th><td>${hlArt(r[1])}</td><td>${hlArt(r[2])}</td></tr>`).join("");
-    table=`<table class="gram"><thead><tr><th></th><th>Singular</th><th>Plural</th></tr></thead><tbody>${rows}</tbody></table>`;
+    chips.push(specChip("Genus",w.genus));
+    if(g.plural && !["–","—",""].includes(g.plural)) chips.push(specChip("Plural",g.plural));
+    let gen=g.genitiv;
+    if(!gen && g.rows){ const r=g.rows.find(x=>x[0]==="Genitiv"); if(r) gen=r[1]; }
+    if(gen && gen!=="–") chips.push(specChip("Genitiv",gen));
+    if(g.rows){
+      hasTable=true; title="Alle Formen";
+      const order=[0,3,2,1]; // Nominativ · Akkusativ · Dativ · Genitiv
+      const rows=order.map(i=>g.rows[i]).map(r=>`<tr><th>${r[0]}</th><td>${hlArt(r[1])}</td><td>${hlArt(r[2])}</td></tr>`).join("");
+      table=`<table class="gram"><thead><tr><th></th><th>Singular</th><th>Plural</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
   } else if(g.type==="verb"){
-    params=`<div class="g-param"><span class="g-k">Hilfsverb</span><b>${g.hilfsverb}</b></div><div class="g-param"><span class="g-k">Partizip II</span><b>${g.partizip}</b></div>`;
-    title="Präsens — alle Formen";
+    chips.push(specChip("Hilfsverb",g.hilfsverb));
+    const er=(g.praesens.find(p=>p[0]==="er/sie/es")||[])[1];
+    if(er && er!=="–") chips.push(specChip("Präsens (er)",er));
+    if(g.praeteritum && g.praeteritum!=="–") chips.push(specChip("Präteritum",g.praeteritum));
+    if(g.partizip && g.partizip!=="–") chips.push(specChip("Perfekt",(g.hilfsverb==="sein"?"ist ":"hat ")+g.partizip));
+    hasTable=true; title="Alle Formen";
     const rows=g.praesens.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("");
-    table=`<table class="gram"><thead><tr><th>Person</th><th>Form</th></tr></thead><tbody>${rows}</tbody></table>`;
-    extra=`<div class="g-extra">Präteritum <b>${g.praeteritum}</b> · Perfekt <b>${g.hilfsverb==="haben"?"hat":"ist"} ${g.partizip}</b></div>`;
-  } else {
+    table=`<table class="gram"><thead><tr><th>Person</th><th>Präsens</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else { // adjective — Steigerung line is enough; no filler table
     const s=g.steigerung;
-    params=`<div class="g-param g-param--wide"><span class="g-k">Steigerung</span><b>${s[0]} <i>→</i> ${s[1]} <i>→</i> ${s[2]}</b></div>`;
-    title="Deklination — bestimmter Artikel";
-    const rows=g.rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("");
-    table=`<table class="gram"><thead><tr><th>Genus</th><th>Beispiel</th></tr></thead><tbody>${rows}</tbody></table>`;
+    chips.push(`<span class="g-s g-s--wide"><i>Steigerung</i>${s[0]} <em>→</em> ${s[1]} <em>→</em> ${s[2]}</span>`);
   }
-  return `<div class="g-params">${params}</div>`+useBlock(w)+accBlock(title,table+extra);
+
+  const hint=ruGrammarHint(w);
+  return `<div class="g-spec">${chips.join("")}</div>`
+    + (hint?`<div class="g-hint">${hint}</div>`:"")
+    + useBlock(w)
+    + (hasTable?accBlock(title,table+extra):"");
 }
 
 /* ---------- detail card ---------- */
 function renderDetail(){
   const w=WORDS[activeIndex]; if(!w){detailEl.innerHTML="";return;}
   const artHtml=w.art?`<span class="art">${w.art}</span> `:"";
+  const longCls=((w.art?w.art.length+1:0)+w.de.length)>16?" long":"";
   const examplesHtml=w.examples.map((e,i)=>{
-    const ru=EX_RU[e.replace(/<\/?b>/g,"")]||"";
-    return `<div class="ex"><span class="ex-n">${String(i+1).padStart(2,"0")}</span><div class="ex-body"><p class="ex-de">${e}</p>${ru?`<p class="ex-ru">${ru}</p>`:""}</div></div>`;
+    const de=(typeof e==="object")?e.de:e;
+    const ru=(typeof e==="object" && e.ru)?e.ru:(EX_RU[String(de).replace(/<\/?b>/g,"")]||"");
+    return `<div class="ex"><span class="ex-n">${String(i+1).padStart(2,"0")}</span><div class="ex-body"><p class="ex-de">${highlightForms(de,w)}</p>${ru?`<p class="ex-ru">${ru}</p>`:""}</div></div>`;
   }).join("");
   detailEl.innerHTML=`
     <button class="d-close" id="dClose" type="button" aria-label="Schließen">
@@ -445,7 +522,7 @@ function renderDetail(){
     </button>
     <div class="d-head">
       <div class="d-meta"><span class="d-cat"><span class="hl">${posLabel(w)}</span> · ${w.cat}</span><span class="d-level">${w.level}</span></div>
-      <div class="d-word">${artHtml}${w.de}</div>
+      <div class="d-word${longCls}">${artHtml}${w.de}</div>
       <div class="d-tools">
         <span class="d-ipa">${w.ipa||""}</span>
         <button class="d-hear" id="hear">
@@ -456,11 +533,11 @@ function renderDetail(){
       <div class="d-ru">${w.ru}</div>
     </div>
     <div class="d-body">
-      <section><div class="lab">Bedeutung</div><p class="def">${w.def}</p><blockquote class="pull">${w.pull}</blockquote></section>
-      <hr class="d-sep">
+      ${(w.def||w.pull)?`<section><div class="lab">Bedeutung</div>${w.def?`<p class="def">${w.def}</p>`:""}${w.pull?`<blockquote class="pull">${w.pull}</blockquote>`:""}</section>
+      <hr class="d-sep">`:""}
       <section><div class="lab">Grammatik</div>${gramBlock(w)}</section>
-      <hr class="d-sep">
-      <section><div class="lab">Beispiele</div><div class="ex-list">${examplesHtml}</div></section>
+      ${examplesHtml?`<hr class="d-sep">
+      <section><div class="lab">Beispiele</div><div class="ex-list">${examplesHtml}</div></section>`:""}
     </div>`;
   detailEl.querySelector('#hear').onclick=()=>speak((w.art?w.art+" ":"")+w.de);
   detailEl.querySelector('#dClose').onclick=closeDetail;
@@ -623,49 +700,61 @@ function _mapApiWord(w) {
     ? topicRaw.charAt(0).toUpperCase() + topicRaw.slice(1)
     : "Andere";
 
-  // Examples: API stores [{text_de, is_ai}] — convert to HTML strings
+  // Examples: API stores [{text_de, text_ru, is_ai}] → {de, ru}.
+  // Pipeline marks the headword with markdown **bold**; render it as <b>.
   const examples = (w.examples || []).map(e => {
-    const txt = (typeof e === "object") ? (e.text_de || "") : String(e);
-    return txt;
-  }).filter(Boolean).slice(0, 3);
+    const de = (typeof e === "object") ? (e.text_de || "") : String(e);
+    const ru = (typeof e === "object") ? (e.text_ru || "") : "";
+    return { de: de.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"), ru };
+  }).filter(x => x.de).slice(0, 3);
 
-  // Grammar from pipeline grammar_data
+  // Grammar from pipeline grammar_data. Tolerant of BOTH the canonical full
+  // schema (declension as full case/tense tables) and the legacy compact shape
+  // ({Genus, Plural, "Genitiv Singular"}), so the table is never empty while
+  // the DB is being re-processed. Canonical schema is documented in PIPELINE.md.
   const gd = w.grammar_data || {};
-  let gram = null;
   const decl = gd.declension || {};
-  if (pos === "noun" && Object.keys(decl).length) {
-    // Build rows from declension object {Nominativ: {singular, plural}, ...}
+  const declKeys = Object.keys(decl);
+  const base = (w.german || "").replace(/^(der|die|das)\s+/i, "");
+  // a verb form may arrive as a string ("regelte") or a per-person object —
+  // coerce to a single display string (prefer 3rd person, then 1st).
+  const formStr = v => (v && typeof v === "object")
+    ? (v["er/sie/es"] || v.ich || Object.values(v)[0] || "–")
+    : (v || "–");
+  let gram = null;
+
+  if (pos === "noun" && declKeys.length) {
     const cases = ["Nominativ","Genitiv","Dativ","Akkusativ"];
-    const rows = cases.map(c => {
-      const row = decl[c] || {};
-      return [c, row.singular || "–", row.plural || "–"];
-    });
-    gram = { type:"noun", plural: rows[0]?.[2] || "–", rows };
-  } else if (pos === "verb" && Object.keys(decl).length) {
-    const praesens = ["ich","du","er/sie/es","wir","ihr","sie/Sie"].map(p => {
-      const form = decl.Präsens?.[p] || decl.praesens?.[p] || "–";
-      return [p, form];
-    });
+    const hasFullTable = cases.some(c => decl[c] && typeof decl[c] === "object");
+    let rows, plural;
+    if (hasFullTable) {
+      rows = cases.map(c => {
+        const row = decl[c] || {};
+        return [c, row.singular || "–", row.plural || "–"];
+      });
+      plural = decl.Nominativ?.plural || decl.Plural || decl.plural || "–";
+      gram = { type:"noun", plural, rows };
+    } else {
+      // legacy compact data — no full case table yet. Show Genus/Plural/Genitiv
+      // compactly instead of a wall of "–"; the full table fills in on re-process.
+      plural = decl.Plural || decl.plural || "–";
+      const genSg = decl["Genitiv Singular"] || decl.genitiv_singular || decl.Genitiv || "";
+      gram = { type:"noun", plural, genitiv: genSg };
+    }
+  } else if (pos === "verb" && declKeys.length) {
+    const pres = decl.Präsens || decl.praesens || decl.present || {};
+    const praesens = ["ich","du","er/sie/es","wir","ihr","sie/Sie"].map(p => [p, pres[p] || "–"]);
     gram = {
       type:"verb",
-      hilfsverb: decl.hilfsverb || decl.Hilfsverb || "haben",
-      partizip:  decl.partizip2 || decl["Partizip II"] || "–",
-      praeteritum: decl.prateritum || decl["Präteritum"] || "–",
+      hilfsverb:   decl.hilfsverb || decl.Hilfsverb || decl.auxiliary || "haben",
+      partizip:    formStr(decl["Partizip II"] || decl.partizip2 || decl.partizipII || decl.perfect),
+      praeteritum: formStr(decl["Präteritum"] || decl.prateritum || decl.simple_past || decl.preterite),
       praesens,
     };
-  } else if (pos === "adj" && Object.keys(decl).length) {
-    const base = (w.german || "").replace(/^(der|die|das)\s+/i, "");
-    let positiv = base, komparativ = "—", superlativ = "—";
-    if (typeof decl.positiv === "string") {
-      positiv = decl.positiv || base;
-      komparativ = decl.komparativ || "—";
-      superlativ = decl.superlativ || "—";
-    } else if (decl.positive && typeof decl.positive === "object") {
-      positiv = decl.positive?.masculine?.nominative || base;
-      komparativ = decl.comparative?.masculine?.nominative || "—";
-      const supNom = decl.superlative?.masculine?.nominative || "";
-      superlativ = supNom ? "am " + supNom.replace(/e?r$/, "en") : "—";
-    }
+  } else if (pos === "adj" && declKeys.length) {
+    const positiv    = decl.positiv    || decl.Positiv    || base;
+    const komparativ = decl.komparativ || decl.Komparativ || "—";
+    const superlativ = decl.superlativ || decl.Superlativ || "—";
     gram = {
       type: "adj",
       steigerung: [positiv, komparativ, superlativ],
@@ -679,21 +768,24 @@ function _mapApiWord(w) {
   }
 
   return {
-    de:       (w.german || "").replace(/^(der|die|das)\s+/i, ""),
+    de:       base,
     art:      art || null,
     pos,
     cat,
     level:    w.level || "B2",
     genus:    art === "die" ? "Femininum" : art === "der" ? "Maskulinum" : art === "das" ? "Neutrum" : "",
     ru:       w.translation_ru || "",
-    ipa:      "",
-    def:      gd.ready_phrase || "",
-    pull:     gd.ready_phrase || "",
+    ipa:      gd.ipa || "",
+    def:      gd.definition || "",
+    // ready_phrase is surfaced in the Verwendung block; keep the pull-quote for
+    // a real definition-derived line (filled once words are re-processed).
+    pull:     "",
     gram,
     examples,
     _apiId:   w.id,
     _source:  w.source || "api",
     _rektion: gd.rektion || "",
+    _readyPhrase: gd.ready_phrase || "",
   };
 }
 

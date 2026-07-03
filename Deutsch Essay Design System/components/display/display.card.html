@@ -1,0 +1,52 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Data display" subtitle="Cards · level tags · badges · avatars · eyebrows" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;background:var(--bg);font-family:var(--font-sans);padding:26px 30px}
+  .cap{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:11px}
+  .stack{display:flex;flex-direction:column;gap:20px}
+  .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .serif{font-family:var(--font-serif)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { Card, LevelTag, Avatar, Eyebrow } = window.DeutschEssayDesignSystem_3bc91c;
+  function Demo(){
+    return (
+      <div className="stack">
+        <div className="row" style={{alignItems:'stretch'}}>
+          <Card elevation="md" style={{flex:1}}>
+            <Eyebrow tone="accent">Technologie</Eyebrow>
+            <div className="serif" style={{fontSize:'34px',fontWeight:600,color:'var(--ink)',lineHeight:1,marginTop:'8px'}}>Argument Eins</div>
+          </Card>
+          <Card elevation="lg" pad={true} radius="xl" style={{width:'180px',textAlign:'center'}}>
+            <div className="cap" style={{marginBottom:'8px'}}>Niveau</div>
+            <div className="serif" style={{fontSize:'40px',fontWeight:600,color:'var(--ink)'}}>B1</div>
+          </Card>
+        </div>
+        <div>
+          <div className="cap">Level tags · quiet & tinted</div>
+          <div className="row">
+            <LevelTag level="B1" /><LevelTag level="B2" /><LevelTag level="C1" />
+            <span style={{width:'14px'}}></span>
+            <LevelTag level="B1" tinted /><LevelTag level="B2" tinted /><LevelTag level="C1" tinted />
+            <span style={{width:'14px'}}></span>
+            <Avatar initial="D" /><Avatar initial="A" size={32} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body>
+</html>

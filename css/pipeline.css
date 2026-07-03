@@ -1,0 +1,306 @@
+/* =====================================================================
+   Deutsch Essay · Pipeline (Sammeln) — styles
+   Direction: the same "expensive paper & faded watercolor" base as the
+   Wörterbuch and the Editor. The page reads as a collector's ledger:
+   a calm queue, a painted shelf of topic folders, an editorial run log.
+   Accent: the site-wide muted plum, used with discipline; watercolor
+   washes (the worte/ brush set) are the only art accent.
+   ===================================================================== */
+
+:root{
+  /* surfaces — warm ivory paper, 1:1 with the Editor */
+  --bg:#FAF8F4;
+  --bg-2:#F3F0E9;
+  --card:#FFFFFF;
+  --cream:#FBFAF6;
+
+  /* warm ink ramp */
+  --ink:#2A2420;
+  --ink-soft:#5B534A;
+  --ink-mute:#8C8377;
+  --muted:#A8A096;
+  --muted-2:#C8C1B6;
+  --line:#ECE7DE;
+  --line-soft:#F3EFE8;
+
+  /* the one accent — muted plum */
+  --accent:#6C6580;
+  --accent-2:#8A8299;
+  --accent-dk:#524C63;
+  --accent-bg:#F0EFF3;
+  --accent-ln:#D0CBD9;
+
+  /* quiet semantic tints, mixed from the site palette */
+  --ok:#7D9B77;        /* sage — finished */
+  --ok-soft:#EAF0E7;
+  --err:#C2868D;       /* dusty rose — failed */
+  --err-soft:#F2E6E6;
+
+  --graphite:#33312C;
+  --radius:18px;
+  font-synthesis:none;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+.serif{font-family:'Cormorant Garamond',Georgia,serif}
+svg{display:block}
+button{font-family:inherit}
+
+/* faint paper grain — same recipe as the Editor */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(120% 80% at 100% 0%, rgba(169,155,192,.10), transparent 60%),
+             radial-gradient(90% 60% at 0% 100%, rgba(194,134,141,.07), transparent 55%)}
+
+/* left watercolor strip + vertical label — the site's edge signature */
+.bg-column{position:fixed;left:-130px;top:0;bottom:0;width:300px;z-index:0;pointer-events:none;
+  background:url('../images/abstract-watercolor-column.png') no-repeat -150px center;
+  background-size:auto 108%;opacity:.42;filter:saturate(.85);
+  -webkit-mask:linear-gradient(to right,#000 0,#000 20%,transparent 60%);
+          mask:linear-gradient(to right,#000 0,#000 20%,transparent 60%)}
+.side-label{position:fixed;left:13px;top:232px;z-index:2;writing-mode:vertical-rl;transform:rotate(180deg);
+  letter-spacing:6px;font-size:10px;color:var(--muted-2);font-weight:700;pointer-events:none}
+
+/* =====================================================================
+   Layout: a single reading column + the fixed right rail (Wörterbuch's)
+   ===================================================================== */
+main.page{position:relative;z-index:1;max-width:1010px;
+  padding:38px 264px 110px 100px;margin:0}
+@media (min-width:1500px){main.page{margin:0 auto;padding-left:120px}}
+
+/* ---------- hero ---------- */
+.eyebrow{font-size:11px;letter-spacing:3px;color:var(--accent);font-weight:700;text-transform:uppercase;margin-bottom:10px}
+h1.title{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,6vw,72px);font-weight:600;
+  line-height:.98;letter-spacing:-.5px;margin-bottom:14px}
+.lede{font-size:14.5px;color:var(--ink-soft);line-height:1.65;max-width:520px}
+
+/* autopilot status line under the lede */
+.autopilot{display:inline-flex;align-items:center;gap:9px;margin-top:16px;
+  font-size:12px;font-weight:600;color:var(--ink-mute);letter-spacing:.02em}
+.autopilot .ap-dot{width:8px;height:8px;border-radius:50%;background:var(--ok);position:relative;flex:none}
+.autopilot .ap-dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1.5px solid var(--ok);opacity:0;animation:apPulse 2.6s ease-out infinite}
+.autopilot.off .ap-dot{background:var(--muted-2)}
+.autopilot.off .ap-dot::after{display:none}
+@keyframes apPulse{0%{transform:scale(.6);opacity:.7}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}
+
+/* ---------- compose row ---------- */
+.compose{margin:30px 0 10px;display:flex;gap:12px}
+.compose .field{flex:1;display:flex;align-items:center;gap:11px;background:var(--card);
+  border:1px solid var(--line);border-radius:15px;padding:0 18px;height:52px;
+  transition:border-color .2s,box-shadow .2s}
+.compose .field:focus-within{border-color:var(--accent-ln);box-shadow:0 0 0 4px var(--accent-bg)}
+.compose .field .ico{color:var(--muted);flex:none}
+.compose .field input{flex:1;border:0;outline:0;background:transparent;font-size:14.5px;
+  color:var(--ink);font-family:inherit}
+.compose .field input::placeholder{color:var(--muted-2)}
+.btn-queue{display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 26px;border:0;
+  border-radius:15px;cursor:pointer;font-size:14.5px;font-weight:600;letter-spacing:.2px;color:#fff;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);
+  box-shadow:0 10px 26px -10px rgba(108,101,128,.55),0 2px 6px rgba(108,101,128,.28);
+  transition:transform .16s,box-shadow .16s,filter .16s;white-space:nowrap}
+.btn-queue:hover{transform:translateY(-2px);box-shadow:0 16px 34px -10px rgba(108,101,128,.68)}
+.btn-queue:active{transform:none}
+.btn-queue:disabled{filter:saturate(.5);cursor:default;transform:none}
+.btn-queue svg{width:16px;height:16px}
+
+/* suggestion chips — catalog topics not yet covered */
+.suggest{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:14px 2px 0;min-height:22px}
+.suggest .sg-cap{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;margin-right:2px}
+.sg-chip{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);
+  padding:5px 13px;border-radius:20px;font-size:12.5px;font-weight:500;cursor:pointer;
+  transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,color .2s,box-shadow .2s}
+.sg-chip:hover{transform:translateY(-1px);border-color:var(--accent-ln);color:var(--accent-dk);
+  box-shadow:0 8px 18px -12px rgba(108,101,128,.45)}
+
+/* ---------- section heads ---------- */
+.sec{margin-top:54px}
+.sec-head{display:flex;align-items:baseline;gap:13px;margin-bottom:18px}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:-.2px}
+.sec-count{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--accent);
+  transform:translateY(-1px)}
+.sec-head::after{content:"";flex:1;height:1px;background:var(--line);opacity:.9;transform:translateY(-4px)}
+.sec-note{font-size:12px;color:var(--muted);margin:-10px 0 16px}
+
+/* ---------- empty state — quiet manuscript note ---------- */
+.empty{border:1.5px dashed var(--line);border-radius:var(--radius);padding:34px 26px;text-align:center}
+.empty p{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17.5px;
+  color:var(--ink-mute);line-height:1.55}
+.empty p b{font-style:normal;color:var(--accent-dk);font-weight:600}
+
+/* =====================================================================
+   Warteschlange — queue cards
+   ===================================================================== */
+.queue-stack{display:flex;flex-direction:column;gap:10px}
+.q-card{position:relative;display:flex;align-items:center;gap:16px;overflow:hidden;
+  background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 20px 15px 24px;
+  transition:border-color .2s,box-shadow .2s}
+.q-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--accent-ln),transparent 135%);opacity:.7}
+.q-card.is-running{border-color:var(--accent-ln);box-shadow:0 14px 30px -22px rgba(108,101,128,.55)}
+.q-card.is-running::before{background:linear-gradient(180deg,var(--accent),var(--accent-2))}
+.q-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-meta{font-size:12px;color:var(--ink-mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+.q-start{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 15px;border-radius:11px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12.5px;
+  font-weight:600;cursor:pointer;transition:border-color .18s,color .18s,box-shadow .18s;white-space:nowrap}
+.q-start:hover{border-color:var(--accent-ln);color:var(--accent-dk);
+  box-shadow:0 8px 18px -12px rgba(108,101,128,.5)}
+.q-start svg{width:13px;height:13px}
+.q-start:disabled{opacity:.45;cursor:default;box-shadow:none}
+
+/* status pills — shared by queue, shelf and log */
+.pill{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  padding:5px 11px;border-radius:20px;white-space:nowrap;flex:none}
+.pill.p-wait{background:var(--bg-2);color:var(--ink-mute)}
+.pill.p-run{background:var(--accent-bg);color:var(--accent-dk)}
+.pill.p-ok{background:var(--ok-soft);color:#5d7a58}
+.pill.p-part{background:#F4EEE2;color:#9a7b4f}
+.pill.p-err{background:var(--err-soft);color:#9d5a62}
+
+/* thin plum spinner */
+.spin{width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;
+  border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* =====================================================================
+   Sammlung — the painted shelf of topic folders
+   ===================================================================== */
+.shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (min-width:1500px){.shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:20px 22px 18px;cursor:default;
+  transition:border-color .22s,box-shadow .22s,transform .22s}
+.tile:hover{border-color:var(--accent-ln);transform:translateY(-2px);
+  box-shadow:0 16px 34px -22px rgba(60,40,20,.35)}
+/* the watercolor edge: real paint along the right rim, melting into paper */
+.tile::after{content:"";position:absolute;right:-12px;top:-10%;bottom:-10%;width:118px;
+  pointer-events:none;opacity:.4;background:var(--wash) no-repeat right center;background-size:cover;
+  -webkit-mask:linear-gradient(to left,#000 0,rgba(0,0,0,.5) 55%,transparent 95%);
+          mask:linear-gradient(to left,#000 0,rgba(0,0,0,.5) 55%,transparent 95%);
+  transition:opacity .3s,width .3s}
+.tile:hover::after{opacity:.62;width:136px}
+.tile>*{position:relative;z-index:1}
+.tile-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.tile-name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;line-height:1.1;
+  color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize}
+.tile-frac{display:flex;align-items:baseline;gap:6px;margin:10px 0 8px}
+.tile-frac b{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;line-height:1;color:var(--ink)}
+.tile-frac .of{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--muted)}
+.tile-track{height:5px;border-radius:5px;background:var(--line-soft);overflow:hidden;max-width:78%}
+.tile-fill{height:100%;width:0;border-radius:5px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));
+  transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.tile.t-full .tile-fill{background:linear-gradient(90deg,var(--ok),#9AB594)}
+.tile-meta{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:var(--ink-mute)}
+.tile-meta .dot-sep{width:3px;height:3px;border-radius:50%;background:var(--muted-2);flex:none}
+.tile-meta .warn{color:#9d5a62;font-weight:600}
+
+/* =====================================================================
+   Verlauf — editorial run log
+   ===================================================================== */
+.log-stack{display:flex;flex-direction:column;gap:10px}
+.run{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  transition:border-color .2s,box-shadow .2s}
+.run.is-open{box-shadow:0 14px 32px -24px rgba(60,40,20,.4)}
+.run-head{display:flex;align-items:center;gap:15px;padding:14px 20px;cursor:pointer;user-select:none}
+.run-glyph{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:700;background:var(--bg-2);color:var(--ink-mute)}
+.run.r-ok  .run-glyph{background:var(--ok-soft);color:#5d7a58}
+.run.r-err .run-glyph{background:var(--err-soft);color:#9d5a62}
+.run.r-run .run-glyph{background:var(--accent-bg);color:var(--accent-dk)}
+.run-name{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:var(--ink);
+  flex:none;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize}
+.run-stats{display:flex;align-items:baseline;gap:6px;flex:1;min-width:0;overflow:hidden;
+  font-size:12.5px;color:var(--ink-mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+.run-stats b{color:var(--ink-soft);font-weight:600}
+.run-when{font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.run-chev{width:14px;height:14px;color:var(--muted);transition:transform .22s;flex:none}
+.run.is-open .run-chev{transform:rotate(180deg)}
+
+/* expanded body: stat strip + error notes */
+.run-body{border-top:1px solid var(--line-soft)}
+.run-strip{display:flex;background:var(--cream)}
+.rs-cell{flex:1;padding:13px 20px;display:flex;flex-direction:column;gap:2px;
+  border-right:1px solid var(--line-soft)}
+.rs-cell:last-child{border-right:0}
+.rs-v{font-family:'Cormorant Garamond',serif;font-size:25px;font-weight:600;line-height:1;color:var(--ink)}
+.rs-l{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:3px}
+
+.run-errs{padding:14px 20px 16px;display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto}
+.err-note{position:relative;padding:9px 13px 9px 16px;border-radius:10px;background:var(--cream);
+  border:1px solid var(--line-soft);font-size:12px;line-height:1.5;color:var(--ink-soft)}
+.err-note::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;
+  background:var(--err);opacity:.5}
+.err-note .e-stage{display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:#9d5a62;margin-right:8px;transform:translateY(-1px)}
+.err-more{font-size:11.5px;color:var(--muted);font-style:italic;padding:2px 4px}
+
+/* =====================================================================
+   Right rail — Sammlung totals (the Wörterbuch rail, retuned)
+   ===================================================================== */
+.rail{position:fixed;top:0;right:0;height:100vh;width:212px;z-index:3;border-left:1px solid var(--line);
+  background:var(--bg);display:flex;flex-direction:column;justify-content:center;gap:20px;padding:86px 26px 0}
+.rail-label{font-size:9.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);
+  text-align:center;font-weight:700}
+.rail-big{text-align:center}
+.rail-big b{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:600;line-height:1;color:var(--ink)}
+.rail-big span{display:block;font-size:8.5px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);margin-top:6px;font-weight:600}
+.rail-duo{display:flex;justify-content:center;gap:26px;text-align:center}
+.rail-duo b{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;line-height:1;color:var(--ink)}
+.rail-duo .warn-v b{color:#9d5a62}
+.rail-duo span{display:block;font-size:8px;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--muted);margin-top:5px;font-weight:600}
+.rail-hr{height:1px;background:var(--line)}
+.rail-auto{text-align:center;font-size:11px;line-height:1.6;color:var(--ink-mute)}
+.rail-auto .st{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:#5d7a58}
+.rail-auto .st .d{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.rail-auto.off .st{color:var(--muted)}
+.rail-auto.off .st .d{background:var(--muted-2)}
+.rail-quote{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;line-height:1.55;
+  color:var(--ink-soft);text-align:center;padding-bottom:30px}
+.rail-quote .au{display:block;margin-top:9px;font-size:8px;font-style:normal;letter-spacing:2px;
+  color:var(--accent);text-transform:uppercase;font-family:'Inter',sans-serif;font-weight:700}
+
+/* toast — quiet confirmation, bottom centre of the reading column */
+.toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,16px);z-index:80;
+  background:var(--graphite);color:#fff;font-size:13px;font-weight:500;padding:11px 20px;
+  border-radius:13px;box-shadow:0 16px 40px -14px rgba(40,40,45,.5);opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  .spin{animation-duration:1.4s}
+  .autopilot .ap-dot::after{animation:none}
+  .tile,.tile::after,.sg-chip{transition:none}
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1240px){
+  main.page{padding:34px 56px 90px 64px}
+  .rail{position:static;width:auto;height:auto;border-left:0;border-top:1px solid var(--line);
+    flex-direction:row;flex-wrap:wrap;justify-content:space-around;align-items:center;
+    gap:26px;padding:28px 56px;margin-top:10px}
+  .rail-hr{display:none}
+  .rail-quote{padding-bottom:0}
+  .side-label{display:none}
+}
+@media (max-width:860px){
+  main.page{padding:28px 22px 70px}
+  .shelf{grid-template-columns:1fr}
+  .compose{flex-direction:column}
+  .btn-queue{justify-content:center}
+  .run-name{max-width:46%}
+  .run-stats{display:none}
+}

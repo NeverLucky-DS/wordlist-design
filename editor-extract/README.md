@@ -1,7 +1,11 @@
-# Essay Editor — полный модуль
+# Essay Editor — frontend-модуль (React + TipTap)
 
-Полностью изолированный модуль редактора немецких эссе с ИИ-анализом (Mistral).
-Содержит всё: бэкенд (FastAPI), фронтенд (React + TipTap), схемы, модели, сервисы и стили.
+Изолированный фронтенд-модуль редактора немецких эссе с ИИ-анализом —
+заготовка для будущей миграции редактора на React.
+
+> Бэкенд-дубль удалён при чистке проекта: модуль работает с основным
+> бэкендом из `../backend/` (FastAPI, те же роуты `/api/essays`,
+> `/api/words`, `/api/phrases`, `/api/topics`, `/health`).
 
 ---
 
@@ -10,32 +14,6 @@
 ```
 editor-extract/
 ├── README.md                        ← этот файл
-│
-├── backend/
-│   ├── requirements.txt
-│   └── app/
-│       ├── main.py                  ← FastAPI + CORS
-│       ├── config.py                ← переменные окружения (.env)
-│       ├── schemas.py               ← Pydantic-схемы (Essay, EssayAnalysis, Word, Phrase…)
-│       ├── db/
-│       │   ├── models.py            ← SQLAlchemy ORM (Essay, EssayAnalysis, Word, Phrase…)
-│       │   └── session.py           ← async engine + get_db()
-│       ├── api/routes/
-│       │   ├── essays.py            ← /api/essays, включая /analyze/stream
-│       │   ├── words.py             ← /api/words
-│       │   ├── phrases.py           ← /api/phrases
-│       │   ├── topics.py            ← /api/topics
-│       │   └── health.py            ← /health
-│       └── services/
-│           ├── essays_repo.py       ← CRUD эссе + save_analysis
-│           ├── mistral_analyzer.py  ← ВСЯ логика ИИ-анализа (см. ниже)
-│           ├── words_repo.py        ← запросы слов
-│           ├── phrases_repo.py      ← запросы клише
-│           ├── topic_pack_service.py← загрузка .topic.yaml → БД
-│           ├── wiktionary_client.py ← Wiktionary fetch
-│           ├── grammar_parser.py    ← normalize_wiktionary_entry → grammar_data
-│           └── user_stats_service.py← запись активности (streak)
-│
 └── frontend/
     └── src/
         ├── api.ts                   ← типизированный HTTP-клиент
@@ -379,16 +357,11 @@ handleClick в TipTap editorProps
 
 ### Backend
 
+Используется основной бэкенд проекта:
+
 ```bash
-cd editor-extract/backend
-
-# .env (создать рядом с app/)
-MISTRAL_API_KEY=your_key_here
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/dbname
-CORS_ORIGINS=http://localhost:5173
-
+cd backend
 pip install -r requirements.txt
-alembic upgrade head          # применить миграции (скопировать из оригинала)
 uvicorn app.main:app --reload --port 8000
 ```
 
