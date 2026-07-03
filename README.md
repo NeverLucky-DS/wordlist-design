@@ -4,7 +4,7 @@
 
 **Репо:** https://github.com/NeverLucky-DS/wordlist-design
 
-**Стек:** Mistral · Grok discovery · PostgreSQL · FastAPI · Docker · pytest (16)
+**Стек:** Mistral · Grok discovery · PostgreSQL · FastAPI · Docker · pytest (36)
 
 ## Демонстрация
 
@@ -55,6 +55,7 @@ docker compose up --build
 |----------|-----|
 | Словарь | http://localhost:8753 |
 | Редактор | http://localhost:8753/editor.html |
+| Schreiben (roadmap) | http://localhost:8753/schreiben.html |
 | Pipeline | http://localhost:8753/pipeline.html |
 | API docs | http://localhost:8000/docs |
 
@@ -63,16 +64,16 @@ docker compose up --build
 ## Архитектура
 
 ```
-index.html / editor.html / pipeline.html
+index.html / editor.html / schreiben.html / pipeline.html
               ↓  /api/*
            nginx → FastAPI → PostgreSQL
               ↓
      Mistral (анализ, enrichment) · Grok/DuckDuckGo (discovery)
 ```
 
-Подробнее: [`PIPELINE.md`](PIPELINE.md)
+**Документация для разработки:** [`info/README.md`](info/README.md) — карта проекта, API, pipeline, файлы.
 
-**Структура репо:** в Docker деплоится vanilla HTML/JS (`index.html`, `editor.html`, `pipeline.html`). Папка `editor-extract/` — отдельный React+TipTap модуль для будущей миграции редактора, в compose не входит.
+Подробнее о pipeline: [`PIPELINE.md`](PIPELINE.md) (длинный design doc; краткая версия — [`info/pipeline.md`](info/pipeline.md)).
 
 ---
 
