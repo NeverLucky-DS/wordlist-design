@@ -42,7 +42,8 @@ html,body{height:100%}
 body{
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   color:var(--ink);
-  background:linear-gradient(180deg,#F4F1F3 0%,#F1EDF1 55%,#EFE9EE 100%);
+  /* the painted paper — mountains live inside the artwork itself */
+  background:#F7F2EF url('../images/background_schreiben.png') center/cover no-repeat fixed;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   overflow-x:hidden;
   min-width:1024px; /* desktop & tablet-landscape only, by design */
@@ -51,21 +52,7 @@ body{
 svg{display:block}
 button{font-family:inherit;cursor:pointer}
 
-/* soft light from the top-left, echoes the mockup's airy paper feel */
-body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(120% 90% at 18% 0%, rgba(255,255,255,.55), transparent 55%),
-             radial-gradient(80% 60% at 100% 100%, rgba(167,148,196,.10), transparent 60%)}
-
-/* watercolor mountains — pinned bottom-right, behind everything */
-.bg-mountains{position:fixed;right:-40px;bottom:-16px;z-index:0;pointer-events:none;
-  width:min(700px,44vw);opacity:.8}
-
-/* quiet watercolor accent in the top-left corner — low contrast on purpose */
-.bg-corner{position:fixed;left:-150px;top:-130px;width:540px;height:560px;z-index:0;pointer-events:none;
-  background:url('../images/abstract-watercolor-column.png') no-repeat left top/cover;
-  opacity:.24;filter:saturate(.85);
-  -webkit-mask:radial-gradient(88% 88% at 16% 12%,#000 0,rgba(0,0,0,.55) 46%,transparent 72%);
-          mask:radial-gradient(88% 88% at 16% 12%,#000 0,rgba(0,0,0,.55) 46%,transparent 72%)}
+/* the painted background carries its own light and mountains — no overlays */
 
 /* =====================================================================
    Top bar
@@ -125,15 +112,16 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 /* =====================================================================
    Page grid
    ===================================================================== */
+/* tight gaps on purpose: the freed width goes to the right tool column */
 .layout{position:relative;z-index:1;display:grid;
-  grid-template-columns:300px minmax(520px,1fr) 312px;
-  gap:30px;align-items:start;
-  padding:10px 44px 34px;max-width:1760px;margin:0 auto}
+  grid-template-columns:292px minmax(480px,1fr) 424px;
+  gap:16px;align-items:start;
+  padding:10px 26px 30px;max-width:1760px;margin:0 auto}
 @media (max-width:1360px){
-  .layout{grid-template-columns:272px minmax(480px,1fr) 280px;gap:22px;padding:8px 28px 28px}
+  .layout{grid-template-columns:264px minmax(440px,1fr) 384px;gap:14px;padding:8px 18px 26px}
 }
 @media (max-width:1160px){
-  .layout{grid-template-columns:248px minmax(440px,1fr) 256px;gap:18px;padding:8px 20px 24px}
+  .layout{grid-template-columns:240px minmax(400px,1fr) 348px;gap:12px;padding:8px 14px 22px}
 }
 
 /* =====================================================================
@@ -159,9 +147,9 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 /* ---------- the organic roadmap (nodes + SVG path drawn by JS) -------- */
 .roadmap{position:relative;margin:4px 0 10px}
 .rm-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.rm-svg .rm-line{fill:none;stroke:#BFB2DC;stroke-width:2;
-  stroke-dasharray:6 7;stroke-linecap:round;
-  filter:drop-shadow(0 1px 1.5px rgba(124,110,182,.28))}
+/* the stem — a solid line in tree-trunk brown */
+.rm-svg .rm-line{fill:none;stroke:#B39A76;stroke-width:2;stroke-linecap:round;
+  opacity:.85;filter:drop-shadow(0 1px 1.5px rgba(139,113,80,.22))}
 
 /* leaves gather around the ACTIVE node and glide to the next one on change */
 .rm-leaf{position:absolute;pointer-events:none;user-select:none;z-index:1;
@@ -288,65 +276,46 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 .btn-analyze svg{width:15px;height:15px;opacity:.9}
 
 /* =====================================================================
-   Right rail — two tool launchers; the content lives in the drawer
+   Right rail — tool cards that open DOWNWARDS, in place
    ===================================================================== */
 .rail-right{display:flex;flex-direction:column;gap:14px}
 
-.tool-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+.tool-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   box-shadow:0 2px 12px rgba(44,40,51,.05);overflow:hidden;
   transition:box-shadow .2s,border-color .2s}
 .tool-card:hover{border-color:var(--accent-ln);box-shadow:0 6px 20px rgba(106,93,163,.10)}
-.tool-card.active{border-color:var(--accent-ln);
-  box-shadow:0 0 0 3px var(--accent-soft),0 6px 20px rgba(106,93,163,.12)}
+.tool-card.open{border-color:var(--accent-ln);box-shadow:0 10px 28px rgba(106,93,163,.13)}
+/* the generated wash breathes behind the card header */
+.tool-card::before{content:"";position:absolute;left:-6px;top:0;right:0;height:76px;z-index:0;
+  pointer-events:none;opacity:.55;
+  background:url('../images/tool-card-wash.png') left center/120% auto no-repeat;
+  -webkit-mask:linear-gradient(to right,#000 0,rgba(0,0,0,.5) 55%,transparent 88%);
+          mask:linear-gradient(to right,#000 0,rgba(0,0,0,.5) 55%,transparent 88%)}
 
-.tool-head{display:flex;align-items:center;gap:13px;width:100%;text-align:left;
-  background:none;border:0;padding:16px 16px}
-.tool-ico{flex:none;width:42px;height:42px;border-radius:13px;background:var(--accent-soft);
-  color:var(--accent-deep);display:grid;place-items:center}
-.tool-ico svg{width:21px;height:21px}
+.tool-head{position:relative;z-index:1;display:flex;align-items:center;gap:13px;width:100%;
+  text-align:left;background:none;border:0;padding:14px 16px}
+.tool-ico{flex:none;width:48px;height:48px;display:grid;place-items:center}
+.tool-ico img{width:48px;height:48px;object-fit:contain;
+  filter:drop-shadow(0 2px 4px rgba(84,72,120,.18))}
 .tool-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .tool-txt b{font-size:14.5px;font-weight:600;color:var(--ink)}
 .tool-txt i{font-style:normal;font-size:12px;color:var(--ink-mute)}
-.tool-chev{flex:none;width:16px;height:16px;color:var(--muted);transition:transform .22s}
-.tool-card.active .tool-chev{transform:rotate(90deg)}
+.tool-chev{flex:none;width:16px;height:16px;color:var(--muted);transition:transform .3s}
+.tool-card.open .tool-chev{transform:rotate(90deg)}
 
-/* =====================================================================
-   The drawer — a roomy paper panel sliding in from the right edge,
-   over the sheet (the layout never jumps)
-   ===================================================================== */
-.drawer{position:fixed;z-index:45;top:82px;bottom:22px;right:22px;width:472px;
-  display:flex;flex-direction:column;
-  background:var(--sheet);border:1px solid rgba(255,255,255,.9);border-radius:24px;
-  box-shadow:0 2px 4px rgba(44,40,51,.05),
-             0 24px 60px rgba(84,72,120,.20),
-             0 60px 120px -40px rgba(84,72,120,.28);
-  transform:translateX(calc(100% + 40px));visibility:hidden;
-  transition:transform .5s cubic-bezier(.32,.9,.3,1),visibility .5s}
-.drawer.open{transform:none;visibility:visible}
-@media (max-width:1360px){.drawer{width:428px}}
-
-.drawer-head{flex:none;display:flex;align-items:center;gap:13px;padding:18px 20px 14px;
-  border-bottom:1px solid var(--line-soft)}
-.drawer-ico{flex:none;width:44px;height:44px;border-radius:14px;background:var(--accent-soft);
-  color:var(--accent-deep);display:grid;place-items:center}
-.drawer-ico svg{width:22px;height:22px}
-.drawer-titles{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.drawer-titles b{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;color:var(--ink)}
-.drawer-titles i{font-style:normal;font-size:12px;color:var(--ink-mute)}
-.drawer-close{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--ink-soft);display:grid;place-items:center;
-  transition:border-color .2s,color .2s}
-.drawer-close:hover{border-color:var(--accent-ln);color:var(--accent-deep)}
-.drawer-close svg{width:14px;height:14px}
-
-.drawer-body{flex:1;overflow-y:auto;padding:14px 14px 8px}
-.drawer-foot{flex:none;padding:10px 16px 14px}
+/* smooth downward expansion — grid-rows trick, no layout jumps elsewhere */
+.tool-body{position:relative;z-index:1;display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows .45s cubic-bezier(.32,.9,.3,1)}
+.tool-card.open .tool-body{grid-template-rows:1fr}
+.tool-body-in{overflow:hidden;min-height:0;padding:0 12px}
+.tool-card.open .tool-body-in{padding:2px 12px 14px}
+.tool-body .pager{margin-top:10px}
 
 /* ---------- pagination (same treatment as the Wörterbuch page) -------- */
-.pager{display:flex;align-items:center;justify-content:center;gap:8px}
+.pager{display:flex;align-items:center;justify-content:center;gap:7px}
 .pager[hidden]{display:none}
-.pg-btn{min-width:34px;height:34px;padding:0 10px;border:1px solid var(--line);background:var(--card);
-  border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);
+.pg-btn{min-width:30px;height:30px;padding:0 9px;border:1px solid var(--line);background:var(--card);
+  border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink-soft);
   display:flex;align-items:center;justify-content:center;
   transition:border-color .2s,background .2s,color .2s,box-shadow .2s}
 .pg-btn:hover:not(:disabled){border-color:var(--accent-ln);box-shadow:0 6px 14px -10px rgba(106,93,163,.4)}
@@ -355,17 +324,17 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 .pg-ell{color:var(--muted);padding:0 2px}
 
 /* ---------- Wörterbuch rows — watercolor washes by level + type ------- */
-.wb-search{display:flex;align-items:center;gap:9px;margin:2px 4px 10px;height:44px;padding:0 14px;
-  background:var(--card);border:1px solid var(--line);border-radius:12px;
+.wb-search{display:flex;align-items:center;gap:9px;margin:6px 0 8px;height:40px;padding:0 13px;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;
   transition:border-color .18s,box-shadow .18s}
 .wb-search:focus-within{border-color:var(--accent-ln);box-shadow:0 0 0 4px var(--accent-soft)}
 .wb-search svg{width:16px;height:16px;color:var(--muted);flex:none}
 .wb-search input{flex:1;border:0;background:none;outline:none;font-size:13.5px;color:var(--ink)}
 .wb-search input::placeholder{color:var(--muted)}
 
-.wb-list{display:flex;flex-direction:column;gap:2px}
-.wb-row{position:relative;display:flex;align-items:center;gap:10px;padding:11px 12px;
-  border-radius:13px;cursor:pointer;min-height:52px;overflow:hidden}
+.wb-list{display:flex;flex-direction:column;gap:3px}
+.wb-row{position:relative;display:flex;align-items:center;gap:10px;padding:11px 13px;
+  border-radius:13px;cursor:pointer;min-height:56px;overflow:hidden}
 .wb-row > *{position:relative;z-index:1}
 /* the paint stroke: reveals further on hover/active — same mechanism as
    the Wörterbuch page (masked --reveal, the brush itself never moves) */
@@ -387,25 +356,25 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
              filter .45s ease,background-size .45s ease}
 .wb-row:hover .wb-wash,.wb-row.active .wb-wash{--reveal:90%;opacity:.95;
   background-size:auto 134%;filter:saturate(1.2) contrast(1.04)}
-.wb-de{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:500;color:var(--ink);
+.wb-de{font-family:'Cormorant Garamond',serif;font-size:25px;font-weight:500;color:var(--ink);
   flex:none;text-shadow:0 0 4px rgba(255,255,255,.55)}
 .wb-de .art{color:var(--ink-soft);font-weight:400}
-.wb-ru{font-size:13px;color:var(--ink-mute);font-style:italic;margin-left:auto;
+.wb-ru{font-size:14px;color:var(--ink-mute);font-style:italic;margin-left:auto;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   text-shadow:0 0 6px rgba(255,255,255,.7)}
-.wb-star{flex:none;width:26px;height:26px;border-radius:7px;border:0;background:none;color:var(--muted);
+.wb-star{flex:none;width:30px;height:30px;border-radius:8px;border:0;background:none;color:var(--muted);
   display:flex;align-items:center;justify-content:center;transition:color .15s,transform .15s}
 .wb-star:hover{color:var(--accent-ln);transform:scale(1.1)}
 .wb-star.on{color:var(--accent)}
-.wb-star svg{width:16px;height:16px}
+.wb-star svg{width:19px;height:19px}
 .wb-empty{padding:20px 14px;color:var(--muted);font-style:italic;font-size:13px;text-align:center}
 
 /* ---------- Schreibhilfen — paper slips with watercolor edges --------- */
-.kli-cap{margin:2px 6px 12px;font-size:11px;font-weight:700;letter-spacing:2.2px;
+.kli-cap{margin:8px 2px 10px;font-size:10.5px;font-weight:700;letter-spacing:2.2px;
   text-transform:uppercase;color:var(--ink-mute)}
 .kli-cap b{color:var(--accent-ink)}
-.kli-list{display:flex;flex-direction:column;gap:12px;padding:0 2px}
-.kli{position:relative;padding:15px 18px 13px 24px;border-radius:14px;border:1px solid var(--line);
+.kli-list{display:flex;flex-direction:column;gap:10px}
+.kli{position:relative;padding:12px 14px 11px 20px;border-radius:13px;border:1px solid var(--line);
   background:var(--card);cursor:pointer;overflow:hidden;text-align:left;width:100%;
   transition:border-color .18s,box-shadow .18s,transform .18s}
 .kli::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;z-index:1;
@@ -413,16 +382,16 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 .kli:hover{border-color:var(--accent-ln);transform:translateY(-1px);
   box-shadow:0 10px 22px -14px rgba(108,101,128,.5)}
 .kli:hover::before{opacity:1;background:linear-gradient(180deg,var(--accent),var(--accent-ln))}
-.kli-de{position:relative;z-index:1;display:block;font-family:'Cormorant Garamond',serif;font-size:18px;
+.kli-de{position:relative;z-index:1;display:block;font-family:'Cormorant Garamond',serif;font-size:16px;
   font-weight:500;line-height:1.4;color:var(--ink)}
 .kli-de em{font-style:italic;color:var(--accent-deep);font-weight:600}
-.kli-ru{position:relative;z-index:1;display:block;font-size:12px;line-height:1.5;color:var(--ink-mute);margin-top:5px}
+.kli-ru{position:relative;z-index:1;display:block;font-size:11.5px;line-height:1.5;color:var(--ink-mute);margin-top:4px}
 .kli-add{position:absolute;right:14px;bottom:11px;z-index:1;font-size:8.5px;font-weight:700;
   letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);opacity:0;
   transform:translateY(3px);transition:opacity .18s,transform .18s;pointer-events:none}
 .kli:hover .kli-add{opacity:1;transform:none}
 /* watercolor edge per slip — the three washes cycle down the list */
-.kli::after{content:"";position:absolute;left:0;top:0;bottom:0;width:84px;z-index:0;
+.kli::after{content:"";position:absolute;left:0;top:0;bottom:0;width:64px;z-index:0;
   pointer-events:none;opacity:.5;background-size:cover;background-position:left center;
   -webkit-mask:linear-gradient(to right,#000 0,transparent 92%);
           mask:linear-gradient(to right,#000 0,transparent 92%)}
@@ -447,68 +416,79 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   transition:opacity .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1)}
 #wordCard.open{opacity:1;transform:none;pointer-events:auto}
 
-.d-close{position:absolute;top:14px;right:14px;z-index:5;width:32px;height:32px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--hair);
-  color:var(--ink-soft);transition:border-color .2s,color .2s,box-shadow .2s}
-.d-close:hover{border-color:var(--rose);color:var(--rose);box-shadow:0 6px 16px -10px rgba(194,134,141,.6)}
-.d-close svg{width:14px;height:14px}
-
-.d-head{position:relative;overflow:hidden;background:var(--card);flex:none;
-  border-bottom:1px solid var(--hair);border-radius:20px 20px 0 0;padding:30px 46px 24px;text-align:center}
-.d-head::before{content:"";position:absolute;top:0;right:0;width:170px;height:132px;opacity:.4;
+/* ---------- header: word + level left, icon cluster (hear/star/close)
+   pinned top-right; translation underneath ---------------------------- */
+.d-top{position:relative;display:flex;align-items:flex-start;gap:12px;
+  padding:20px 18px 0 26px}
+.d-title{flex:1;min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px}
+.d-icons{flex:none;display:flex;gap:7px}
+.d-top::before{content:"";position:absolute;top:0;right:0;width:150px;height:116px;opacity:.32;
   background:var(--rose);pointer-events:none;
   -webkit-mask:url('../images/decor-head.png') no-repeat right top / contain;
           mask:url('../images/decor-head.png') no-repeat right top / contain}
-.d-head>*{position:relative;z-index:1}
-.d-meta{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:14px}
-.d-cat{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
-.d-cat .hl{color:var(--ink);font-weight:700}
-.d-level{display:inline-block;padding:3px 10px;border-radius:20px;background:var(--rose-soft);
-  color:#9d5a62;font-size:11px;font-weight:700;letter-spacing:.04em}
-.d-word{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:600;line-height:1.04;
-  letter-spacing:-.5px;color:var(--ink);margin-bottom:8px}
-.d-word.long{font-size:32px}
-.d-word .art{font-weight:600;color:var(--ink-soft)}
-.d-tools{display:flex;justify-content:center;align-items:center;gap:14px;margin-bottom:12px}
-.d-ipa{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:14px;color:var(--ink-soft);letter-spacing:.2px}
-.d-hear{display:inline-flex;align-items:center;gap:6px;background:none;border:0;
-  color:var(--rose);font-family:inherit;font-size:13px;font-weight:600;padding:0}
-.d-hear:hover{text-decoration:underline}
-.d-hear svg{width:14px;height:14px}
-.d-ru{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:25px;line-height:1.2;color:var(--ink-soft)}
+.d-word{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;line-height:1.05;
+  letter-spacing:-.4px;color:var(--ink)}
+.d-word.long{font-size:27px}
+.d-word .art{font-weight:500}
+.art-der{color:#6F94BC}.art-die{color:#C2868D}.art-das{color:#7FA98B}
+.d-level{display:inline-block;padding:3px 10px;border-radius:20px;background:var(--accent-soft);
+  color:var(--accent-ink);font-size:11px;font-weight:700;letter-spacing:.04em}
+.d-iconbtn{width:32px;height:32px;border-radius:50%;border:1px solid var(--hair);background:var(--card);
+  color:var(--ink-soft);display:grid;place-items:center;transition:border-color .2s,color .2s}
+.d-iconbtn:hover{border-color:var(--accent-ln);color:var(--accent-deep)}
+.d-iconbtn svg{width:16px;height:16px}
+.d-star.on{color:var(--accent);border-color:var(--accent-ln)}
+.d-ru{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;line-height:1.2;
+  color:var(--ink-soft);padding:4px 26px 0}
 
-.d-body{position:relative;padding:26px 36px 30px;overflow:auto}
-.d-body>section{margin-top:22px}
-.d-body>section:first-child{margin-top:0}
-.lab{display:flex;align-items:center;justify-content:center;gap:12px;font-size:10px;letter-spacing:.22em;
-  text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin:0 0 14px}
-.lab::before,.lab::after{content:"";height:1px;width:32px;background:var(--hair)}
-.def{font-size:15.5px;line-height:1.6;color:var(--ink);margin:0 auto;max-width:46ch;text-align:center}
-.pull{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;line-height:1.45;
-  color:var(--ink-soft);text-align:center;max-width:40ch;margin:14px auto 0}
-.pull::before{content:"\201C";display:block;font-size:34px;line-height:0;color:var(--rose);
-  opacity:.55;margin:0 auto 12px;font-style:normal}
-.g-spec{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:7px 22px;margin-bottom:10px}
+/* ---------- Bedeutung — one living example, always visible ------------ */
+.d-lab{display:block;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--ink-mute);font-weight:700;margin-bottom:7px}
+.d-bed{margin:16px 20px 0;background:#F7F4F0;border-radius:12px;padding:13px 16px}
+.d-bed p{font-family:'Cormorant Garamond',serif;font-size:17.5px;line-height:1.5;color:var(--ink)}
+.d-bed strong,.d-bed b{font-weight:600;border-bottom:2px solid var(--rose);padding-bottom:1px}
+
+/* ---------- the two modules: tabs, one open at a time ----------------- */
+.d-tabs{display:flex;gap:8px;margin:14px 20px 0}
+.d-tab{flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:var(--card);
+  font-size:13px;font-weight:600;color:var(--ink-soft);
+  transition:background .18s,border-color .18s,color .18s}
+.d-tab:hover{border-color:var(--accent-ln)}
+.d-tab.on{background:var(--accent-soft);border-color:var(--accent-ln);color:var(--accent-ink)}
+.d-mod{margin:14px 20px 0}
+.d-mod[hidden]{display:none}
+.d-foot-pad{height:20px}
+
+/* Grammatik — key forms, full table one level deeper */
+.g-spec{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 20px}
 .g-s{display:inline-flex;align-items:baseline;gap:7px;font-family:'Cormorant Garamond',serif;
-  font-size:16px;font-weight:600;color:var(--ink)}
+  font-size:16.5px;font-weight:600;color:var(--ink)}
 .g-s i{font-family:'Inter',system-ui,sans-serif;font-style:normal;font-size:9px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--ink-soft);font-weight:700}
-.g-use{position:relative;text-align:center;border:1px solid var(--rose-soft);border-radius:14px;
-  padding:16px 24px;margin:6px 0 0;
-  background:linear-gradient(0deg,rgba(255,255,255,.42),rgba(255,255,255,.42)),
-    url('../images/Verwendung.png') center/cover no-repeat}
-.g-use-lab{display:block;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
-  color:var(--rose);font-weight:700;margin-bottom:8px}
-.g-use-item{display:block;font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;
-  color:var(--ink);line-height:1.35}
-.ex-list{display:flex;flex-direction:column;gap:16px}
-.ex{display:flex;gap:14px;align-items:baseline}
-.ex-n{flex:none;width:22px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;
-  color:var(--rose);line-height:1.5}
-.ex-body{flex:1;min-width:0}
-.ex-de{margin:0;font-size:15px;line-height:1.55;color:var(--ink)}
+  text-transform:uppercase;color:var(--ink-mute);font-weight:700}
+.decl-btn{width:100%;margin-top:12px;display:flex;justify-content:space-between;align-items:center;
+  background:none;border:1px solid var(--line);border-radius:10px;padding:9px 13px;
+  font-size:12.5px;font-weight:600;color:var(--ink-soft);transition:background .15s,border-color .15s}
+.decl-btn:hover{background:var(--accent-soft);border-color:var(--accent-ln)}
+.decl-btn .chev{width:13px;height:13px;transition:transform .2s}
+.decl-btn.on .chev{transform:rotate(180deg)}
+.decl-tbl{margin-top:10px;border:1px solid var(--rose-soft);border-radius:12px;overflow:hidden;
+  background:linear-gradient(0deg,rgba(255,255,255,.5),rgba(255,255,255,.5)),
+    url('../images/Deklination.png') center/cover no-repeat}
+.decl-tbl table{width:100%;border-collapse:collapse;font-size:14px}
+.decl-tbl th{text-align:left;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;
+  color:var(--ink);font-weight:600;padding:9px 12px;white-space:nowrap}
+.decl-tbl td{font-family:'Cormorant Garamond',serif;font-size:15.5px;color:var(--ink-soft);
+  font-weight:500;padding:9px 12px;white-space:nowrap}
+.decl-tbl tr + tr th,.decl-tbl tr + tr td{border-top:1px solid rgba(150,140,135,.14)}
+
+/* Beispiele — collocation chips first, then sentences */
+.koll-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px}
+.koll{font-family:'Cormorant Garamond',serif;font-size:15.5px;font-weight:600;color:var(--accent-ink);
+  background:var(--accent-soft);border-radius:999px;padding:5px 14px}
+.ex-list{display:flex;flex-direction:column;gap:13px}
+.ex-de{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink)}
 .ex-de b,.ex-de strong{font-weight:600;color:var(--ink);border-bottom:2px solid var(--rose);padding-bottom:1px}
-.ex-ru{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-soft);font-style:italic}
+.ex-ru{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--ink-mute);font-style:italic}
 
 /* live dashed connector — the established look, tinted to this page's accent */
 .link-line{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:61}

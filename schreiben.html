@@ -7,14 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/schreiben.css?v=3">
+<link rel="stylesheet" href="css/schreiben.css?v=6">
 </head>
 <body>
-
-  <!-- watercolor mountains, pinned to the bottom-right of the viewport -->
-  <img class="bg-mountains" src="images/mountains-corner.png" alt="" aria-hidden="true">
-  <!-- quiet watercolor accent, top-left corner -->
-  <div class="bg-corner" aria-hidden="true"></div>
 
   <!-- ===================== Top bar ===================== -->
   <header class="topbar">
@@ -108,44 +103,35 @@
       </div>
     </main>
 
-    <!-- ---------- Right rail: two tool launchers ---------- -->
+    <!-- ---------- Right rail: tools open downwards, in place ---------- -->
     <aside class="rail-right" id="tools">
 
       <section class="tool-card" data-tool="hilfen">
         <button class="tool-head" type="button">
-          <span class="tool-ico">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 8c0 3-1.5 5-4 5v3c4.5 0 7-3 7-8V5H6v3h4zm11 0c0 3-1.5 5-4 5v3c4.5 0 7-3 7-8V5h-7v3h4z" transform="scale(.82) translate(2.6 2.6)"/></svg>
-          </span>
+          <span class="tool-ico"><img src="images/tool-hilfen.png" alt=""></span>
           <span class="tool-txt"><b>Schreibhilfen</b><i>Formulierungen &amp; Beispiele</i></span>
           <svg class="tool-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
         </button>
+        <div class="tool-body"><div class="tool-body-in">
+          <div id="hilfenBody"></div>
+          <div class="pager" id="hilfenPager" hidden></div>
+        </div></div>
       </section>
 
       <section class="tool-card" data-tool="woerterbuch">
         <button class="tool-head" type="button">
-          <span class="tool-ico">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" stroke-linecap="round"/></svg>
-          </span>
+          <span class="tool-ico"><img src="images/tool-woerterbuch.png" alt=""></span>
           <span class="tool-txt"><b>Wörterbuch</b><i>Wörter &amp; Übersetzungen</i></span>
           <svg class="tool-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
         </button>
+        <div class="tool-body"><div class="tool-body-in">
+          <div id="wbBody"></div>
+          <div class="pager" id="wbPager" hidden></div>
+        </div></div>
       </section>
 
     </aside>
   </div>
-
-  <!-- ===================== Slide-out tool drawer ===================== -->
-  <aside class="drawer" id="drawer" aria-hidden="true">
-    <header class="drawer-head">
-      <span class="drawer-ico" id="drawerIco"></span>
-      <div class="drawer-titles"><b id="drawerTitle"></b><i id="drawerSub"></i></div>
-      <button class="drawer-close" id="drawerClose" type="button" aria-label="Schließen">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-    </header>
-    <div class="drawer-body" id="drawerBody"></div>
-    <footer class="drawer-foot"><div class="pager" id="drawerPager" hidden></div></footer>
-  </aside>
 
   <!-- ===================== Word-card popover ===================== -->
   <div class="wc-overlay" id="wcOverlay"></div>
@@ -158,6 +144,6 @@
     <circle id="linkDot" class="ll-dot" r="4"/>
   </svg>
 
-  <script src="js/schreiben.js?v=3"></script>
+  <script src="js/schreiben.js?v=6"></script>
 </body>
 </html>
