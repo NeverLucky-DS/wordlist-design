@@ -16,7 +16,7 @@
 
 | Service | Image / build | Ports | Volumes |
 |---------|---------------|-------|---------|
-| `frontend` | nginx:alpine | 8753→80 | `index.html`, `editor.html`, `schreiben.html`, `pipeline.html`, `css/`, `js/`, `images/`, `worte/`, `nginx.conf` |
+| `frontend` | nginx:alpine | 8753→80 | `nginx.conf` + **whole project dir** `.:/usr/share/nginx/html:ro` (dev — avoids stale inode on file replace) |
 | `backend` | `Dockerfile` | 8000 | — |
 | `postgres` | postgres:16-alpine | internal | `pg_data` |
 

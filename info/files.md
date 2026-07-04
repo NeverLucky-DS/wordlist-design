@@ -49,15 +49,14 @@ wordlist design/
     └── requirements.txt
 ```
 
-## Removed (2026-07-03 cleanup)
+## Removed (historical)
 
 | Removed | Reason |
 |---------|--------|
-| `Deutsch Essay Design System/` (~65 MB) | Duplicate of prod assets + React prototypes; not deployed |
-| `editor-extract/` | Incomplete React migration stub; no package.json |
-| `word-card.html` | Orphan mock |
-| `screenshots/Deutsch_2.png` | Unreferenced |
-| `images/roadmap-vine.png` | Unreferenced |
+| `Deutsch Essay Design System/` | Duplicate assets; not deployed |
+| `editor-extract/` | Incomplete React stub |
+| `word-card.html`, `screenshots/Deutsch_2.png` | Orphans |
+| `images/roadmap-vine.png`, `mountains-corner.png`, `drawer-head-wash.png` | Unreferenced |
 
 ## Gitignored (local only)
 

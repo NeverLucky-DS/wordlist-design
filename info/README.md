@@ -11,6 +11,7 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | [data-model.md](data-model.md) | PostgreSQL tables |
 | [files.md](files.md) | Canonical file tree (what matters) |
 | [known-debt.md](known-debt.md) | Remaining tech debt (short) |
+| [AUDIT.md](AUDIT.md) | Full audit report (dated) |
 
 ## One-paragraph summary
 

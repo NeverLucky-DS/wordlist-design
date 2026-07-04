@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/schreiben.css?v=6">
+<link rel="stylesheet" href="css/schreiben.css?v=10">
 </head>
 <body>
 
@@ -72,34 +72,77 @@
       <div class="rail-quote">Ein Schriftsteller ist ein Mensch, dem das Schreiben schwerer fällt als allen anderen Leuten.
         <span class="au">— Thomas Mann</span></div>
 
-      <div class="niveau-box">
-        <div class="dd" id="ddNiveau">
-          <button class="dd-btn" type="button"><span class="k">Niveau</span><span class="lbl" id="niveauLbl">B1</span>
-            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
-          <div class="dd-menu">
-            <button class="sel">B1</button><button>B2</button><button>C1</button>
-          </div>
-        </div>
-      </div>
     </aside>
 
     <!-- ---------- Center: the sheet ---------- -->
     <main class="sheet">
       <div class="sheet-scroll">
+
+        <!-- start state: pick Thema + Niveau before the paper opens -->
+        <div class="start" id="startState" hidden>
+          <div class="start-eyebrow">Neues Essay</div>
+          <h2 class="start-title serif">Worüber möchtest du schreiben?</h2>
+          <label class="start-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="startSearch" type="text" placeholder="Thema suchen…">
+          </label>
+          <div class="start-themen" id="startThemen"></div>
+          <div class="pager start-pager" id="startPager" hidden></div>
+          <label class="start-custom">
+            <span>Eigene Aufgabenstellung · optional</span>
+            <input id="startAufgabe" type="text" placeholder="z. B. Sollten Smartphones an Schulen verboten werden?">
+          </label>
+          <div class="start-row">
+            <div class="seg" id="startNiveau">
+              <button type="button">B1</button><button type="button">B2</button><button type="button">C1</button>
+            </div>
+            <button class="btn-analyze start-begin" id="startBegin" type="button">Beginnen</button>
+          </div>
+        </div>
+
+        <!-- past essays: opened by the folder button on the left -->
+        <div class="essays" id="essaysState" hidden>
+          <div class="start-eyebrow">Meine Essays</div>
+          <h2 class="start-title serif">Woran arbeiten wir weiter?</h2>
+          <div class="essays-list" id="essaysList"></div>
+        </div>
+
+        <!-- the essay's fixed Thema, one quiet line at the top of the sheet -->
+        <div class="sheet-thema" id="sheetThema" hidden>
+          <span class="k">Thema</span><span class="name" id="themaName"></span>
+          <span class="nlv" id="themaNiveau"></span>
+          <span class="auf" id="themaAufgabe"></span>
+        </div>
+
+        <!-- tail of the previous part — click takes you there -->
+        <button class="ctx ctx-prev" id="ctxPrev" type="button" hidden aria-label="Zum vorherigen Teil">
+          <span class="ctx-clip"><span class="ctx-text" id="ctxPrevText"></span></span>
+          <span class="ctx-rule" aria-hidden="true"></span>
+        </button>
         <div class="editable" id="editable" contenteditable="true" spellcheck="false"></div>
         <div class="stage-tip" id="stageTip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.7.5 1 1.3 1 2.1h5c0-.8.3-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>
           <p><b id="tipLead"></b> <span id="tipText"></span></p>
         </div>
+        <!-- opening of the next part — click takes you there -->
+        <button class="ctx ctx-next" id="ctxNext" type="button" hidden aria-label="Zum nächsten Teil">
+          <span class="ctx-rule" aria-hidden="true"></span>
+          <span class="ctx-clip"><span class="ctx-text" id="ctxNextText"></span></span>
+        </button>
       </div>
 
       <div class="sheet-foot">
         <span class="wc" id="wordCount">0 Wörter</span>
-        <button class="btn-analyze" id="btnAnalyze" type="button">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.6 5.1L19 8.7l-4.2 3.1L16.4 17 12 13.9 7.6 17l1.6-5.2L5 8.7l5.4-.6z"/></svg>
-          Analysieren
-        </button>
-        <span class="saved"><span class="dot"></span> Automatisch gespeichert</span>
+        <div class="foot-actions">
+          <button class="btn-part" id="btnAnalyzePart" type="button">Teil analysieren</button>
+          <button class="btn-analyze" id="btnAnalyze" type="button">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.6 5.1L19 8.7l-4.2 3.1L16.4 17 12 13.9 7.6 17l1.6-5.2L5 8.7l5.4-.6z"/></svg>
+            Analysieren
+          </button>
+        </div>
+        <span class="saved"><span class="dot"></span><span id="savedMsg">Automatisch gespeichert</span>
+          <span class="sep">·</span>
+          <button class="save-var" id="btnSnapshot" type="button">Variante merken</button></span>
       </div>
     </main>
 
@@ -130,6 +173,20 @@
         </div></div>
       </section>
 
+      <section class="tool-card" data-tool="analysen">
+        <button class="tool-head" type="button">
+          <span class="tool-ico tool-ico-svg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 14l2 2 4-4"/></svg>
+          </span>
+          <span class="tool-txt"><b>Analysen</b><i>Frühere KI-Antworten</i></span>
+          <svg class="tool-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="tool-body"><div class="tool-body-in">
+          <div id="anaBody"></div>
+          <div class="pager" id="anaPager" hidden></div>
+        </div></div>
+      </section>
+
     </aside>
   </div>
 
@@ -144,6 +201,6 @@
     <circle id="linkDot" class="ll-dot" r="4"/>
   </svg>
 
-  <script src="js/schreiben.js?v=6"></script>
+  <script src="js/schreiben.js?v=10"></script>
 </body>
 </html>

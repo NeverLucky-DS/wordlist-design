@@ -39,16 +39,18 @@ Vanilla HTML/CSS/JS. No bundler. Cache bust via `?v=N` query params.
 | Pomodoro | `initPomo()`, `togglePomo()` |
 | Boot | `initBackendBridge()` → topics/words/phrases from API; `boot()` |
 
-### [`js/schreiben.js`](../js/schreiben.js) — Roadmap (~620 lines)
+### [`js/schreiben.js`](../js/schreiben.js) — Schreiben (~1052 lines)
 
 | Symbol | Role |
 |--------|------|
 | `STAGES` | 6 essay stages (Einleitung → Schluss) |
-| `buildRoadmap()` / `LEAF_SPOTS` | SVG path + decorative leaves (`roadmap-leaf-*.png`) |
-| `drafts` | Per-stage local draft text |
-| `openTool()` | Drawer: Wörterbuch / Hilfen / Kli |
-| `renderWoerterbuch()` | Static `WORDS` + `WASH` (no API yet) |
-| Pomodoro | `#pomo` timer |
+| `store` / `localStorage` | Essay lifecycle (drafts, snapshots, reports) — **backend hookup planned** |
+| `THEMEN` | Static theme picker (12 topics); comment: pipeline DB later |
+| `buildRoadmap()` | SVG path + decorative leaves |
+| `openTool()` | Inline expanding tool cards (Wörterbuch / Hilfen) |
+| `WORDS` / `WASH` | Static word data (duplicated from `app.js`) |
+
+**No API calls yet** — unlike `editor.js`.
 
 ### [`js/editor-api.js`](../js/editor-api.js) — API bridge
 
@@ -79,9 +81,7 @@ Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Bru
 | Folder | Count | Usage |
 |--------|-------|-------|
 | [`worte/`](../worte/) | 15 PNG | Level×POS watercolor brushes (`B1_Adjectives_...`, etc.) |
-| [`images/`](../images/) | 18 PNG | Decor: column, decor-head, Verwendung, Deklination, kli-1/2/3, autumn, mountains-corner, timer-wash, roadmap-leaf-1/2/3 |
-
-**Unwired assets (in repo, not yet in CSS/HTML):** `drawer-head-wash.png`, `tool-card-wash.png`, `tool-hilfen.png`, `tool-woerterbuch.png` — likely intended for schreiben drawer/tool cards.
+| [`images/`](../images/) | 16 PNG | Decor, schreiben bg, tool icons, roadmap leaves |
 
 ## Frontend ↔ Backend matrix
 

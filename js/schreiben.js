@@ -167,8 +167,8 @@ const DEKL = {
   Entwicklung:     [['die Entwicklung','die Entwicklungen'],['der Entwicklung','der Entwicklungen'],['der Entwicklung','den Entwicklungen'],['die Entwicklung','die Entwicklungen']],
   Fortschritt:     [['der Fortschritt','die Fortschritte'],['des Fortschritts','der Fortschritte'],['dem Fortschritt','den Fortschritten'],['den Fortschritt','die Fortschritte']],
   Algorithmus:     [['der Algorithmus','die Algorithmen'],['des Algorithmus','der Algorithmen'],['dem Algorithmus','den Algorithmen'],['den Algorithmus','die Algorithmen']],
-  Digitalisierung: [['die Digitalisierung','—'],['der Digitalisierung','—'],['der Digitalisierung','—'],['die Digitalisierung','—']],
-  Kommunikation:   [['die Kommunikation','—'],['der Kommunikation','—'],['der Kommunikation','—'],['die Kommunikation','—']],
+  Digitalisierung: [['die Digitalisierung','die Digitalisierungen'],['der Digitalisierung','der Digitalisierungen'],['der Digitalisierung','den Digitalisierungen'],['die Digitalisierung','die Digitalisierungen']],
+  Kommunikation:   [['die Kommunikation','die Kommunikationen'],['der Kommunikation','der Kommunikationen'],['der Kommunikation','den Kommunikationen'],['die Kommunikation','die Kommunikationen']],
   Vorteil:         [['der Vorteil','die Vorteile'],['des Vorteils','der Vorteile'],['dem Vorteil','den Vorteilen'],['den Vorteil','die Vorteile']],
   Nachteil:        [['der Nachteil','die Nachteile'],['des Nachteils','der Nachteile'],['dem Nachteil','den Nachteilen'],['den Nachteil','die Nachteile']],
   Netzwerk:        [['das Netzwerk','die Netzwerke'],['des Netzwerks','der Netzwerke'],['dem Netzwerk','den Netzwerken'],['das Netzwerk','die Netzwerke']],
@@ -183,7 +183,59 @@ const STEIG = {
 const WORD_TARGET = 250;
 const WB_PAGE = 9, KLI_PAGE = 3;
 
-const drafts = Object.fromEntries(STAGES.map(s => [s.id, '']));
+/* =====================================================================
+   Store — essays live in localStorage; the backend hookup comes later.
+   Essay = the only editable thing. Snapshots and reports are immutable.
+   ===================================================================== */
+/* the theme catalogue will come from the pipeline DB (100+ entries) —
+   the picker is built for that scale: search + pagination */
+const THEMEN = [
+  { id:'Technologie',  name:'Technologie',  sub:'Digitalisierung & Fortschritt' },
+  { id:'Umwelt',       name:'Umwelt',       sub:'Klima & Nachhaltigkeit' },
+  { id:'Gesellschaft', name:'Gesellschaft', sub:'Zusammenleben & Wandel' },
+  { id:'Bildung',      name:'Bildung',      sub:'Schule & Lernen' },
+  { id:'Gesundheit',   name:'Gesundheit',   sub:'Körper & Wohlbefinden' },
+  { id:'Arbeit',       name:'Arbeit & Beruf', sub:'Karriere & Arbeitswelt' },
+  { id:'Medien',       name:'Medien',       sub:'Presse & soziale Netzwerke' },
+  { id:'Reisen',       name:'Reisen',       sub:'Mobilität & Tourismus' },
+  { id:'Kultur',       name:'Kultur',       sub:'Kunst & Traditionen' },
+  { id:'Sport',        name:'Sport',        sub:'Bewegung & Wettbewerb' },
+  { id:'Familie',      name:'Familie',      sub:'Generationen & Beziehungen' },
+  { id:'Ernährung',    name:'Ernährung',    sub:'Essen & Konsum' },
+];
+
+const STORE_KEY = 'deutschEssay.schreiben.v1';
+function loadStore(){
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; }
+  catch { return null; }
+}
+function saveStore(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch {}
+}
+const store = loadStore() || { essays: [], activeId: null };
+const currentEssay = () => store.essays.find(e => e.id === store.activeId) || null;
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+function newEssayObj(thema, aufgabe, niveau){
+  return {
+    id: uid('e'), thema, aufgabe, niveau,
+    drafts: Object.fromEntries(STAGES.map(s => [s.id, ''])),
+    snapshots: [],                 /* frozen copies of all blocks */
+    reports: [],                   /* immutable AI responses, per scope */
+    created: Date.now(), updated: Date.now(),
+  };
+}
+
+let saveTimer = null;
+function schedulePersist(){
+  const e = currentEssay();
+  if (!e) return;
+  e.updated = Date.now();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveStore, 600);
+}
+
+let drafts = Object.fromEntries(STAGES.map(s => [s.id, '']));
 let activeStage = STAGES[0].id;
 const favs = new Set();
 
@@ -192,7 +244,7 @@ const favs = new Set();
    ===================================================================== */
 const roadmap = $('#roadmap');
 
-const X_WAVE = [14, 76, 52, 6, 64, 28];
+const X_WAVE = [16, 96, 66, 8, 80, 32];
 const NODE_GAP = 106, TOP_PAD = 34;
 
 /* leaf cluster around the active node: FIXED offsets and rotations relative
@@ -221,13 +273,16 @@ function nodeCenters(){
     y: TOP_PAD + i * NODE_GAP,
   }));
 }
+/* tension 1/4.2 (instead of the classic 1/6) gives the stem the rounder,
+   bulging bows of the reference tree */
+const TENSION = 4.2;
 function smoothPath(pts){
   if (pts.length < 2) return '';
   let d = `M ${pts[0].x} ${pts[0].y}`;
   for (let i = 0; i < pts.length - 1; i++){
     const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    d += ` C ${p1.x + (p2.x - p0.x) / 6} ${p1.y + (p2.y - p0.y) / 6},` +
-         ` ${p2.x - (p3.x - p1.x) / 6} ${p2.y - (p3.y - p1.y) / 6}, ${p2.x} ${p2.y}`;
+    d += ` C ${p1.x + (p2.x - p0.x) / TENSION} ${p1.y + (p2.y - p0.y) / TENSION},` +
+         ` ${p2.x - (p3.x - p1.x) / TENSION} ${p2.y - (p3.y - p1.y) / TENSION}, ${p2.x} ${p2.y}`;
   }
   return d;
 }
@@ -258,22 +313,28 @@ function buildRoadmap(){
   svg.appendChild(path);
   roadmap.appendChild(svg);
 
-  /* small static leaves halfway along each segment */
+  /* static leaves on the stem bends — a bigger one and a small partner on
+     the opposite side, like the sprig pairs of the reference tree */
   for (let i = 0; i < pts.length - 1; i++){
     const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-    const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-    const pos = cubicAt(p1, c1, c2, p2, i % 2 ? 0.44 : 0.56);
+    const c1 = { x: p1.x + (p2.x - p0.x) / TENSION, y: p1.y + (p2.y - p0.y) / TENSION };
+    const c2 = { x: p2.x - (p3.x - p1.x) / TENSION, y: p2.y - (p3.y - p1.y) / TENSION };
     const side = i % 2 ? -1 : 1;
-    const size = 30 + (i % 3) * 4;
-    const leaf = document.createElement('img');
-    leaf.src = 'images/' + MID_LEAVES[i % MID_LEAVES.length];
-    leaf.alt = '';
-    leaf.className = 'rm-leaf rm-leaf-mid';
-    leaf.style.cssText =
-      `width:${size}px;left:${pos.x - size/2 + side*14}px;top:${pos.y - size/2}px;` +
-      `transform:rotate(${pos.angle + (side > 0 ? -64 : 122)}deg)${side < 0 ? ' scaleX(-1)' : ''};opacity:.75`;
-    roadmap.appendChild(leaf);
+    const pair = [
+      { t: i % 2 ? 0.42 : 0.58, size: 40 + (i % 3) * 4, s: side,  op: .82 },
+      { t: i % 2 ? 0.62 : 0.38, size: 27 + (i % 2) * 3, s: -side, op: .7  },
+    ];
+    pair.forEach((L, k) => {
+      const pos = cubicAt(p1, c1, c2, p2, L.t);
+      const leaf = document.createElement('img');
+      leaf.src = 'images/' + MID_LEAVES[(i + k) % MID_LEAVES.length];
+      leaf.alt = '';
+      leaf.className = 'rm-leaf rm-leaf-mid';
+      leaf.style.cssText =
+        `width:${L.size}px;left:${pos.x - L.size/2 + L.s*15}px;top:${pos.y - L.size/2}px;` +
+        `transform:rotate(${pos.angle + (L.s > 0 ? -64 : 122)}deg)${L.s < 0 ? ' scaleX(-1)' : ''};opacity:${L.op}`;
+      roadmap.appendChild(leaf);
+    });
   }
 
   /* persistent leaves — they glide between nodes via CSS transitions */
@@ -324,6 +385,25 @@ function placeLeaves(){
 const editable = $('#editable');
 const stageTip = $('#stageTip');
 
+/* faded fragments of the neighbouring parts above/below the current text */
+function updateContext(){
+  const idx = STAGES.findIndex(s => s.id === activeStage);
+  const prev = idx > 0 ? drafts[STAGES[idx - 1].id].trim() : '';
+  const next = idx < STAGES.length - 1 ? drafts[STAGES[idx + 1].id].trim() : '';
+  $('#ctxPrev').hidden = !prev;
+  $('#ctxNext').hidden = !next;
+  if (prev) $('#ctxPrevText').textContent = prev;
+  if (next) $('#ctxNextText').textContent = next;
+}
+$('#ctxPrev').addEventListener('click', () => {
+  const idx = STAGES.findIndex(s => s.id === activeStage);
+  if (idx > 0) setStage(STAGES[idx - 1].id);
+});
+$('#ctxNext').addEventListener('click', () => {
+  const idx = STAGES.findIndex(s => s.id === activeStage);
+  if (idx < STAGES.length - 1) setStage(STAGES[idx + 1].id);
+});
+
 function setStage(id){
   if (id === activeStage) { editable.focus(); return; }
   drafts[activeStage] = editable.innerText;
@@ -337,11 +417,20 @@ function setStage(id){
     n.classList.toggle('active', STAGES[i].id === id));
   leafSpin += 360;                     /* one graceful turn per transition */
   placeLeaves();
+  updateContext();
   updateCounters();
 
   /* an open Schreibhilfen card follows the stage */
   if (openedTool === 'hilfen') renderHilfen();
+  schedulePersist();
+
+  /* caret at the end — you usually arrive to continue writing */
   editable.focus();
+  if (drafts[id]){
+    const sel = window.getSelection();
+    sel.selectAllChildren(editable);
+    sel.collapseToEnd();
+  }
 }
 
 function totalWords(){
@@ -361,7 +450,7 @@ function updateCounters(){
     if (w) w.textContent = stageWordCount(STAGES[i].id) + ' Wörter';
   });
 }
-editable.addEventListener('input', updateCounters);
+editable.addEventListener('input', () => { updateCounters(); schedulePersist(); });
 
 /* insert a formulation at the end of the current draft */
 function insertText(t){
@@ -379,10 +468,14 @@ function insertText(t){
 let openedTool = null;              /* 'hilfen' | 'woerterbuch' | null */
 let wbQuery = '', wbPage = 0, kliPage = 0;
 
-function openTool(tool){
-  if (openedTool === tool){ closeTools(); return; }
+function openTool(tool, keep){
+  if (openedTool === tool){
+    if (keep){ if (tool === 'analysen') renderAnalysen(); return; }
+    closeTools(); return;
+  }
   openedTool = tool;
   if (tool === 'woerterbuch'){ wbPage = 0; renderWoerterbuch(); }
+  else if (tool === 'analysen'){ anaPage = 0; renderAnalysen(); }
   else { kliPage = 0; renderHilfen(); }
   $$('.tool-card').forEach(c => c.classList.toggle('open', c.dataset.tool === tool));
 }
@@ -416,7 +509,11 @@ function renderPager(el, count, page, onPage){
 /* ---------- Wörterbuch ---------- */
 function wbFiltered(){
   const q = wbQuery.trim().toLowerCase();
-  return WORDS.filter(w => !q || w.de.toLowerCase().includes(q) || w.ru.toLowerCase().includes(q));
+  /* the essay's Thema drives the vocabulary; fall back to everything */
+  const e = currentEssay();
+  const themed = e ? WORDS.filter(w => w.cat === e.thema) : [];
+  const src = themed.length ? themed : WORDS;
+  return src.filter(w => !q || w.de.toLowerCase().includes(q) || w.ru.toLowerCase().includes(q));
 }
 
 function renderWoerterbuch(){
@@ -503,6 +600,46 @@ function renderHilfen(){
   renderPager($('#hilfenPager'), pages, kliPage, p => { kliPage = p; renderHilfen(); });
 }
 
+/* ---------- Analysen — list of immutable reports, one selectable ------ */
+const ANA_PAGE = 6;
+let anaPage = 0;
+
+function renderAnalysen(){
+  const body = $('#anaBody');
+  const e = currentEssay();
+  const reports = e ? [...e.reports].sort((a, b) => b.created - a.created) : [];
+  if (!reports.length){
+    body.innerHTML = '<p class="ana-empty">Noch keine Analysen — nutze „Analysieren“ oder „Teil analysieren“ unter dem Text.</p>';
+    renderPager($('#anaPager'), 1, 0, () => {});
+    return;
+  }
+  const pages = Math.max(1, Math.ceil(reports.length / ANA_PAGE));
+  anaPage = Math.min(anaPage, pages - 1);
+  const slice = reports.slice(anaPage * ANA_PAGE, anaPage * ANA_PAGE + ANA_PAGE);
+
+  body.innerHTML = '<div class="ana-list" id="anaList"></div>';
+  const list = $('#anaList');
+  slice.forEach(r => {
+    const scopeTitle = r.scope === 'full'
+      ? 'Ganzes Essay'
+      : (STAGES.find(s => s.id === r.scope) || {}).title || r.scope;
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'ana-row' + (r.id === e.activeReportId ? ' sel' : '');
+    row.innerHTML = `
+      <span class="ana-dot" aria-hidden="true"></span>
+      <span class="ana-txt"><b>${esc(scopeTitle)}</b><i>${fmtDate(r.created)}</i></span>
+      ${r.scope === 'full' ? '<span class="ana-tag">Variante</span>' : ''}`;
+    row.addEventListener('click', () => {
+      e.activeReportId = r.id;
+      saveStore();
+      renderAnalysen();
+    });
+    list.appendChild(row);
+  });
+  renderPager($('#anaPager'), pages, anaPage, p => { anaPage = p; renderAnalysen(); });
+}
+
 /* =====================================================================
    Word-card popover — opens to the LEFT of the clicked row
    ===================================================================== */
@@ -522,22 +659,24 @@ function cardHTML(w){
   const dekl = DEKL[w.de];
   const steig = STEIG[w.de];
   let spec = '';
+  const hasPlural = dekl && dekl.some(r => r[1] !== '—');
   if (w.pos === 'adj' && steig){
     spec = `<span class="g-s"><i>Steigerung</i>${esc(steig.join(' · '))}</span>`;
   } else {
     spec = [
-      w.genus ? `<span class="g-s"><i>Genus</i>${esc(w.genus)}</span>` : '',
-      w.plural && w.plural !== '—' ? `<span class="g-s"><i>Plural</i>${esc(w.plural)}</span>` : '',
+      hasPlural ? `<span class="g-s"><i>Plural</i>${esc(w.plural)}</span>`
+                : `<span class="g-s"><i>Plural</i>kein Plural</span>`,
       dekl ? `<span class="g-s"><i>Genitiv</i>${esc(dekl[1][0])}</span>` : '',
     ].join('');
   }
+  /* singularia tantum get a single-column table — no dash noise */
   const declBlock = dekl ? `
     <button class="decl-btn" id="declBtn" type="button">Deklination anzeigen
       <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <div class="decl-tbl" id="declTbl" hidden><table>
       ${['Nominativ','Genitiv','Dativ','Akkusativ'].map((c, i) =>
-        `<tr><th>${c}</th><td>${esc(dekl[i][0])}</td><td>${esc(dekl[i][1])}</td></tr>`).join('')}
+        `<tr><th>${c}</th><td>${esc(dekl[i][0])}</td>${hasPlural ? `<td>${esc(dekl[i][1])}</td>` : ''}</tr>`).join('')}
     </table></div>` : '';
 
   const koll = (w.koll || []).map(k => `<span class="koll">${esc(k)}</span>`).join('');
@@ -705,26 +844,209 @@ $('#pomoReset').addEventListener('click', () => {
 });
 
 /* =====================================================================
-   Niveau dropdown
+   Essay lifecycle — start state, essays list, binding, snapshots,
+   analysis stubs
    ===================================================================== */
-const dd = $('#ddNiveau');
-dd.querySelector('.dd-btn').addEventListener('click', () => dd.classList.toggle('open'));
-dd.querySelectorAll('.dd-menu button').forEach(b => {
-  b.addEventListener('click', () => {
-    dd.querySelectorAll('.dd-menu button').forEach(x => x.classList.remove('sel'));
-    b.classList.add('sel');
-    $('#niveauLbl').textContent = b.textContent;
-    dd.classList.remove('open');
+const sheet = document.querySelector('.sheet');
+const THEME_PAGE = 6;
+let startThema = THEMEN[0].id, startNiveau = 'B1';
+let startQuery = '', startPage = 0;
+
+function renderStart(){
+  const grid = $('#startThemen');
+  grid.innerHTML = '';
+  const f = startQuery.trim().toLowerCase();
+  const items = THEMEN.filter(t =>
+    !f || t.name.toLowerCase().includes(f) || t.sub.toLowerCase().includes(f));
+  const pages = Math.max(1, Math.ceil(items.length / THEME_PAGE));
+  startPage = Math.min(startPage, pages - 1);
+  const slice = items.slice(startPage * THEME_PAGE, startPage * THEME_PAGE + THEME_PAGE);
+
+  if (!slice.length){
+    grid.innerHTML = '<p class="themen-empty">Kein Thema gefunden.</p>';
+  }
+  slice.forEach(t => {
+    const n = WORDS.filter(w => w.cat === t.id).length;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'thema-card' + (t.id === startThema ? ' sel' : '') + (n ? '' : ' empty');
+    b.innerHTML = `<b>${esc(t.name)}</b><i>${esc(t.sub)}</i>
+      <span>${n ? n + ' Wörter im Paket' : 'Wortpaket folgt'}</span>`;
+    b.addEventListener('click', () => { startThema = t.id; renderStart(); });
+    grid.appendChild(b);
   });
+  renderPager($('#startPager'), pages, startPage, p => { startPage = p; renderStart(); });
+  $$('#startNiveau button').forEach(b =>
+    b.classList.toggle('sel', b.textContent === startNiveau));
+}
+$('#startSearch').addEventListener('input', e => {
+  startQuery = e.target.value; startPage = 0;
+  renderStart();
 });
-document.addEventListener('click', e => { if (!dd.contains(e.target)) dd.classList.remove('open'); });
+
+/* ---------- essays list (the folder button) ---------- */
+const countOf = t => { t = (t || '').trim(); return t ? t.split(/\s+/).length : 0; };
+function fmtDate(t){
+  const d = new Date(t);
+  return d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }) +
+    ' · ' + d.toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' });
+}
+
+function renderEssays(){
+  const list = $('#essaysList');
+  list.innerHTML = '';
+  const items = [...store.essays].sort((a, b) => b.updated - a.updated);
+  if (!items.length){
+    list.innerHTML = '<p class="essays-empty">Noch keine Essays — beginne dein erstes über „Neues Essay“.</p>';
+    return;
+  }
+  items.forEach(e => {
+    const words = STAGES.reduce((s, st) => s + countOf(e.drafts[st.id]), 0);
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'essay-row' + (e.id === store.activeId ? ' current' : '');
+    row.innerHTML = `
+      <span class="er-main"><b>${esc(e.thema)}</b>${e.aufgabe ? `<i>${esc(e.aufgabe)}</i>` : ''}</span>
+      <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · ${e.snapshots.length} Var. · ${fmtDate(e.updated)}</span>`;
+    row.addEventListener('click', () => {
+      store.activeId = e.id;
+      saveStore();
+      setSheetMode('write');
+      bindEssay(e);
+      editable.focus();
+    });
+    list.appendChild(row);
+  });
+}
+
+/* ---------- sheet modes: write | start | list ---------- */
+function setSheetMode(mode){
+  sheet.classList.toggle('starting', mode === 'start');
+  sheet.classList.toggle('listing', mode === 'list');
+  $('#startState').hidden = mode !== 'start';
+  $('#essaysState').hidden = mode !== 'list';
+  if (mode === 'start') renderStart();
+  if (mode === 'list') renderEssays();
+}
+
+function refreshAll(){
+  const s = STAGES.find(x => x.id === activeStage);
+  editable.innerText = drafts[activeStage];
+  $('#tipLead').textContent = s.tipLead;
+  $('#tipText').textContent = s.tip;
+  $$('.rm-node').forEach((n, i) =>
+    n.classList.toggle('active', STAGES[i].id === activeStage));
+  placeLeaves();
+  updateContext();
+  updateCounters();
+  if (openedTool === 'woerterbuch') renderWoerterbuch();
+  if (openedTool === 'hilfen') renderHilfen();
+}
+
+function bindEssay(e){
+  drafts = e.drafts;
+  activeStage = STAGES[0].id;
+  $('#sheetThema').hidden = false;
+  $('#themaName').textContent = e.thema;
+  $('#themaNiveau').textContent = e.niveau;
+  $('#themaAufgabe').textContent = e.aufgabe || '';
+  refreshAll();
+}
+
+$('#startBegin').addEventListener('click', () => {
+  const e = newEssayObj(startThema, $('#startAufgabe').value.trim(), startNiveau);
+  store.essays.push(e);
+  store.activeId = e.id;
+  saveStore();
+  $('#startAufgabe').value = '';
+  setSheetMode('write');
+  bindEssay(e);
+  editable.focus();
+});
+$$('#startNiveau button').forEach(b =>
+  b.addEventListener('click', () => { startNiveau = b.textContent; renderStart(); }));
+
+document.querySelector('.btn-new').addEventListener('click', () => {
+  const e = currentEssay();
+  if (e){ drafts[activeStage] = editable.innerText; saveStore(); }
+  closeTools();
+  setSheetMode('start');
+});
+/* the folder next to "Neues Essay" opens the past-essays list */
+document.querySelector('.new-essay-row .btn-icon').addEventListener('click', () => {
+  const e = currentEssay();
+  if (e){ drafts[activeStage] = editable.innerText; saveStore(); }
+  closeTools();
+  setSheetMode('list');
+});
+
+/* ---------- snapshots & analysis stubs (payload format comes later) --- */
+function takeSnapshot(label){
+  const e = currentEssay();
+  if (!e) return null;
+  drafts[activeStage] = editable.innerText;
+  const snap = { id: uid('s'), label, drafts: { ...drafts }, created: Date.now() };
+  e.snapshots.push(snap);
+  saveStore();
+  return snap;
+}
+function flashSaved(msg){
+  const el = $('#savedMsg');
+  const old = el.textContent;
+  el.textContent = msg;
+  setTimeout(() => { el.textContent = old; }, 1600);
+}
+$('#btnSnapshot').addEventListener('click', () => {
+  if (!currentEssay()) return;
+  takeSnapshot('Manuell');
+  flashSaved('Variante gemerkt ✓');
+});
+function busyBtn(btn){
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  setTimeout(() => { btn.disabled = false; btn.style.opacity = ''; }, 700);
+}
+$('#btnAnalyzePart').addEventListener('click', e => {
+  const es = currentEssay();
+  if (!es) return;
+  busyBtn(e.currentTarget);
+  drafts[activeStage] = editable.innerText;
+  const rep = { id: uid('r'), scope: activeStage,
+    text: drafts[activeStage], payload: null, created: Date.now() };
+  es.reports.push(rep);
+  es.activeReportId = rep.id;
+  saveStore();
+  flashSaved('Teil-Analyse angefragt …');
+  openTool('analysen', true);
+});
+$('#btnAnalyze').addEventListener('click', e => {
+  const es = currentEssay();
+  if (!es) return;
+  busyBtn(e.currentTarget);
+  const snap = takeSnapshot('Analyse');       /* full analysis freezes a variant */
+  const rep = { id: uid('r'), scope: 'full',
+    snapshotId: snap.id, payload: null, created: Date.now() };
+  es.reports.push(rep);
+  es.activeReportId = rep.id;
+  saveStore();
+  flashSaved('Analyse angefragt · Variante gemerkt ✓');
+  openTool('analysen', true);
+});
 
 /* =====================================================================
    init
    ===================================================================== */
-$('#tipLead').textContent = STAGES[0].tipLead;
-$('#tipText').textContent = STAGES[0].tip;
 buildRoadmap();
-updateCounters();
-editable.focus();
+const initial = currentEssay();
+if (initial){
+  setSheetMode('write');
+  bindEssay(initial);
+  editable.focus();
+} else {
+  $('#tipLead').textContent = STAGES[0].tipLead;
+  $('#tipText').textContent = STAGES[0].tip;
+  updateContext();
+  updateCounters();
+  setSheetMode('start');
+}
 window.addEventListener('resize', buildRoadmap);
