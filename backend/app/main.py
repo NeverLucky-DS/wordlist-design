@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,6 +10,28 @@ from app.db.init_data import ensure_seed_data
 from app.db.models import Base
 from app.db.session import engine
 from app.db.session import SessionLocal
+
+
+def _configure_app_logging() -> None:
+    """Make our own `app.*` INFO logs visible.
+
+    Uvicorn only configures its own loggers, and Python's last-resort handler
+    only emits WARNING+, so `logger.info(...)` from app modules (e.g. the essay
+    analyzer / pipeline) was silently dropped. Attach one handler to the `app`
+    namespace so those diagnostics actually reach stderr / the container logs.
+    """
+    app_logger = logging.getLogger("app")
+    if not app_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s | %(message)s")
+        )
+        app_logger.addHandler(handler)
+    app_logger.setLevel(logging.INFO)
+    app_logger.propagate = False
+
+
+_configure_app_logging()
 
 app = FastAPI(title="Deutsch Essay Trainer")
 

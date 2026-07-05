@@ -143,23 +143,7 @@ const WORDS = [
    ex:[['<strong>Künstliche</strong> Intelligenz übernimmt immer mehr Aufgaben.','Искусственный интеллект берёт на себя всё больше задач.']]},
 ];
 
-/* watercolor washes — same level+type → colour logic as the Wörterbuch */
-const WASH = {
-  'B1|der':'B1_Der_Powdery-Blue_Horizontal-Soft.png','B1|die':'B1_Die_Powdery-Pink_BG-Wash.png',
-  'B1|das':'B1_Das_Pale-Green_BG-Wash.png','B1|verb':'B1_Verbs_Sandy-Ochre_BG-Wash.png',
-  'B1|adj':'B1_Adjectives_Lavender_BG-Wash.png',
-  'B2|der':'B2_Der_Deep-Blue_BG-Wash.png','B2|die':'B2_Die_Magenta_BG-Wash.png',
-  'B2|das':'B2_Das_Grass-Green_BG-Wash.png','B2|verb':'B2_Verbs_Terracotta_BG-Wash.png',
-  'B2|adj':'B2_Adjectives_Amethyst_BG-Wash.png',
-  'C1|der':'C1_Der_Indigo_BG-Wash.png','C1|die':'C1_Die_Burgundy_BG-Wash.png',
-  'C1|das':'C1_Das_Emerald_BG-Wash.png','C1|verb':'C1_Verbs_Olive-Ochre_BG-Wash.png',
-  'C1|adj':'C1_Adjectives_Plum_BG-Wash.png'
-};
-const typeKey = w => w.pos === 'verb' ? 'verb' : (w.pos === 'adj' ? 'adj' : w.art);
-const brushOf = w => {
-  const f = WASH[w.level + '|' + typeKey(w)] || '';
-  return f ? `url('${new URL('worte/' + f, document.baseURI).href}')` : 'none';
-};
+/* brushOf, typeKey, WASH — js/words-data.js */
 
 /* full declension per word (N/G/D/A × Sg/Pl) — explicit, no auto-guessing */
 const DEKL = {
@@ -184,7 +168,7 @@ const WORD_TARGET = 250;
 const WB_PAGE = 9, KLI_PAGE = 3;
 
 /* =====================================================================
-   Store — essays live in localStorage; the backend hookup comes later.
+   Store — essays in localStorage; synced to backend when API is up.
    Essay = the only editable thing. Snapshots and reports are immutable.
    ===================================================================== */
 /* the theme catalogue will come from the pipeline DB (100+ entries) —
@@ -219,11 +203,105 @@ const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(
 function newEssayObj(thema, aufgabe, niveau){
   return {
     id: uid('e'), thema, aufgabe, niveau,
+    apiId: null,
     drafts: Object.fromEntries(STAGES.map(s => [s.id, ''])),
-    snapshots: [],                 /* frozen copies of all blocks */
-    reports: [],                   /* immutable AI responses, per scope */
+    snapshots: [],
+    analysis: null,          /* latest Mistral analysis (no history) */
+    partFeedback: {},
     created: Date.now(), updated: Date.now(),
   };
+}
+
+/* =====================================================================
+   Backend bridge — essay text format matches mistral_analyzer PART_LABELS
+   ===================================================================== */
+const API_PART = {
+  einleitung: 'einleitung',
+  arg1: 'argument1',
+  arg2: 'argument2',
+  schluss: 'schluss',
+};
+function apiToStage(part) {
+  if (part === 'argument1') return 'arg1';
+  if (part === 'argument2') return 'arg2';
+  if (part === 'einleitung') return 'einleitung';
+  return 'schluss';
+}
+function buildEssayText() {
+  return STAGES.map(s => `${s.title}:\n${(drafts[s.id] || '').trim()}`).join('\n\n');
+}
+
+let apiReady = false;
+let apiSaveTimer = null;
+let analyzing = false;
+
+async function persistEssayToApi() {
+  const e = currentEssay();
+  if (!e || !apiReady || !window.SchreibenApi) return;
+  const payload = {
+    title: e.thema || 'Essay',
+    text: buildEssayText(),
+    essay_type: 'argumentativ',
+    topic: (e.thema || '').toLowerCase(),
+    level: e.niveau || 'B1',
+  };
+  try {
+    if (e.apiId) {
+      await SchreibenApi.updateEssay(e.apiId, payload);
+    } else {
+      const created = await SchreibenApi.createEssay(payload);
+      e.apiId = created.id;
+      saveStore();
+      alog('essay created on backend · apiId =', created.id);
+    }
+  } catch (err) {
+    aerr('API save failed', err);
+    flashSaved('Speichern fehlgeschlagen');
+    throw err;
+  }
+}
+
+function scheduleApiPersist() {
+  if (!apiReady) return;
+  clearTimeout(apiSaveTimer);
+  apiSaveTimer = setTimeout(() => {
+    persistEssayToApi().catch(() => {});
+  }, 1200);
+}
+
+const ALOG = '[schreiben:analyze]';
+function alog(...args) { try { console.info(ALOG, ...args); } catch (_) {} }
+function aerr(...args) { try { console.error(ALOG, ...args); } catch (_) {} }
+
+async function initBackend() {
+  if (!window.SchreibenApi) {
+    aerr('SchreibenApi not loaded — is js/schreiben-api.js included before schreiben.js?');
+    return;
+  }
+  try {
+    apiReady = await SchreibenApi.health();
+  } catch (err) {
+    aerr('initBackend health check threw', err);
+    apiReady = false;
+  }
+  alog('initBackend · apiReady =', apiReady);
+}
+
+/* Re-probe the backend when a request is about to run but apiReady is false —
+   recovers from the common case where the page loaded before the backend was
+   up (health raced at init and lost). Returns the fresh readiness. */
+async function ensureBackendReady() {
+  if (apiReady) return true;
+  if (!window.SchreibenApi) return false;
+  alog('apiReady is false — re-checking /health before giving up…');
+  try {
+    apiReady = await SchreibenApi.health();
+  } catch (err) {
+    aerr('ensureBackendReady health check threw', err);
+    apiReady = false;
+  }
+  alog('ensureBackendReady · apiReady =', apiReady);
+  return apiReady;
 }
 
 let saveTimer = null;
@@ -233,6 +311,7 @@ function schedulePersist(){
   e.updated = Date.now();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveStore, 600);
+  scheduleApiPersist();
 }
 
 let drafts = Object.fromEntries(STAGES.map(s => [s.id, '']));
@@ -385,6 +464,13 @@ function placeLeaves(){
 const editable = $('#editable');
 const stageTip = $('#stageTip');
 
+/* editable holds the active draft ONLY in write mode; in review mode it holds
+   the full annotated dump of every part, so reading it back would corrupt the
+   draft. Always sync through this guard instead of touching drafts directly. */
+function syncActiveDraft(){
+  if (!reviewMode) drafts[activeStage] = editable.innerText;
+}
+
 /* faded fragments of the neighbouring parts above/below the current text */
 function updateContext(){
   const idx = STAGES.findIndex(s => s.id === activeStage);
@@ -406,10 +492,11 @@ $('#ctxNext').addEventListener('click', () => {
 
 function setStage(id){
   if (id === activeStage) { editable.focus(); return; }
-  drafts[activeStage] = editable.innerText;
+  syncActiveDraft();
+  closeAnnotationPopover();
   activeStage = id;
   const s = STAGES.find(x => x.id === id);
-  editable.innerText = drafts[id];
+  renderStageEditable();
   $('#tipLead').textContent = s.tipLead;
   $('#tipText').textContent = s.tip;
 
@@ -424,17 +511,19 @@ function setStage(id){
   if (openedTool === 'hilfen') renderHilfen();
   schedulePersist();
 
-  /* caret at the end — you usually arrive to continue writing */
-  editable.focus();
-  if (drafts[id]){
-    const sel = window.getSelection();
-    sel.selectAllChildren(editable);
-    sel.collapseToEnd();
+  /* caret at the end — you usually arrive to continue writing (write mode only) */
+  if (!reviewMode){
+    editable.focus();
+    if (drafts[id]){
+      const sel = window.getSelection();
+      sel.selectAllChildren(editable);
+      sel.collapseToEnd();
+    }
   }
 }
 
 function totalWords(){
-  drafts[activeStage] = editable.innerText;
+  syncActiveDraft();
   return STAGES.reduce((sum, s) => sum + stageWordCount(s.id), 0);
 }
 
@@ -470,7 +559,11 @@ let wbQuery = '', wbPage = 0, kliPage = 0;
 
 function openTool(tool, keep){
   if (openedTool === tool){
-    if (keep){ if (tool === 'analysen') renderAnalysen(); return; }
+    if (keep){
+      $$('.tool-card').forEach(c => c.classList.toggle('open', c.dataset.tool === tool));
+      if (tool === 'analysen') renderAnalysen();
+      return;
+    }
     closeTools(); return;
   }
   openedTool = tool;
@@ -600,44 +693,55 @@ function renderHilfen(){
   renderPager($('#hilfenPager'), pages, kliPage, p => { kliPage = p; renderHilfen(); });
 }
 
-/* ---------- Analysen — list of immutable reports, one selectable ------ */
+/* ---------- Analysen — immutable reports from Mistral stream ---------- */
 const ANA_PAGE = 6;
 let anaPage = 0;
 
+function mlEsc(s) {
+  return String(s ?? '').split('\n').map(esc).join('<br>');
+}
+
+/* Latest analysis only — overall grade, per-part scores, final summary.
+   The per-error detail lives inline in the text (swap ⇄ button). */
 function renderAnalysen(){
   const body = $('#anaBody');
   const e = currentEssay();
-  const reports = e ? [...e.reports].sort((a, b) => b.created - a.created) : [];
-  if (!reports.length){
-    body.innerHTML = '<p class="ana-empty">Noch keine Analysen — nutze „Analysieren“ oder „Teil analysieren“ unter dem Text.</p>';
-    renderPager($('#anaPager'), 1, 0, () => {});
+  const a = e && e.analysis;
+  if (!a) {
+    body.innerHTML = '<p class="ana-empty">Noch keine Analyse — schreibe deinen Text und klicke „Analysieren“. Die Korrekturen erscheinen dann direkt im Text.</p>';
     return;
   }
-  const pages = Math.max(1, Math.ceil(reports.length / ANA_PAGE));
-  anaPage = Math.min(anaPage, pages - 1);
-  const slice = reports.slice(anaPage * ANA_PAGE, anaPage * ANA_PAGE + ANA_PAGE);
 
-  body.innerHTML = '<div class="ana-list" id="anaList"></div>';
-  const list = $('#anaList');
-  slice.forEach(r => {
-    const scopeTitle = r.scope === 'full'
-      ? 'Ganzes Essay'
-      : (STAGES.find(s => s.id === r.scope) || {}).title || r.scope;
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.className = 'ana-row' + (r.id === e.activeReportId ? ' sel' : '');
-    row.innerHTML = `
-      <span class="ana-dot" aria-hidden="true"></span>
-      <span class="ana-txt"><b>${esc(scopeTitle)}</b><i>${fmtDate(r.created)}</i></span>
-      ${r.scope === 'full' ? '<span class="ana-tag">Variante</span>' : ''}`;
-    row.addEventListener('click', () => {
-      e.activeReportId = r.id;
-      saveStore();
-      renderAnalysen();
-    });
-    list.appendChild(row);
-  });
-  renderPager($('#anaPager'), pages, anaPage, p => { anaPage = p; renderAnalysen(); });
+  const totalErrors = STAGES.reduce((n, s) => n + ((a.errorsByStage?.[s.id] || []).length), 0);
+  const head = `
+    <div class="ana-head">
+      <span class="ana-grade">${esc(a.grade || '—')}</span>
+      <span class="ana-score-val">${a.overall_score ?? '—'} / 100</span>
+      <button type="button" class="ana-swaplink" id="anaSwapLink">⇄ Im Text ansehen</button>
+    </div>
+    <p class="ana-meta">${totalErrors} Hinweise · ${fmtDate(a.created)}</p>`;
+
+  const partsInner = (a.part_reports || []).filter(pr => !pr.is_empty).map(pr => `
+    <div class="ana-part">
+      <div class="ana-part-top"><b>${esc(pr.label || pr.part)}</b><span>${pr.score}/100</span></div>
+      ${pr.feedback_ru ? `<p>${mlEsc(pr.feedback_ru)}</p>` : ''}
+    </div>`).join('');
+  const parts = partsInner
+    ? `<details class="ana-fold"><summary>Bewertung der Teile</summary>${partsInner}</details>`
+    : '';
+
+  const fs = a.final_summary;
+  const summaryInner = fs ? `
+    ${fs.structure_feedback_ru ? `<p><b>Struktur</b> — ${mlEsc(fs.structure_feedback_ru)}</p>` : ''}
+    ${fs.topic_feedback_ru ? `<p><b>Thema</b> — ${mlEsc(fs.topic_feedback_ru)}</p>` : ''}
+    ${fs.overall_comment_ru ? `<p>${mlEsc(fs.overall_comment_ru)}</p>` : ''}` : '';
+  const summary = summaryInner.trim()
+    ? `<details class="ana-fold"><summary>Struktur & Thema</summary><div class="ana-summary">${summaryInner}</div></details>`
+    : '';
+
+  body.innerHTML = `<div class="ana-detail">${head}${parts}${summary}</div>`;
+  const link = $('#anaSwapLink');
+  if (link) link.addEventListener('click', enterReview);
 }
 
 /* =====================================================================
@@ -931,7 +1035,7 @@ function setSheetMode(mode){
 
 function refreshAll(){
   const s = STAGES.find(x => x.id === activeStage);
-  editable.innerText = drafts[activeStage];
+  renderStageEditable();
   $('#tipLead').textContent = s.tipLead;
   $('#tipText').textContent = s.tip;
   $$('.rm-node').forEach((n, i) =>
@@ -946,11 +1050,14 @@ function refreshAll(){
 function bindEssay(e){
   drafts = e.drafts;
   activeStage = STAGES[0].id;
+  reviewMode = false;
+  closeAnnotationPopover();
   $('#sheetThema').hidden = false;
   $('#themaName').textContent = e.thema;
   $('#themaNiveau').textContent = e.niveau;
   $('#themaAufgabe').textContent = e.aufgabe || '';
   refreshAll();
+  updateSwapBtn();
 }
 
 $('#startBegin').addEventListener('click', () => {
@@ -968,23 +1075,647 @@ $$('#startNiveau button').forEach(b =>
 
 document.querySelector('.btn-new').addEventListener('click', () => {
   const e = currentEssay();
-  if (e){ drafts[activeStage] = editable.innerText; saveStore(); }
+  if (e){ syncActiveDraft(); saveStore(); }
   closeTools();
   setSheetMode('start');
 });
 /* the folder next to "Neues Essay" opens the past-essays list */
 document.querySelector('.new-essay-row .btn-icon').addEventListener('click', () => {
   const e = currentEssay();
-  if (e){ drafts[activeStage] = editable.innerText; saveStore(); }
+  if (e){ syncActiveDraft(); saveStore(); }
   closeTools();
   setSheetMode('list');
 });
 
-/* ---------- snapshots & analysis stubs (payload format comes later) --- */
+/* =====================================================================
+   Inline annotation engine + swap (review) mode
+   — errors are shown right in the text as coloured underlines; a click
+     opens the correction card. Review mode is read-only: swap to see the
+     marks, swap back to keep writing. (Ported/simplified from the old editor.)
+   ===================================================================== */
+let reviewMode = false;
+let selectedAnnotation = null;   /* {stageId, error_id} */
+
+function esc2(t){
+  return String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function textToHtml(v){
+  return esc2(v)
+    .replace(/\n/g, '<br>')
+    .replace(/ {2}/g, ' &nbsp;')
+    .replace(/(^ )|( $)/g, '&nbsp;');
+}
+
+/* backend annotation_kind / severity / type → one of 4 visual levels */
+function annoKind(err){
+  const k = String(err.annotation_kind || '').toLowerCase();
+  if (k === 'critical') return 'critical';
+  if (k === 'good_fragment' || k === 'good') return 'good';
+  if (k === 'b2_potential') return 'correction';
+  if (k === 'style' || k === 'suggestion') return 'style';
+  const sev = String(err.severity || '').toLowerCase();
+  const type = String(err.type || '').toLowerCase();
+  if (sev === 'critical' || type === 'grammar') return 'critical';
+  if (type === 'good' || type === 'strength') return 'good';
+  if (type === 'vocabulary' || type === 'weak') return 'correction';
+  if (sev === 'suggestion' || type === 'style') return 'style';
+  return 'correction';
+}
+
+function errorKey(stageId, err){
+  const base = `${stageId}:${err.excerpt || ''}:${err.start || 0}:${err.type || ''}`;
+  let h = 0;
+  for (let i = 0; i < base.length; i += 1) h = (h * 31 + base.charCodeAt(i)) | 0;
+  return 'e' + Math.abs(h).toString(36);
+}
+
+function findExcerptIndex(text, excerpt, hint){
+  const needle = String(excerpt || '').trim();
+  if (!needle) return -1;
+  let best = -1, bestDist = Infinity, idx = text.indexOf(needle);
+  const h = Number.isFinite(hint) ? hint : 0;
+  while (idx >= 0){
+    const d = Math.abs(idx - h);
+    if (d < bestDist){ best = idx; bestDist = d; }
+    idx = text.indexOf(needle, idx + 1);
+  }
+  return best;
+}
+
+/* remove overlapping / nested spans (belt-and-suspenders to the backend) */
+function removeOverlaps(errors){
+  const rank = { critical: 0, medium: 1, suggestion: 2 };
+  const sorted = [...errors].sort((a, b) => {
+    const ra = rank[String(a.severity || 'medium').toLowerCase()] ?? 1;
+    const rb = rank[String(b.severity || 'medium').toLowerCase()] ?? 1;
+    if (ra !== rb) return ra - rb;
+    return (a.end - a.start) - (b.end - b.start);
+  });
+  const kept = [];
+  for (const e of sorted){
+    if (!kept.some(k => e.start < k.end && k.start < e.end)) kept.push(e);
+  }
+  return kept.sort((a, b) => a.start - b.start);
+}
+
+/* anchor stored errors onto the CURRENT draft text by excerpt search */
+function anchorErrors(text, errors){
+  const out = [];
+  const plain = String(text || '');
+  if (!plain.trim()) return out;
+  (errors || []).forEach(err => {
+    const excerpt = String(err.excerpt || '').trim();
+    let start, end;
+    if (excerpt){
+      const idx = findExcerptIndex(plain, excerpt, err.start);
+      if (idx < 0) return;                       /* text changed — drop */
+      start = idx; end = idx + excerpt.length;
+    } else {
+      start = Math.max(0, Math.min(Number(err.start) || 0, plain.length));
+      end = Math.max(start + 1, Math.min(Number(err.end) || start + 1, plain.length));
+      if (!plain.slice(start, end).trim()) return;
+    }
+    out.push({ ...err, start, end, error_id: err.error_id || errorKey(activeStage, err) });
+  });
+  return removeOverlaps(out);
+}
+
+function stageErrors(stageId){
+  const es = currentEssay();
+  if (!es || !es.analysis || !es.analysis.errorsByStage) return [];
+  return es.analysis.errorsByStage[stageId] || [];
+}
+
+/* sentence with >= this many errors is "dense": we stop replacing words inline
+   (too noisy) and just underline them, with a count badge — details on click */
+const DENSE_MIN = 4;
+
+const tok = s => String(s || '').trim().split(/\s+/).filter(Boolean);
+const normTok = t => String(t).toLowerCase().replace(/[.,!?;:»«"'()]/g, '');
+
+/* a short word/ending fix (e.g. „grosse“ → „großer“) shown inline as a red
+   replacement rather than an underline you have to click */
+function isWordFix(err, bad){
+  const fix = String(err.correction || '').trim();
+  if (!fix || fix === bad.trim()) return false;
+  if (annoKind(err) === 'good') return false;      /* „gelungen“ isn't a fix */
+  const words = s => tok(s).length;
+  return words(bad) <= 4 && words(fix) <= 4 && bad.length <= 34 && fix.length <= 34;
+}
+
+/* same words, different order → a word-order move, not a rewrite */
+function isReorder(bad, fix){
+  const a = tok(bad).map(normTok).filter(Boolean).sort();
+  const b = tok(fix).map(normTok).filter(Boolean).sort();
+  return a.length > 1 && a.length === b.length
+    && a.join(' ') === b.join(' ') && bad.trim() !== fix.trim();
+}
+
+/* which single token relocated and where it lands (null if not a clean move) */
+function findMove(ex, cor){
+  for (let i = 0; i < ex.length; i += 1){
+    const restEx = ex.filter((_, k) => k !== i).map(normTok).join(' ');
+    for (let j = 0; j < cor.length; j += 1){
+      if (normTok(cor[j]) !== normTok(ex[i])) continue;
+      const restCor = cor.filter((_, k) => k !== j).map(normTok).join(' ');
+      if (restEx === restCor) return { from: i, to: j };
+    }
+  }
+  return null;
+}
+
+const caretHTML = dir => `<span class="mv-caret" data-dir="${dir}"></span>`;
+
+/* circle the moved word, arrow on top pointing its way, red caret at the target */
+function renderReorder(bad, fix){
+  const ex = tok(bad), cor = tok(fix);
+  const mv = findMove(ex, cor);
+  if (!mv) return null;
+  const { from, to } = mv;
+  const n = ex.length;
+  const idxs = []; for (let k = 0; k < n; k += 1) if (k !== from) idxs.push(k);
+  const caretBefore = to < idxs.length ? idxs[to] : n;   /* original index for the caret */
+  const dir = caretBefore <= from ? 'left' : 'right';
+  let html = '';
+  for (let i = 0; i < n; i += 1){
+    if (i === caretBefore) html += caretHTML(dir);
+    if (i === from){
+      html += `<span class="mv-word">${esc2(ex[i])}`
+        + `<span class="mv-arrow">${dir === 'left' ? '←' : '→'}</span></span>`;
+    } else {
+      html += esc2(ex[i]);
+    }
+    if (i < n - 1) html += ' ';
+  }
+  if (caretBefore >= n) html += ' ' + caretHTML(dir);
+  return html;
+}
+
+/* one anchored error → its inline HTML (dense sentences never replace/reorder) */
+function renderOneError(text, err, stageId, dense){
+  const bad = text.slice(err.start, err.end);
+  const kind = annoKind(err);
+  const attrs = `data-error-id="${err.error_id}" data-stage="${stageId}"`;
+  if (kind === 'good'){
+    return `<span class="und good" data-annotation="good" ${attrs}>${textToHtml(bad)}</span>`;
+  }
+  const fix = String(err.correction || '').trim();
+  if (!dense && fix && isReorder(bad, fix)){
+    const rr = renderReorder(bad, fix);
+    if (rr) return `<span class="mvw" ${attrs}>${rr}</span>`;
+  }
+  if (!dense && isWordFix(err, bad)){
+    return `<span class="fix" ${attrs}>${esc2(fix)}</span>`;
+  }
+  return `<span class="und" data-annotation="${kind}" ${attrs}>${textToHtml(bad)}</span>`;
+}
+
+/* split into contiguous sentence ranges [{s,e}] covering the whole text */
+function sentenceRanges(text){
+  const n = text.length;
+  if (!n) return [{ s: 0, e: 0 }];
+  const out = [];
+  let start = 0;
+  for (let i = 0; i < n; i += 1){
+    if (/[.!?\n]/.test(text[i])){
+      let e = i + 1;
+      while (e < n && /[\s.!?]/.test(text[e])) e += 1;   /* absorb trailing punct + space */
+      out.push({ s: start, e });
+      start = e; i = e - 1;
+    }
+  }
+  if (start < n) out.push({ s: start, e: n });
+  return out.length ? out : [{ s: 0, e: n }];
+}
+
+function renderAnnotatedHTML(text, anchored, stageId){
+  const sents = sentenceRanges(text);
+  const buckets = sents.map(() => []);
+  anchored.forEach(err => {
+    const mid = (err.start + err.end) / 2;
+    let bi = sents.findIndex(r => mid >= r.s && mid < r.e);
+    if (bi < 0) bi = sents.length - 1;
+    buckets[bi].push(err);
+  });
+  let html = '';
+  sents.forEach((r, bi) => {
+    const errs = buckets[bi].slice().sort((a, b) => a.start - b.start);
+    const dense = errs.length >= DENSE_MIN;
+    let cursor = r.s;
+    errs.forEach(err => {
+      if (err.start < cursor) return;
+      html += textToHtml(text.slice(cursor, err.start));
+      html += renderOneError(text, err, stageId, dense);
+      cursor = err.end;
+    });
+    html += textToHtml(text.slice(cursor, r.e));
+    if (dense) html += ` <span class="rev-badge">${errs.length}</span>`;
+  });
+  return html;
+}
+
+/* the whole essay, every non-empty part with its heading, annotated */
+function renderReviewFull(){
+  const blocks = STAGES.map(s => {
+    const text = drafts[s.id] || '';
+    if (!text.trim()) return '';
+    const anchored = anchorErrors(text, stageErrors(s.id));
+    const n = anchored.length;
+    return `<div class="rev-part" data-stage="${s.id}">
+      <div class="rev-head">${esc2(s.title)}${n ? `<span class="rev-count">${n}</span>` : ''}</div>
+      <div class="rev-text">${renderAnnotatedHTML(text, anchored, s.id)}</div>
+    </div>`;
+  }).filter(Boolean);
+  return blocks.length
+    ? blocks.join('')
+    : `<div class="rev-empty">Noch kein Text geschrieben.</div>`;
+}
+
+/* decide plain-editable (write) vs full annotated read-only (review) */
+function renderStageEditable(){
+  if (reviewMode){
+    editable.setAttribute('contenteditable', 'false');
+    editable.classList.add('reviewing');
+    editable.innerHTML = renderReviewFull();
+  } else {
+    editable.setAttribute('contenteditable', 'true');
+    editable.classList.remove('reviewing');
+    editable.innerText = drafts[activeStage] || '';
+  }
+}
+
+function hasAnyErrors(es){
+  if (!es || !es.analysis || !es.analysis.errorsByStage) return false;
+  return STAGES.some(s => (es.analysis.errorsByStage[s.id] || []).length);
+}
+
+function updateSwapBtn(){
+  const btn = $('#btnSwap');
+  if (!btn) return;
+  const es = currentEssay();
+  const on = !!(es && es.analysis);
+  btn.disabled = !on;
+  btn.classList.toggle('active', reviewMode);
+  btn.title = !on
+    ? 'Erst analysieren, dann die Korrekturen im Text ansehen'
+    : (reviewMode ? 'Zurück zum Schreiben' : 'Korrekturen im Text ansehen');
+}
+
+function enterReview(){
+  const es = currentEssay();
+  if (!es || !es.analysis) return;
+  syncActiveDraft();
+  reviewMode = true;
+  renderStageEditable();
+  updateSwapBtn();
+}
+
+function toggleReview(){
+  const es = currentEssay();
+  if (!es || !es.analysis) return;
+  closeAnnotationPopover();
+  if (!reviewMode){
+    enterReview();
+  } else {
+    reviewMode = false;
+    renderStageEditable();
+    updateSwapBtn();
+    editable.focus();
+  }
+}
+
+/* ---- correction card (popover) ---- */
+function splitStrategies(text){
+  return String(text || '').split(/\d\)\s+/g).map(s => s.trim()).filter(Boolean);
+}
+function normalizeExplanation(text){
+  const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const rows = lines.map(l => {
+    const i = l.indexOf(':');
+    if (i < 1) return null;
+    return { label: l.slice(0, i).trim(), value: l.slice(i + 1).trim() };
+  }).filter(Boolean);
+  return rows.length ? rows : [{ label: 'Объяснение', value: String(text || '').trim() }];
+}
+
+const KIND_LABEL = {
+  critical: 'Kritischer Fehler',
+  correction: 'Korrektur',
+  style: 'Stil-Hinweis',
+  good: 'Gelungen',
+};
+
+/* the sentence that contains [start,end) within text */
+function sentenceAround(text, start, end){
+  const term = /[.!?\n]/;
+  let s = start;
+  while (s > 0 && !term.test(text[s - 1])) s--;
+  while (s < start && /\s/.test(text[s])) s++;
+  let e = end;
+  while (e < text.length && !term.test(text[e])) e++;
+  if (e < text.length) e++;                 /* include the terminator */
+  return { s, e };
+}
+
+/* sentence HTML with the fragment [rs,re) wrapped; `replacement` swaps the text */
+function markedSentence(sentence, rs, re, cls, replacement){
+  const mid = replacement != null ? replacement : sentence.slice(rs, re);
+  return esc2(sentence.slice(0, rs)) + `<mark class="${cls}">${esc2(mid)}</mark>` + esc2(sentence.slice(re));
+}
+
+function annotationCardHTML(err){
+  const kind = annoKind(err);
+  const explanation = normalizeExplanation(err.explanation_ru || '');
+  const whatWrong = err.what_wrong_ru
+    || (explanation.find(x => x.label.toLowerCase().includes('что')) || {}).value
+    || (explanation[0] || {}).value || 'Есть неточность в формулировке.';
+  const whyBad = err.why_bad_ru
+    || (explanation.find(x => x.label.toLowerCase().includes('почему')) || {}).value || '';
+  const hints = splitStrategies(err.how_to_fix_ru || '');
+  const isGood = kind === 'good';
+
+  /* the error in its sentence, and the corrected sentence */
+  const text = String(err.__text || '');
+  const excerpt = String(err.excerpt || '');
+  const fix = String(err.correction || '').trim();
+  const fixSentence = String(err.corrected_sentence_de || '').trim();
+  let sentenceHTML = '';
+  let fixedHTML = '';
+  let origSentence = '';
+  if (text && Number.isFinite(err.start) && Number.isFinite(err.end) && err.end > err.start){
+    const { s, e } = sentenceAround(text, err.start, err.end);
+    origSentence = text.slice(s, e).trim();
+    const rs = err.start - s, re = err.end - s;
+    sentenceHTML = markedSentence(text.slice(s, e), rs, re, 'ann-mark-err');
+  }
+  if (!isGood && fixSentence && fixSentence !== origSentence){
+    /* whole corrected sentence from the model — no fragile reconstruction */
+    fixedHTML = `<mark class="ann-mark-fix">${esc2(fixSentence)}</mark>`;
+  } else if (!isGood && fix && fix !== excerpt && sentenceHTML){
+    /* fallback: swap the fragment in place */
+    const { s, e } = sentenceAround(text, err.start, err.end);
+    fixedHTML = markedSentence(text.slice(s, e), err.start - s, err.end - s, 'ann-mark-fix', fix);
+  }
+
+  /* collapsible variants (read-only, no insert) */
+  const variants = [];
+  if (err.b1_variant_de){
+    variants.push(`<div class="annotation-variant annotation-variant-b1">
+      <span class="annotation-variant-level">B1</span><p>${esc2(err.b1_variant_de)}</p>
+      ${err.b1_explain_ru ? `<p class="annotation-variant-explain">${esc2(err.b1_explain_ru)}</p>` : ''}
+    </div>`);
+  }
+  if (err.b2_variant_de){
+    variants.push(`<div class="annotation-variant annotation-variant-b2">
+      <span class="annotation-variant-level">B2</span><p>${esc2(err.b2_variant_de)}</p>
+      ${err.b2_explain_ru ? `<p class="annotation-variant-explain">${esc2(err.b2_explain_ru)}</p>` : ''}
+    </div>`);
+  }
+
+  const moreBits = [];
+  if (whyBad && !isGood) moreBits.push(`<div class="ann-block"><h4>Почему важно</h4><p>${esc2(whyBad)}</p></div>`);
+  if (variants.length && !isGood) moreBits.push(`<div class="ann-block"><h4>Варианты формулировки</h4>${variants.join('')}</div>`);
+  if (hints.length && !isGood) moreBits.push(`<div class="ann-block"><h4>Как улучшить</h4><ol class="annotation-tips">${hints.map(x => `<li>${esc2(x)}</li>`).join('')}</ol></div>`);
+  if (err.rule) moreBits.push(`<div class="ann-block"><h4>Правило</h4><p class="annotation-rule">${esc2(err.rule)}</p></div>`);
+  const moreHTML = moreBits.length
+    ? `<details class="ann-more"><summary>Подробнее</summary>${moreBits.join('')}</details>`
+    : '';
+
+  return `<div class="annotation-card annotation-card--${kind}">
+    <span class="annotation-kicker annotation-kicker--${kind}">${KIND_LABEL[kind] || 'Hinweis'}</span>
+    ${sentenceHTML ? `<div class="ann-sentence ann-sentence--err">${sentenceHTML}</div>` : ''}
+    ${fixedHTML ? `<div class="ann-sentence ann-sentence--fix">${fixedHTML}</div>` : ''}
+    <p class="annotation-popover-lead">${esc2(whatWrong)}</p>
+    ${moreHTML}
+  </div>`;
+}
+
+function computePopoverPos(anchorRect, cardH){
+  const gap = 20, width = 360, margin = 14;
+  const spaceRight = window.innerWidth - anchorRect.right - gap - margin;
+  const spaceLeft = anchorRect.left - gap - margin;
+  const side = (spaceRight >= width || spaceRight >= spaceLeft) ? 'right' : 'left';
+  let left = side === 'right' ? anchorRect.right + gap : anchorRect.left - gap - width;
+  left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+  let top = anchorRect.top + anchorRect.height / 2 - cardH / 2;
+  top = Math.max(margin, Math.min(top, window.innerHeight - cardH - margin));
+  return { top, left };
+}
+
+function closeAnnotationPopover(){
+  selectedAnnotation = null;
+  const pop = $('#annPopover'), bd = $('#annBackdrop');
+  if (pop) pop.setAttribute('hidden', '');
+  if (bd) bd.setAttribute('hidden', '');
+  document.querySelectorAll('#editable span[data-error-id].sel')
+    .forEach(s => s.classList.remove('sel'));
+}
+
+function openAnnotationPopover(err, spanEl){
+  const pop = $('#annPopover'), content = $('#annContent'), bd = $('#annBackdrop');
+  if (!pop || !content) return;
+  content.innerHTML = annotationCardHTML(err);
+  pop.removeAttribute('hidden');
+  if (bd) bd.removeAttribute('hidden');
+  document.querySelectorAll('#editable span[data-error-id].sel')
+    .forEach(s => s.classList.remove('sel'));
+  spanEl.classList.add('sel');
+  requestAnimationFrame(() => {
+    const pos = computePopoverPos(spanEl.getBoundingClientRect(), pop.offsetHeight || 300);
+    pop.style.top = pos.top + 'px';
+    pop.style.left = pos.left + 'px';
+  });
+  selectedAnnotation = { stageId: activeStage, error_id: err.error_id };
+}
+
+function onAnnotationAction(action, text){
+  if (action === 'insert'){
+    reviewMode = false;
+    renderStageEditable();
+    insertText(text);
+    closeAnnotationPopover();
+    updateSwapBtn();
+  }
+}
+
+function bindAnnotationEvents(){
+  editable.addEventListener('click', (e) => {
+    const span = e.target.closest('span[data-error-id]');
+    if (!span) return;
+    const stageId = span.getAttribute('data-stage') || activeStage;
+    const err = anchorErrors(drafts[stageId] || '', stageErrors(stageId))
+      .find(x => x.error_id === span.getAttribute('data-error-id'));
+    if (err){ err.__text = drafts[stageId] || ''; openAnnotationPopover(err, span); }
+  });
+  const bd = $('#annBackdrop');
+  if (bd) bd.addEventListener('click', closeAnnotationPopover);
+  const closeBtn = $('#annClose');
+  if (closeBtn) closeBtn.addEventListener('click', closeAnnotationPopover);
+  const content = $('#annContent');
+  if (content) content.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-annotation-action]');
+    if (!btn) return;
+    onAnnotationAction(
+      btn.getAttribute('data-annotation-action'),
+      decodeURIComponent(btn.getAttribute('data-annotation-text') || ''),
+    );
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAnnotationPopover();
+  });
+  const swap = $('#btnSwap');
+  if (swap) swap.addEventListener('click', toggleReview);
+}
+
+/* ---------- snapshots & Mistral analysis (SSE via SchreibenApi) ---------- */
+function applyPartFeedback(event) {
+  const e = currentEssay();
+  if (!e || !event || !event.part) return;
+  const stageId = apiToStage(event.part);
+  if (!e.partFeedback) e.partFeedback = {};
+  if (event.feedback_ru) {
+    e.partFeedback[stageId] = event.feedback_ru;
+    if (stageId === activeStage) {
+      $('#tipLead').textContent = 'Feedback:';
+      $('#tipText').textContent = event.feedback_ru;
+    }
+  }
+}
+
+function scopePayload(scope, full) {
+  if (scope === 'full') return { ...full, scoped: false };
+  const apiPart = API_PART[scope];
+  const partReport = (full.part_reports || []).find(p => p.part === apiPart);
+  return {
+    ...full,
+    scoped: true,
+    overall_score: partReport ? partReport.score : 0,
+    part_reports: partReport ? [partReport] : [],
+    errors: (full.errors || []).filter(err => err.part === apiPart),
+    final_summary: null,
+  };
+}
+
+async function runAnalysis(scope) {
+  const es = currentEssay();
+  if (!es) { aerr('runAnalysis: no active essay'); return; }
+  if (analyzing) { alog('runAnalysis: already running, ignoring click'); return; }
+  alog('runAnalysis start · scope =', scope, '· essay =', es.id, '· apiId =', es.apiId);
+
+  if (!window.SchreibenApi) {
+    aerr('runAnalysis: SchreibenApi missing');
+    flashSaved('Backend nicht erreichbar');
+    return;
+  }
+  if (!(await ensureBackendReady())) {
+    aerr('runAnalysis: backend not reachable (health failed)');
+    flashSaved('Backend nicht erreichbar');
+    return;
+  }
+
+  analyzing = true;
+  setAnaState('pending');
+  syncActiveDraft();
+  const btnFull = $('#btnAnalyze');
+  const btnPart = $('#btnAnalyzePart');
+  btnFull.disabled = true;
+  btnPart.disabled = true;
+
+  let snapshotId = null;
+  if (scope === 'full') {
+    const snap = takeSnapshot('Analyse');
+    snapshotId = snap ? snap.id : null;
+  } else {
+    saveStore();
+  }
+
+  try {
+    flashSaved('Speichern…');
+    await persistEssayToApi();
+    if (!es.apiId) throw new Error('Essay nicht gespeichert');
+
+    const apiPart = scope === 'full' ? null : (API_PART[scope] || null);
+    alog('essay persisted · apiId =', es.apiId, '— starting stream · part =', apiPart || 'all');
+    let donePayload = null;
+    await SchreibenApi.streamAnalyze(es.apiId, (event) => {
+      if (!event || !event.type) return;
+      if (event.type === 'part_start') {
+        alog('part_start', event.part);
+        flashSaved(`Analysiere ${event.label || event.part}…`);
+        return;
+      }
+      if (event.type === 'part_done') {
+        alog('part_done', event.part, '· score', event.score, '· errors', (event.errors || []).length);
+        applyPartFeedback(event);
+      }
+      if (event.type === 'done') {
+        alog('done · grade', event.grade, '· score', event.overall_score, '· errors', (event.errors || []).length);
+        donePayload = {
+          overall_score: event.overall_score,
+          grade: event.grade,
+          errors: event.errors || [],
+          part_reports: event.part_reports || [],
+          final_summary: event.final_summary || null,
+          model: event.model || '',
+        };
+      }
+    }, apiPart);
+
+    if (!donePayload) throw new Error('Keine Analyse-Antwort');
+
+    /* group the flat error list by stage, tag each with a stable id */
+    const byStage = Object.fromEntries(STAGES.map(s => [s.id, []]));
+    (donePayload.errors || []).forEach(err => {
+      const stageId = apiToStage(err.part);
+      if (!byStage[stageId]) return;
+      byStage[stageId].push({ ...err, error_id: errorKey(stageId, err) });
+    });
+
+    if (scope === 'full' || !es.analysis) {
+      es.analysis = {
+        errorsByStage: byStage,
+        part_reports: donePayload.part_reports || [],
+        final_summary: donePayload.final_summary || null,
+        grade: donePayload.grade,
+        overall_score: donePayload.overall_score,
+        model: donePayload.model || '',
+        created: Date.now(),
+      };
+    } else {
+      /* scoped part run — replace only that stage, keep the rest */
+      es.analysis.errorsByStage[scope] = byStage[scope] || [];
+      const others = (es.analysis.part_reports || []).filter(r => apiToStage(r.part) !== scope);
+      es.analysis.part_reports = [...others, ...(donePayload.part_reports || [])];
+      es.analysis.created = Date.now();
+    }
+    delete es.reports;            /* drop the old timestamped history */
+    delete es.activeReportId;
+    saveStore();
+
+    const errCount = (donePayload.errors || []).length;
+    flashSaved(scope === 'full'
+      ? `Analysiert · ${donePayload.grade} (${donePayload.overall_score}) · ${errCount} Hinweise`
+      : `Teil analysiert · ${errCount} Hinweise`);
+    alog('runAnalysis complete · scope', scope, '· errors', errCount);
+    enterReview();                /* flip the sheet to show marks in the text */
+    renderAnalysen();             /* refresh the summary panel */
+    setAnaState('done');
+  } catch (err) {
+    aerr('runAnalysis failed', err);
+    flashSaved(`Analyse fehlgeschlagen: ${err && err.message ? err.message : 'Unbekannter Fehler'}`);
+    setAnaState('error');
+  } finally {
+    analyzing = false;
+    btnFull.disabled = false;
+    btnPart.disabled = false;
+    alog('runAnalysis end · analyzing =', analyzing);
+  }
+}
 function takeSnapshot(label){
   const e = currentEssay();
   if (!e) return null;
-  drafts[activeStage] = editable.innerText;
+  syncActiveDraft();
   const snap = { id: uid('s'), label, drafts: { ...drafts }, created: Date.now() };
   e.snapshots.push(snap);
   saveStore();
@@ -996,57 +1727,67 @@ function flashSaved(msg){
   el.textContent = msg;
   setTimeout(() => { el.textContent = old; }, 1600);
 }
+
+/* ---- analysis request state indicator (footer) ---- */
+const ANA_ICON = {
+  idle:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.8 14.2c.8.9 1.9 1.4 3.2 1.4s2.4-.5 3.2-1.4"/></svg>',
+  pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" opacity=".22"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>',
+  done:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.5 13.8c.9 1.1 2.1 1.7 3.5 1.7s2.6-.6 3.5-1.7"/></svg>',
+  error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.8 15.4c.8-.9 1.9-1.4 3.2-1.4s2.4.5 3.2 1.4"/></svg>',
+};
+const ANA_TITLE = { idle:'Bereit', pending:'Analysiere…', done:'Analyse fertig', error:'Analyse fehlgeschlagen' };
+let anaTickId = null, anaResetId = null, anaT0 = 0;
+
+function fmtElapsed(ms){
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+function setAnaState(state){
+  const box = $('#anaStatus');
+  if (!box) return;
+  clearInterval(anaTickId); anaTickId = null;
+  clearTimeout(anaResetId); anaResetId = null;
+  box.dataset.state = state;
+  box.title = ANA_TITLE[state] || '';
+  box.querySelector('.ana-status-ico').innerHTML = ANA_ICON[state] || ANA_ICON.idle;
+  const txt = box.querySelector('.ana-status-txt');
+  if (state === 'pending'){
+    anaT0 = Date.now();
+    txt.textContent = '0:00';
+    anaTickId = setInterval(() => { txt.textContent = fmtElapsed(Date.now() - anaT0); }, 500);
+  } else {
+    txt.textContent = state === 'done' ? 'Fertig' : (state === 'error' ? 'Fehler' : '');
+  }
+  if (state === 'done' || state === 'error'){
+    anaResetId = setTimeout(() => setAnaState('idle'), state === 'done' ? 2600 : 3600);
+  }
+}
 $('#btnSnapshot').addEventListener('click', () => {
   if (!currentEssay()) return;
   takeSnapshot('Manuell');
   flashSaved('Variante gemerkt ✓');
 });
-function busyBtn(btn){
-  btn.disabled = true;
-  btn.style.opacity = '.6';
-  setTimeout(() => { btn.disabled = false; btn.style.opacity = ''; }, 700);
-}
-$('#btnAnalyzePart').addEventListener('click', e => {
-  const es = currentEssay();
-  if (!es) return;
-  busyBtn(e.currentTarget);
-  drafts[activeStage] = editable.innerText;
-  const rep = { id: uid('r'), scope: activeStage,
-    text: drafts[activeStage], payload: null, created: Date.now() };
-  es.reports.push(rep);
-  es.activeReportId = rep.id;
-  saveStore();
-  flashSaved('Teil-Analyse angefragt …');
-  openTool('analysen', true);
-});
-$('#btnAnalyze').addEventListener('click', e => {
-  const es = currentEssay();
-  if (!es) return;
-  busyBtn(e.currentTarget);
-  const snap = takeSnapshot('Analyse');       /* full analysis freezes a variant */
-  const rep = { id: uid('r'), scope: 'full',
-    snapshotId: snap.id, payload: null, created: Date.now() };
-  es.reports.push(rep);
-  es.activeReportId = rep.id;
-  saveStore();
-  flashSaved('Analyse angefragt · Variante gemerkt ✓');
-  openTool('analysen', true);
-});
+$('#btnAnalyzePart').addEventListener('click', () => runAnalysis(activeStage));
+$('#btnAnalyze').addEventListener('click', () => runAnalysis('full'));
 
 /* =====================================================================
    init
    ===================================================================== */
-buildRoadmap();
-const initial = currentEssay();
-if (initial){
-  setSheetMode('write');
-  bindEssay(initial);
-  editable.focus();
-} else {
-  $('#tipLead').textContent = STAGES[0].tipLead;
-  $('#tipText').textContent = STAGES[0].tip;
-  updateContext();
-  updateCounters();
-  setSheetMode('start');
-}
+bindAnnotationEvents();
+setAnaState('idle');
+initBackend().then(() => {
+  buildRoadmap();
+  const initial = currentEssay();
+  if (initial){
+    setSheetMode('write');
+    bindEssay(initial);
+    editable.focus();
+  } else {
+    $('#tipLead').textContent = STAGES[0].tipLead;
+    $('#tipText').textContent = STAGES[0].tip;
+    updateContext();
+    updateCounters();
+    setSheetMode('start');
+  }
+});
 window.addEventListener('resize', buildRoadmap);

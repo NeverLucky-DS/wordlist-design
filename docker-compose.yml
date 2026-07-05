@@ -7,6 +7,10 @@ services:
       POSTGRES_DB: wordlist
       POSTGRES_USER: wordlist
       POSTGRES_PASSWORD: wordlist
+    ports:
+      # Только на localhost — нужно, чтобы read-only-postgres skill (Claude Code)
+      # мог подключиться с хоста. Dev-only, не публиковать наружу.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:

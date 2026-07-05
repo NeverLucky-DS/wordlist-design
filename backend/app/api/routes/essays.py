@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -123,7 +124,11 @@ async def analyze(essay_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{essay_id}/analyze/stream")
-async def analyze_stream(essay_id: int, db: AsyncSession = Depends(get_db)):
+async def analyze_stream(
+    essay_id: int,
+    part: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
     essay = await essays_repo.get_essay(db, essay_id)
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
@@ -133,8 +138,10 @@ async def analyze_stream(essay_id: int, db: AsyncSession = Depends(get_db)):
             text=essay.text,
             essay_type=essay.essay_type,
             level=essay.level,
+            only_part=part,
         ):
-            if event.get("type") == "done":
+            # only persist the full-essay analysis; scoped part runs are transient
+            if event.get("type") == "done" and not part:
                 await _persist_analysis(db, essay, event)
             payload = {"essay_id": essay.id, **event}
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"

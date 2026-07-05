@@ -4,35 +4,32 @@ Only files that matter for development/review.
 
 ```
 wordlist design/
-├── info/                    ← YOU ARE HERE (project docs)
+├── info/                    ← project docs (+ CRITICAL-LINKS.md)
 ├── index.html               # Wörterbuch
-├── editor.html              # Essay editor + AI analysis
 ├── schreiben.html           # Essay roadmap (Pomodoro, stages)
 ├── pipeline.html            # Pipeline dashboard
 ├── docker-compose.yml
 ├── nginx.conf
 ├── Dockerfile
-├── README.md                # User-facing intro + screenshots
+├── README.md
 ├── PIPELINE.md              # Long pipeline design doc (partially stale)
 │
 ├── css/
 │   ├── styles.css           # Wörterbuch
-│   ├── editor.css           # Editor
 │   ├── schreiben.css        # Schreiben page
 │   ├── pipeline.css         # Pipeline dashboard
-│   └── site-header.css      # Shared nav
+│   └── site-header.css      # Shared nav (index, pipeline)
 │
 ├── js/
+│   ├── words-data.js        # Shared WASH + brushOf + PIPELINE_WASHES
 │   ├── app.js               # Wörterbuch logic
-│   ├── editor.js            # Editor logic
 │   ├── schreiben.js         # Roadmap logic
-│   ├── editor-api.js        # Fetch wrapper for editor
-│   ├── site-header.js       # Nav dropdown
+│   ├── pipeline.js          # Pipeline dashboard logic
+│   ├── site-header.js       # Nav dropdown + theme toggle
 │   └── animations.js        # index.html animations
 │
-├── images/                  # Decor PNGs (14 files)
+├── images/                  # Decor PNGs (15 files)
 ├── worte/                   # Brush PNGs by level×POS (15 files)
-├── screenshots/             # README demo images (8 files)
 │
 └── backend/
     ├── app/
@@ -53,6 +50,9 @@ wordlist design/
 
 | Removed | Reason |
 |---------|--------|
+| `editor.html`, `editor.js`, `editor-api.js`, `editor.css` | Legacy parallel essay flow; not in nav |
+| `images/autumn.png` | Editor-only asset |
+| `screenshots/` | README demo images; not in UI |
 | `Deutsch Essay Design System/` | Duplicate assets; not deployed |
 | `editor-extract/` | Incomplete React stub |
 | `word-card.html`, `screenshots/Deutsch_2.png` | Orphans |

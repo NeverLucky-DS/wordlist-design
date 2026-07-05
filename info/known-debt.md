@@ -1,6 +1,6 @@
 # Known tech debt (short)
 
-Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md).
+Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
 
 ## High priority
 
@@ -10,23 +10,20 @@ Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md).
 | `normalize_grammar_data()` never called on write | `grammar_schema.py` vs `runner.py` | Messy grammar JSON in DB |
 | No Alembic migrations | `main.py` `_ensure_new_columns` only | Schema drift in prod |
 | Topic casing inconsistency | `pipeline.py` vs `runner.py` | Duplicate topic keys |
-| **Dual essay flows** | `schreiben.js` (localStorage) vs `editor.js` (API) | Two parallel writing systems |
+| **schreiben ↔ backend (частично)** | `schreiben.js` + `schreiben-api.js` | Essays + анализ через API; UI/список essays ещё localStorage |
 
 ## Medium priority
 
 | Issue | Where |
 |-------|-------|
-| `WORDS`/`WASH` triplicated | `app.js`, `editor.js`, `schreiben.js` |
-| `schreiben.js` 1052 lines, no backend yet | localStorage store |
+| `schreiben.js` ~1030 lines monolith | essay store, roadmap, tools |
 | 3 Wiktionary clients | `enrichment.py`, `wiktionary_client.py`, `backfill_grammar.py` |
 | 2 Mistral HTTP stacks | `mistral_http.py` vs `mistral_analyzer.py` |
-| `pipeline.html` inline JS | should be `js/pipeline.js` |
 | `PIPELINE_*` env not in docker-compose | tuning blocked |
 | Topic YAML packs missing | `/api/topics` empty in Docker |
 | Tests mock pipeline I/O | no discovery/enrichment/extraction tests |
-| `mistralai` in requirements, unused | `requirements.txt` |
 | Docker mounts whole repo to nginx | dev-only; exposes `backend/` via :8753 |
-| Large PNGs | `background_schreiben.png`, `autumn.png` |
+| `schreiben.html` без `site-header.css` | theme toggle частично (site-header.js подключён) |
 
 ## Low priority
 
@@ -40,12 +37,15 @@ Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md).
 | Nav `href="#"` stubs | all HTML pages |
 | `PIPELINE.md` partially stale | use `info/pipeline.md` |
 
-## Resolved ✅
+## Resolved ✅ (2026-07-04 cleanup)
 
-- Design System folder, `editor-extract`, `word-card.html` removed
+- **Editor stack removed** — `editor.html`, `editor.js`, `editor-api.js`, `editor.css`, `autumn.png`
+- **`WORDS`/`WASH` deduped** → `js/words-data.js` (index, schreiben, pipeline)
+- **`pipeline.html` inline JS** → `js/pipeline.js`
+- **`schreiben-api.js` + analyze SSE** — essays sync + Mistral stream wired (2026-07-04)
+- **`screenshots/` removed** (README no longer depends on demo PNGs)
 - Nav Schreiben → `schreiben.html`
 - Orphan PNGs: `roadmap-vine`, `mountains-corner`, `drawer-head-wash`
-- README pytest count (36)
 
 ## Maintenance tools (keep)
 

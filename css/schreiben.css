@@ -116,7 +116,8 @@ button{font-family:inherit;cursor:pointer}
 .layout{position:relative;z-index:1;display:grid;
   grid-template-columns:292px minmax(480px,1fr) 424px;
   gap:16px;align-items:start;
-  padding:10px 26px 30px;max-width:1760px;margin:0 auto}
+  padding:10px 26px 30px;max-width:1760px;margin:0 auto;
+  zoom:.9}   /* Schreiben interface a touch more compact */
 @media (max-width:1360px){
   .layout{grid-template-columns:264px minmax(440px,1fr) 384px;gap:14px;padding:8px 18px 26px}
 }
@@ -350,6 +351,22 @@ button{font-family:inherit;cursor:pointer}
 .save-var:disabled{color:var(--ink-mute);text-decoration:none;cursor:default}
 
 .foot-actions{justify-self:center;display:flex;align-items:center;gap:10px}
+
+/* analysis request state — smiley (idle/done), spinner + live timer (waiting) */
+.ana-status{display:inline-flex;align-items:center;gap:6px;margin-right:2px;
+  font:600 12px/1 'Inter',sans-serif;color:var(--ink-mute);white-space:nowrap;
+  transition:color .2s;-webkit-user-select:none;user-select:none}
+.ana-status-ico{display:inline-flex;width:19px;height:19px}
+.ana-status-ico svg{width:19px;height:19px}
+.ana-status-txt{font-variant-numeric:tabular-nums}
+.ana-status-txt:empty{display:none}
+.ana-status[data-state="pending"]{color:var(--accent)}
+.ana-status[data-state="pending"] .ana-status-ico svg{animation:anaSpin .8s linear infinite}
+.ana-status[data-state="done"]{color:#5a8a7a}
+.ana-status[data-state="error"]{color:#c0392b}
+@keyframes anaSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .ana-status[data-state="pending"] .ana-status-ico svg{animation:none}}
 .btn-part{background:var(--card);border:1px solid var(--line);border-radius:13px;
   padding:11px 18px;font-size:13px;font-weight:600;color:var(--ink-soft);white-space:nowrap;
   transition:border-color .18s,color .18s,box-shadow .18s}
@@ -400,7 +417,9 @@ button{font-family:inherit;cursor:pointer}
   transition:grid-template-rows .45s cubic-bezier(.32,.9,.3,1)}
 .tool-card.open .tool-body{grid-template-rows:1fr}
 .tool-body-in{overflow:hidden;min-height:0;padding:0 12px}
-.tool-card.open .tool-body-in{padding:2px 12px 14px}
+.tool-card.open .tool-body-in{
+  overflow-x:hidden;overflow-y:auto;max-height:min(52vh,520px);
+  padding:2px 12px 14px;-webkit-overflow-scrolling:touch}
 .tool-body .pager{margin-top:10px}
 
 /* ---------- pagination (same treatment as the Wörterbuch page) -------- */
@@ -472,12 +491,166 @@ button{font-family:inherit;cursor:pointer}
 .ana-row.sel{border-color:var(--accent-ln);box-shadow:0 0 0 3px var(--accent-soft)}
 .ana-dot{flex:none;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--muted)}
 .ana-row.sel .ana-dot{border-color:var(--accent);background:var(--accent)}
+.ana-row.ana-stale{opacity:.72}
+.ana-row.ana-stale .ana-txt b{color:var(--ink-mute)}
 .ana-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .ana-txt b{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink)}
 .ana-txt i{font-style:normal;font-size:11.5px;color:var(--ink-mute);font-variant-numeric:tabular-nums}
 .ana-tag{flex:none;font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
   padding:3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink)}
 .ana-empty{padding:14px 4px;color:var(--muted);font-style:italic;font-size:13px}
+.ana-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+.ana-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.ana-grade{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--accent)}
+.ana-score-val{font-size:12px;color:var(--ink-mute)}
+.ana-part{margin:0 0 10px;padding:10px 12px;background:var(--accent-soft);
+  border:1px solid var(--accent-ln);border-radius:10px}
+.ana-part-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px}
+.ana-part-top span{color:var(--accent-ink);font-variant-numeric:tabular-nums;font-weight:600}
+.ana-part p,.ana-summary p{font-size:13px;line-height:1.45;color:var(--ink-soft);margin:4px 0 0}
+.ana-errs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.ana-err{padding:10px 12px;border-left:3px solid var(--accent);
+  background:rgba(124,110,182,.07);border-radius:0 8px 8px 0}
+.ana-err-excerpt{display:block;font-weight:600;font-size:13px;color:var(--accent-ink);margin-bottom:4px}
+.ana-err p{font-size:12.5px;line-height:1.45;color:var(--ink-soft);margin:0}
+.ana-b2{font-size:12px;color:var(--ink-mute);margin-top:6px!important}
+.ana-b2 b{color:var(--accent-ink)}
+.ana-summary{margin-top:12px;padding-top:10px;border-top:1px dashed var(--rule)}
+.ana-meta{margin:0 0 12px;font-size:11.5px;color:var(--ink-mute);font-variant-numeric:tabular-nums}
+.ana-swaplink{margin-left:auto;border:1px solid var(--accent-ln);background:var(--card);
+  color:var(--accent-ink);font:600 11px/1 'Inter',sans-serif;padding:7px 11px;border-radius:8px;cursor:pointer}
+.ana-swaplink:hover{background:var(--accent-soft)}
+
+/* =====================================================================
+   Inline annotation review — swap button, underlines, correction card
+   ===================================================================== */
+.btn-swap{position:absolute;top:14px;right:18px;z-index:5;display:inline-flex;align-items:center;gap:7px;
+  padding:8px 13px;border:1px solid var(--accent-ln);border-radius:10px;background:var(--card);
+  color:var(--accent-ink);font:600 12px/1 'Inter',sans-serif;cursor:pointer;
+  box-shadow:0 2px 10px rgba(44,40,51,.05);transition:background .15s,border-color .15s,opacity .15s}
+.btn-swap svg{width:16px;height:16px}
+.btn-swap:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent)}
+.btn-swap.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-swap:disabled{opacity:.4;cursor:not-allowed}
+.sheet.starting .btn-swap,.sheet.listing .btn-swap{display:none}
+
+/* read-only annotated view — corrections shown as a teacher's red pen */
+.editable.reviewing{cursor:default}
+.editable span[data-error-id]{cursor:pointer;border-radius:2px;transition:background .12s}
+.editable span[data-error-id]:hover{background:rgba(192,57,43,.1)}
+.editable span[data-error-id].sel{background:rgba(192,57,43,.15)}
+
+/* replacement — the corrected word/phrase in red, in place of the wrong one */
+.editable .fix{color:#c0392b;font-weight:600}
+
+/* kept-original with a red underline (multi-word rewrites, dense sentences, style) */
+.editable .und{text-decoration:underline;text-decoration-color:rgba(192,57,43,.5);
+  text-decoration-thickness:2px;text-underline-offset:3px}
+.editable .und.good{text-decoration-color:#5a8a7a}
+.editable span[data-error-id].und.good:hover,
+.editable span[data-error-id].und.good.sel{background:rgba(90,138,122,.14)}
+
+/* word-order move — circle the word, arrow above, red caret at destination */
+.editable .mvw{white-space:nowrap}
+.editable .mv-word{position:relative;display:inline-block;margin:0 2px;padding:0 5px;
+  border:1.5px solid #c0392b;border-radius:11px;color:#c0392b;line-height:1.25}
+.editable .mv-arrow{position:absolute;left:50%;top:-.92em;transform:translateX(-50%);
+  font-size:.72em;color:#c0392b;line-height:1;font-weight:700}
+.editable .mv-caret{display:inline-block;width:0;height:1em;margin:0 2px;
+  border-left:2px solid #c0392b;border-radius:1px;vertical-align:-.18em}
+
+/* count badge on error-dense sentences (details on click) */
+.editable .rev-badge{display:inline-block;min-width:15px;padding:0 5px;margin-left:5px;
+  border-radius:9px;background:rgba(192,57,43,.14);color:#c0392b;
+  font:600 10px/16px 'Inter',sans-serif;text-align:center;vertical-align:.12em}
+
+/* correction card popover */
+.ann-backdrop{position:fixed;inset:0;z-index:88;border:none;background:transparent;cursor:default}
+.ann-popover{position:fixed;z-index:90;width:min(360px,calc(100vw - 28px));
+  max-height:min(76vh,520px);overflow-y:auto;padding:20px 22px 18px;
+  background:var(--card);border:1px solid var(--accent-ln);border-radius:14px;
+  box-shadow:0 1px 2px rgba(44,40,51,.05),0 24px 48px -20px rgba(44,40,51,.28);
+  font-family:'Inter',system-ui,sans-serif}
+.ann-popover[hidden]{display:none}
+.ann-close{position:absolute;top:12px;right:12px;width:26px;height:26px;display:grid;place-items:center;
+  border:none;background:none;color:var(--ink-mute);cursor:pointer;border-radius:7px}
+.ann-close:hover{background:var(--accent-soft);color:var(--ink)}
+.ann-close svg{width:15px;height:15px}
+.annotation-card{position:relative;padding-left:12px}
+.annotation-card::before{content:"";position:absolute;left:-2px;top:2px;bottom:2px;width:3px;border-radius:3px}
+.annotation-card--critical::before{background:#c85a45}
+.annotation-card--correction::before{background:#c0883a}
+.annotation-card--style::before{background:var(--accent)}
+.annotation-card--good::before{background:#5a8a7a}
+.annotation-kicker{display:inline-block;margin-bottom:12px;padding:3px 9px;border-radius:6px;
+  font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.annotation-kicker--critical{background:rgba(200,90,69,.12);color:#b34a37}
+.annotation-kicker--correction{background:rgba(192,136,58,.14);color:#a2712a}
+.annotation-kicker--style{background:var(--accent-soft);color:var(--accent-ink)}
+.annotation-kicker--good{background:rgba(90,138,122,.14);color:#4c7767}
+.annotation-section{margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid var(--line)}
+.annotation-section:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.annotation-section-title{margin:0 0 7px;font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-mute)}
+.annotation-popover-lead{margin:0;font-family:'Cormorant Garamond',serif;font-size:19px;
+  line-height:1.4;color:var(--ink)}
+.annotation-popover-sub{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.45}
+.annotation-variant{margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--line)}
+.annotation-variant:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.annotation-variant p{margin:0 0 7px;font-family:'Cormorant Garamond',serif;font-size:16px;
+  font-style:italic;line-height:1.42;color:var(--ink)}
+.annotation-variant-level{display:inline-block;margin-bottom:6px;padding:2px 8px;font-size:9.5px;
+  font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:4px}
+.annotation-variant-b1{padding-left:11px;border-left:3px solid #5a8a7a}
+.annotation-variant-b1 .annotation-variant-level{background:rgba(90,138,122,.14);color:#4c7767}
+.annotation-variant-b2{padding-left:11px;border-left:3px solid var(--accent)}
+.annotation-variant-b2 .annotation-variant-level{background:var(--accent-soft);color:var(--accent-ink)}
+.annotation-variant-explain{margin:0 0 7px!important;font-size:12px!important;font-style:normal!important;
+  color:var(--ink-soft);line-height:1.4}
+.annotation-tips{margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-soft);line-height:1.5}
+.annotation-tips li{margin-bottom:3px}
+.annotation-rule{margin:10px 0 0;font-size:11.5px;line-height:1.4;color:var(--ink-mute);font-style:italic}
+.btn-ghost{margin-top:2px;font:600 9.5px/1 'Inter',sans-serif;letter-spacing:.06em;text-transform:uppercase;
+  padding:7px 11px;border:1px solid var(--accent-ln);border-radius:6px;background:var(--card);
+  color:var(--accent-ink);cursor:pointer}
+.btn-ghost:hover{background:var(--accent-soft)}
+
+/* full-essay review layout (all parts, headings, annotated) */
+.rev-part{margin-bottom:22px}
+.rev-part:last-child{margin-bottom:0}
+.rev-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;
+  font:600 10px/1 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
+.rev-count{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 5px;border-radius:9px;
+  background:var(--accent-soft);color:var(--accent-ink);font-size:10px;letter-spacing:0}
+.rev-text{font-size:16.5px;line-height:1.85;color:var(--ink)}
+.rev-empty{color:var(--muted);font-style:italic;font-size:14px}
+
+/* sentence-in-context inside the correction card */
+.ann-sentence{margin:0 0 8px;padding:10px 12px;border-radius:9px;
+  font-family:'Cormorant Garamond',serif;font-size:16px;line-height:1.5}
+.ann-sentence--err{background:rgba(200,90,69,.07);border:1px solid rgba(200,90,69,.2)}
+.ann-sentence--fix{background:rgba(90,138,122,.08);border:1px solid rgba(90,138,122,.22);margin-bottom:12px}
+.ann-mark-err{background:rgba(200,90,69,.16);color:#a8412f;border-radius:3px;padding:0 2px;font-style:normal}
+.ann-mark-fix{background:rgba(90,138,122,.2);color:#3f6d5c;border-radius:3px;padding:0 2px;font-style:normal;font-weight:600}
+.ann-more{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.ann-more>summary{cursor:pointer;list-style:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent-ink);padding:4px 0}
+.ann-more>summary::-webkit-details-marker{display:none}
+.ann-more>summary::after{content:' ▾';color:var(--accent)}
+.ann-more[open]>summary::after{content:' ▴'}
+.ann-block{margin-top:12px}
+.ann-block h4{margin:0 0 6px;font:600 9.5px/1 'Inter',sans-serif;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-mute)}
+.ann-block p{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.45}
+
+/* collapsible folds in the Analysen summary panel */
+.ana-fold{margin-top:10px;border-top:1px solid var(--rule);padding-top:8px}
+.ana-fold>summary{cursor:pointer;list-style:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-mute);padding:4px 0}
+.ana-fold>summary::-webkit-details-marker{display:none}
+.ana-fold>summary::after{content:' ▾';color:var(--accent)}
+.ana-fold[open]>summary::after{content:' ▴'}
+.ana-fold>*:not(summary){margin-top:8px}
 
 /* ---------- Schreibhilfen — paper slips with watercolor edges --------- */
 .kli-cap{margin:8px 2px 10px;font-size:10.5px;font-weight:700;letter-spacing:2.2px;

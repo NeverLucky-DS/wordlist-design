@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/schreiben.css?v=10">
+<link rel="stylesheet" href="css/schreiben.css?v=16">
 </head>
 <body>
 
@@ -114,6 +114,16 @@
           <span class="auf" id="themaAufgabe"></span>
         </div>
 
+        <!-- swap ⇄ : flip the sheet between writing and the annotated review -->
+        <button class="btn-swap" id="btnSwap" type="button" disabled
+                title="Erst analysieren, dann die Korrekturen im Text ansehen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 4L3 8l4 4"/><path d="M3 8h13a4 4 0 0 1 4 4"/>
+            <path d="M17 20l4-4-4-4"/><path d="M21 16H8a4 4 0 0 1-4-4"/>
+          </svg>
+          <span class="btn-swap-lbl">Korrekturen</span>
+        </button>
+
         <!-- tail of the previous part — click takes you there -->
         <button class="ctx ctx-prev" id="ctxPrev" type="button" hidden aria-label="Zum vorherigen Teil">
           <span class="ctx-clip"><span class="ctx-text" id="ctxPrevText"></span></span>
@@ -134,6 +144,10 @@
       <div class="sheet-foot">
         <span class="wc" id="wordCount">0 Wörter</span>
         <div class="foot-actions">
+          <span class="ana-status" id="anaStatus" data-state="idle" role="status" aria-live="polite" title="Bereit">
+            <span class="ana-status-ico" aria-hidden="true"></span>
+            <span class="ana-status-txt"></span>
+          </span>
           <button class="btn-part" id="btnAnalyzePart" type="button">Teil analysieren</button>
           <button class="btn-analyze" id="btnAnalyze" type="button">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.6 5.1L19 8.7l-4.2 3.1L16.4 17 12 13.9 7.6 17l1.6-5.2L5 8.7l5.4-.6z"/></svg>
@@ -194,6 +208,15 @@
   <div class="wc-overlay" id="wcOverlay"></div>
   <article id="wordCard"></article>
 
+  <!-- ===================== Correction card (inline annotation) ===================== -->
+  <button class="ann-backdrop" id="annBackdrop" type="button" hidden aria-label="Schließen"></button>
+  <div class="ann-popover" id="annPopover" hidden role="dialog" aria-label="Korrektur">
+    <button class="ann-close" id="annClose" type="button" aria-label="Schließen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div id="annContent"></div>
+  </div>
+
   <!-- live dashed connector: card word ↔ list word -->
   <svg class="link-line" id="linkLine" aria-hidden="true" hidden>
     <path id="linkPath" d=""/>
@@ -201,6 +224,9 @@
     <circle id="linkDot" class="ll-dot" r="4"/>
   </svg>
 
-  <script src="js/schreiben.js?v=10"></script>
+  <script src="js/site-header.js?v=5"></script>
+  <script src="js/words-data.js?v=1"></script>
+  <script src="js/schreiben-api.js?v=4"></script>
+  <script src="js/schreiben.js?v=19"></script>
 </body>
 </html>

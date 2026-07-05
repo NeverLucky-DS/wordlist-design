@@ -2,36 +2,7 @@
    Deutsch Essay · Wörterbuch — app logic (data + rendering)
    ===================================================================== */
 
-/* ---------- brushes ----------------------------------------------------
-   Each word gets its OWN brush by LEVEL + grammatical TYPE
-   (der/die/das/Verb/Adjektiv) — so B1/B2/C1 look distinct, and every
-   gender/part-of-speech has its own colour. Rendered as the real PNG with
-   its own paint; opacity is dialled down in CSS to keep the soft, faded feel
-   and keep black text readable. */
-const WASH = {
-  "B1|der":"B1_Der_Powdery-Blue_Horizontal-Soft.png",
-  "B1|die":"B1_Die_Powdery-Pink_BG-Wash.png",
-  "B1|das":"B1_Das_Pale-Green_BG-Wash.png",
-  "B1|verb":"B1_Verbs_Sandy-Ochre_BG-Wash.png",
-  "B1|adj":"B1_Adjectives_Lavender_BG-Wash.png",
-  "B2|der":"B2_Der_Deep-Blue_BG-Wash.png",
-  "B2|die":"B2_Die_Magenta_BG-Wash.png",
-  "B2|das":"B2_Das_Grass-Green_BG-Wash.png",
-  "B2|verb":"B2_Verbs_Terracotta_BG-Wash.png",
-  "B2|adj":"B2_Adjectives_Amethyst_BG-Wash.png",
-  "C1|der":"C1_Der_Indigo_BG-Wash.png",
-  "C1|die":"C1_Die_Burgundy_BG-Wash.png",
-  "C1|das":"C1_Das_Emerald_BG-Wash.png",
-  "C1|verb":"C1_Verbs_Olive-Ochre_BG-Wash.png",
-  "C1|adj":"C1_Adjectives_Plum_BG-Wash.png"
-};
-function typeKey(w){ return w.pos==="verb" ? "verb" : (w.pos==="adj" ? "adj" : w.art); }
-/* absolute URL (resolved against the document, not the stylesheet) so the
-   brush loads correctly when referenced from a CSS custom property */
-function brushOf(w){
-  const f = WASH[w.level+"|"+typeKey(w)] || "";
-  return `url('${new URL('worte/'+f, document.baseURI).href}')`;
-}
+/* brushOf, typeKey, WASH — js/words-data.js */
 
 /* ---------- data ---------- */
 const WORDS = [

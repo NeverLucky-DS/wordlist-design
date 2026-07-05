@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
+import time
 
 import httpx
 
 from app.config import settings
+from app.pipeline.mistral_http import post_mistral_json
+
+
+logger = logging.getLogger(__name__)
 
 
 PART_ORDER = ["einleitung", "argument1", "argument2", "schluss"]
@@ -38,11 +44,17 @@ def _build_part_prompt(
         "Серьезность: critical|medium|suggestion.\n"
         "Верни объект с полями part_score(0..100), part_feedback_ru, errors[].\n"
         "Каждый элемент errors содержит:\n"
-        "start, end, excerpt, type, severity, annotation_kind, explanation_ru, correction, rule,\n"
+        "start, end, excerpt, type, severity, annotation_kind, explanation_ru, correction, corrected_sentence_de, rule,\n"
         "annotation_kind: critical|style|b2_potential|good_fragment|suggestion.\n"
         "what_wrong_ru, why_bad_ru, how_to_fix_ru,\n"
         "b1_variant_de, b2_variant_de, b1_explain_ru, b2_explain_ru, study_phrases_de[].\n"
         "excerpt — точный проблемный фрагмент из текста (обязательно).\n"
+        "correction — ОБЯЗАТЕЛЬНО: исправленная версия ИМЕННО этого excerpt (тот же кусок, но верно).\n"
+        "  Для good_fragment (удачное место) correction = сам excerpt.\n"
+        "corrected_sentence_de — ОБЯЗАТЕЛЬНО: всё предложение (из текста), где находится excerpt,\n"
+        "  переписанное грамматически верно, сохраняя мысль автора. Готовая корректная версия целиком,\n"
+        "  а не только исправленный кусок. Для good_fragment — само предложение без изменений.\n"
+        "what_wrong_ru — объясни, почему НЕВЕРНО именно в этой конструкции/предложении, а не общее правило.\n"
         "Требования к explanation_ru:\n"
         "Пиши в 3 строках с префиксами:\n"
         "Что не так: ...\n"
@@ -63,6 +75,12 @@ def _build_part_prompt(
         "12) Ищи грамматику, артикли, порядок слов, слабые связки, повторы и неточный словарь.\n"
         "13) Если явных ошибок нет, верни errors: [].\n"
         "14) Для каждой найденной ошибки заполняй what_wrong_ru и how_to_fix_ru.\n"
+        "15) КРИТИЧНО: excerpt должен быть МИНИМАЛЬНЫМ — ровно проблемное слово или короткая фраза (обычно 1..4 слова).\n"
+        "16) КРИТИЧНО: фрагменты НЕ должны пересекаться и НЕ должны вкладываться друг в друга.\n"
+        "    Не возвращай длинную версию того же места и короткую отдельно — выбери один минимальный фрагмент.\n"
+        "    Пример НЕПРАВИЛЬНО: 'von dumme', затем 'von dumme Möglichkeiten', затем 'voll der Varianten: von dumme'.\n"
+        "    Пример ПРАВИЛЬНО: одна ошибка на 'von dumme' (или на 'dumme'), и всё.\n"
+        "17) Каждое проблемное место в тексте — ровно одна ошибка. Не дроби одно место на несколько строк.\n"
         f"Уже выданные смысловые замечания (не повторять): {previous_points_json}\n"
         "start/end должны быть валидными индексами внутри этого фрагмента.\n"
         f"Текст фрагмента:\n{text}\n"
@@ -296,6 +314,7 @@ def _normalize_error_ranges(errors: list[dict], text: str, part_key: str) -> lis
                 "annotation_kind": _infer_annotation_kind(err),
                 "explanation_ru": str(err.get("explanation_ru", "Нужна доработка фрагмента.")),
                 "correction": str(err.get("correction", "")),
+                "corrected_sentence_de": str(err.get("corrected_sentence_de", "")),
                 "rule": str(err.get("rule", "Общее правило")),
                 "what_wrong_ru": str(err.get("what_wrong_ru", "")),
                 "why_bad_ru": str(err.get("why_bad_ru", "")),
@@ -334,6 +353,37 @@ def _dedupe_errors_part(errors: list[dict]) -> list[dict]:
         seen.add(key)
         unique.append(err)
     return unique
+
+
+_SEVERITY_RANK = {"critical": 0, "medium": 1, "suggestion": 2}
+
+
+def _remove_overlapping_errors(errors: list[dict]) -> list[dict]:
+    """Убрать пересекающиеся/вложенные диапазоны — источник «пазл»-эффекта.
+
+    Mistral иногда возвращает одно и то же место несколькими фрагментами
+    растущей длины ('von dumme' ⊂ 'von dumme Möglichkeiten' ⊂ …). Для карты
+    подчёркиваний в тексте диапазоны обязаны быть непересекающимися. Сортируем
+    по (важность, короче — раньше) и жадно оставляем те, что не задевают уже
+    принятые.
+    """
+    def sort_key(err: dict) -> tuple[int, int]:
+        rank = _SEVERITY_RANK.get(str(err.get("severity", "medium")).lower(), 1)
+        span = int(err.get("end", 0)) - int(err.get("start", 0))
+        return (rank, span)
+
+    kept: list[dict] = []
+    for err in sorted(errors, key=sort_key):
+        start = int(err.get("start", 0))
+        end = int(err.get("end", start))
+        overlaps = any(
+            start < int(k.get("end", 0)) and int(k.get("start", 0)) < end
+            for k in kept
+        )
+        if not overlaps:
+            kept.append(err)
+    kept.sort(key=lambda e: int(e.get("start", 0)))
+    return kept
 
 
 async def _chat_json(client: httpx.AsyncClient, prompt: str) -> dict:
@@ -444,52 +494,113 @@ async def _analyze_single_part(
     }
 
 
-async def iter_analyze_events(*, text: str, essay_type: str, level: str):
-    """Генератор событий анализа: part_start, part_done, done."""
+def _call_mistral(prompt_text: str, *, label: str) -> dict:
+    """Single Mistral chat call for essay analysis.
+
+    Delegates to the shared `post_mistral_json` helper so essay analysis gets
+    the same retry / 429-cooldown behaviour as the enrichment pipeline (they
+    used to diverge — see info/known-debt.md). Logs timing and the failure so a
+    bad key / rate-limit / deprecated model shows up in the logs instead of
+    silently degrading to canned fallback feedback.
+    """
+    started = time.monotonic()
+    logger.info("Mistral analyze call [%s] · model=%s", label, settings.mistral_model)
+    try:
+        parsed = post_mistral_json(
+            [
+                {"role": "system", "content": "Return only valid JSON. No markdown."},
+                {"role": "user", "content": prompt_text},
+            ],
+            settings.mistral_api_key,
+            settings.mistral_model,
+            temperature=0.2,
+        )
+    except Exception:
+        logger.exception(
+            "Mistral analyze call [%s] failed after %.1fs",
+            label,
+            time.monotonic() - started,
+        )
+        raise
+    logger.info(
+        "Mistral analyze call [%s] ok in %.1fs", label, time.monotonic() - started
+    )
+    return parsed
+
+
+async def iter_analyze_events(
+    *, text: str, essay_type: str, level: str, only_part: str | None = None
+):
+    """Генератор событий анализа: part_start, part_done, done.
+
+    only_part: если задан — проверяем только одну часть эссе («Teil analysieren»),
+    без итоговой сводки по структуре.
+    """
     parts = _extract_parts(text)
+    if only_part and only_part not in PART_ORDER:
+        only_part = None
+    order = [only_part] if only_part else PART_ORDER
+
     if not settings.mistral_api_key:
+        logger.warning(
+            "MISTRAL_API_KEY is empty — returning canned fallback analysis "
+            "(no real AI check will run)"
+        )
         result = _fallback_analysis(parts)
-        yield {"type": "done", **result}
+        if only_part:
+            result["errors"] = [e for e in result["errors"] if e.get("part") == only_part]
+            result["part_reports"] = [
+                r for r in result["part_reports"] if r.get("part") == only_part
+            ]
+            result["final_summary"] = None
+        yield {"type": "done", "only_part": only_part, **result}
         return
 
+    logger.info(
+        "Essay analysis start · type=%s level=%s only_part=%s parts_filled=%s",
+        essay_type,
+        level,
+        only_part or "all",
+        [k for k in PART_ORDER if parts.get(k, "").strip()],
+    )
     part_reports: list[dict] = []
     all_errors: list[dict] = []
     final_summary: dict | None = None
     previous_points: list[str] = []
 
-    def _chat_json_sync(prompt_text: str) -> dict:
-        headers = {
-            "Authorization": f"Bearer {settings.mistral_api_key}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": settings.mistral_model,
-            "messages": [
-                {"role": "system", "content": "Return only valid JSON. No markdown."},
-                {"role": "user", "content": prompt_text},
-            ],
-            "temperature": 0.2,
-            "response_format": {"type": "json_object"},
-        }
-        response = httpx.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=45.0,
-        )
-        response.raise_for_status()
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
-
     try:
-        for part_key in PART_ORDER:
+        for part_key in order:
             part_text = parts.get(part_key, "")
             yield {
                 "type": "part_start",
                 "part": part_key,
                 "label": PART_LABELS[part_key],
             }
+
+            # Empty part → no Mistral call (saves a slow round-trip and stops
+            # the model inventing errors for text that isn't there).
+            if not part_text.strip():
+                report = {
+                    "part": part_key,
+                    "label": PART_LABELS[part_key],
+                    "score": 0,
+                    "feedback_ru": "Часть пустая: текст не написан.",
+                    "errors_count": 0,
+                    "is_empty": True,
+                }
+                part_reports.append(report)
+                yield {
+                    "type": "part_done",
+                    "part": part_key,
+                    "label": PART_LABELS[part_key],
+                    "score": 0,
+                    "feedback_ru": report["feedback_ru"],
+                    "errors": [],
+                    "errors_count": 0,
+                    "all_errors": list(all_errors),
+                    "part_reports": list(part_reports),
+                }
+                continue
 
             try:
                 part_prompt = _build_part_prompt(
@@ -500,7 +611,9 @@ async def iter_analyze_events(*, text: str, essay_type: str, level: str):
                     level=level,
                     previous_points=previous_points,
                 )
-                parsed_part = await asyncio.to_thread(_chat_json_sync, part_prompt)
+                parsed_part = await asyncio.to_thread(
+                    _call_mistral, part_prompt, label=part_key
+                )
                 errors_raw = parsed_part.get("errors", [])
                 if not isinstance(errors_raw, list):
                     errors_raw = []
@@ -517,10 +630,13 @@ async def iter_analyze_events(*, text: str, essay_type: str, level: str):
                             "Нужно улучшить точность формулировок и связность.",
                         )
                     ),
-                    "errors": _dedupe_errors_part(normalized_errors),
+                    "errors": _remove_overlapping_errors(
+                        _dedupe_errors_part(normalized_errors)
+                    ),
                     "is_empty": not part_text.strip(),
                 }
             except Exception:
+                logger.exception("Part analysis failed [%s] — using per-part fallback", part_key)
                 part_result = {
                     "part": part_key,
                     "score": 60 if part_text.strip() else 0,
@@ -562,39 +678,44 @@ async def iter_analyze_events(*, text: str, essay_type: str, level: str):
                 "part_reports": list(part_reports),
             }
 
-        try:
-            final_prompt = _build_final_prompt(
-                essay_type=essay_type,
-                level=level,
-                blocks=parts,
-                part_reports=part_reports,
-            )
-            final_parsed = await asyncio.to_thread(_chat_json_sync, final_prompt)
-            final_summary = {
-                "structure_feedback_ru": str(
-                    final_parsed.get(
-                        "structure_feedback_ru",
-                        "Структура частично выдержана, улучшите связки между блоками.",
-                    )
-                ),
-                "topic_feedback_ru": str(
-                    final_parsed.get(
-                        "topic_feedback_ru",
-                        "Тема обозначена, но раскрыта неравномерно.",
-                    )
-                ),
-                "strengths_ru": list(final_parsed.get("strengths_ru", []))[:4],
-                "next_steps_ru": list(final_parsed.get("next_steps_ru", []))[:4],
-                "overall_comment_ru": str(
-                    final_parsed.get(
-                        "overall_comment_ru",
-                        "Продолжайте: уже есть основа, нужно добавить точности и примеров.",
-                    )
-                ),
-            }
-        except Exception:
-            final_summary = _fallback_final_summary()
+        if not only_part:
+            try:
+                final_prompt = _build_final_prompt(
+                    essay_type=essay_type,
+                    level=level,
+                    blocks=parts,
+                    part_reports=part_reports,
+                )
+                final_parsed = await asyncio.to_thread(
+                    _call_mistral, final_prompt, label="final_summary"
+                )
+                final_summary = {
+                    "structure_feedback_ru": str(
+                        final_parsed.get(
+                            "structure_feedback_ru",
+                            "Структура частично выдержана, улучшите связки между блоками.",
+                        )
+                    ),
+                    "topic_feedback_ru": str(
+                        final_parsed.get(
+                            "topic_feedback_ru",
+                            "Тема обозначена, но раскрыта неравномерно.",
+                        )
+                    ),
+                    "strengths_ru": list(final_parsed.get("strengths_ru", []))[:4],
+                    "next_steps_ru": list(final_parsed.get("next_steps_ru", []))[:4],
+                    "overall_comment_ru": str(
+                        final_parsed.get(
+                            "overall_comment_ru",
+                            "Продолжайте: уже есть основа, нужно добавить точности и примеров.",
+                        )
+                    ),
+                }
+            except Exception:
+                logger.exception("Final-summary analysis failed — using fallback summary")
+                final_summary = _fallback_final_summary()
     except Exception:
+        logger.exception("Essay analysis aborted — returning full fallback analysis")
         result = _fallback_analysis(parts)
         yield {"type": "done", **result}
         return
@@ -602,13 +723,20 @@ async def iter_analyze_events(*, text: str, essay_type: str, level: str):
     scores = [int(report.get("score", 0)) for report in part_reports if not report.get("is_empty")]
     overall_score, grade = _grade_from_scores(scores)
 
+    logger.info(
+        "Essay analysis done · grade=%s score=%d errors=%d",
+        grade,
+        overall_score,
+        len(all_errors),
+    )
     yield {
         "type": "done",
+        "only_part": only_part,
         "overall_score": overall_score,
         "grade": grade,
         "errors": all_errors,
         "part_reports": part_reports,
-        "final_summary": final_summary or _fallback_final_summary(),
+        "final_summary": None if only_part else (final_summary or _fallback_final_summary()),
         "model": settings.mistral_model,
     }
 
