@@ -363,21 +363,3 @@ async def enrich_batch(
         enriched_pairs.append((c, enriched))
 
     return enriched_pairs, failed
-
-
-async def enrich_word(
-    candidate: WordCandidate,
-    mistral_api_key: str,
-    mistral_model: str,
-    wiktionary_semaphore: asyncio.Semaphore,
-    mistral_semaphore: asyncio.Semaphore,
-) -> tuple[EnrichedWord | None, list[PipelineError]]:
-    """Single-word compatibility wrapper around enrich_batch."""
-    pairs, failed = await enrich_batch(
-        [candidate], mistral_api_key, mistral_model,
-        wiktionary_semaphore, mistral_semaphore,
-    )
-    errors = [err for _, err in failed]
-    if pairs:
-        return pairs[0][1], errors
-    return None, errors

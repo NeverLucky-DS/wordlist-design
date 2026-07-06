@@ -12,7 +12,6 @@ wordlist design/
 ├── nginx.conf
 ├── Dockerfile
 ├── README.md
-├── PIPELINE.md              # Long pipeline design doc (partially stale)
 │
 ├── css/
 │   ├── styles.css           # Wörterbuch
@@ -57,9 +56,11 @@ wordlist design/
 | `editor-extract/` | Incomplete React stub |
 | `word-card.html`, `screenshots/Deutsch_2.png` | Orphans |
 | `images/roadmap-vine.png`, `mountains-corner.png`, `drawer-head-wash.png` | Unreferenced |
+| `PIPELINE.md` | Superseded by `info/pipeline.md`; long + partially stale (removed 2026-07-06) |
 
 ## Gitignored (local only)
 
 - `.env`, `backend/.env`
 - `backend/data/*.db`
 - `__pycache__/`, `.venv/`
+- `graphify-out/` — generated code-graph (regenerate with `graphify`; see [graph.md](graph.md))

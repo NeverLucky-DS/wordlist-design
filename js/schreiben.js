@@ -1187,24 +1187,14 @@ function stageErrors(stageId){
   return es.analysis.errorsByStage[stageId] || [];
 }
 
-/* sentence with >= this many errors is "dense": we stop replacing words inline
-   (too noisy) and just underline them, with a count badge — details on click */
-const DENSE_MIN = 4;
-
+/* Marking, teacher-pen style — never a red block that replaces your words:
+   - word-order move  → circle the word + a drawn arrow to where it belongs
+   - ending change    → show only the corrected ending in red + wavy underline
+   - anything else    → a calm wavy underline (the fix lives in the card)
+   - praise           → a quiet green wavy underline                            */
 const tok = s => String(s || '').trim().split(/\s+/).filter(Boolean);
 const normTok = t => String(t).toLowerCase().replace(/[.,!?;:»«"'()]/g, '');
 
-/* a short word/ending fix (e.g. „grosse“ → „großer“) shown inline as a red
-   replacement rather than an underline you have to click */
-function isWordFix(err, bad){
-  const fix = String(err.correction || '').trim();
-  if (!fix || fix === bad.trim()) return false;
-  if (annoKind(err) === 'good') return false;      /* „gelungen“ isn't a fix */
-  const words = s => tok(s).length;
-  return words(bad) <= 4 && words(fix) <= 4 && bad.length <= 34 && fix.length <= 34;
-}
-
-/* same words, different order → a word-order move, not a rewrite */
 function isReorder(bad, fix){
   const a = tok(bad).map(normTok).filter(Boolean).sort();
   const b = tok(fix).map(normTok).filter(Boolean).sort();
@@ -1212,7 +1202,7 @@ function isReorder(bad, fix){
     && a.join(' ') === b.join(' ') && bad.trim() !== fix.trim();
 }
 
-/* which single token relocated and where it lands (null if not a clean move) */
+/* which single token relocated and to which slot (null if not a clean move) */
 function findMove(ex, cor){
   for (let i = 0; i < ex.length; i += 1){
     const restEx = ex.filter((_, k) => k !== i).map(normTok).join(' ');
@@ -1225,35 +1215,62 @@ function findMove(ex, cor){
   return null;
 }
 
-const caretHTML = dir => `<span class="mv-caret" data-dir="${dir}"></span>`;
-
-/* circle the moved word, arrow on top pointing its way, red caret at the target */
-function renderReorder(bad, fix){
+let mvSeq = 0;
+function buildReorder(bad, fix, err, stageId){
   const ex = tok(bad), cor = tok(fix);
   const mv = findMove(ex, cor);
   if (!mv) return null;
   const { from, to } = mv;
   const n = ex.length;
   const idxs = []; for (let k = 0; k < n; k += 1) if (k !== from) idxs.push(k);
-  const caretBefore = to < idxs.length ? idxs[to] : n;   /* original index for the caret */
-  const dir = caretBefore <= from ? 'left' : 'right';
-  let html = '';
+  const caretBefore = to < idxs.length ? idxs[to] : n;
+  const id = 'mv' + (mvSeq += 1);
+  const dst = `<span class="mv-dst" data-mv="${id}">​</span>`;
+  let inner = '';
   for (let i = 0; i < n; i += 1){
-    if (i === caretBefore) html += caretHTML(dir);
-    if (i === from){
-      html += `<span class="mv-word">${esc2(ex[i])}`
-        + `<span class="mv-arrow">${dir === 'left' ? '←' : '→'}</span></span>`;
-    } else {
-      html += esc2(ex[i]);
-    }
-    if (i < n - 1) html += ' ';
+    if (i === caretBefore) inner += dst;
+    if (i === from) inner += `<span class="mv-src" data-mv="${id}">${esc2(ex[i])}</span>`;
+    else inner += esc2(ex[i]);
+    if (i < n - 1) inner += ' ';
   }
-  if (caretBefore >= n) html += ' ' + caretHTML(dir);
-  return html;
+  if (caretBefore >= n) inner += dst;
+  return `<span class="mvw" data-error-id="${err.error_id}" data-stage="${stageId}" data-mv="${id}">${inner}</span>`;
 }
 
-/* one anchored error → its inline HTML (dense sentences never replace/reorder) */
-function renderOneError(text, err, stageId, dense){
+function commonPrefixLen(a, b){
+  let i = 0; const m = Math.min(a.length, b.length);
+  while (i < m && a[i] === b[i]) i += 1;
+  return i;
+}
+
+/* bad→fix differ in exactly ONE token, by a short suffix (an inflection ending);
+   returns the fix tokens + which token and its prefix/ending, else null */
+function endingDiff(bad, fix){
+  const a = bad.trim(), b = fix.trim();
+  if (!b || a === b) return null;
+  const ta = a.split(/\s+/), tb = b.split(/\s+/);
+  if (ta.length !== tb.length) return null;
+  let diffIdx = -1;
+  for (let i = 0; i < ta.length; i += 1){
+    if (ta[i] !== tb[i]){ if (diffIdx >= 0) return null; diffIdx = i; }
+  }
+  if (diffIdx < 0) return null;
+  const wa = ta[diffIdx], wb = tb[diffIdx];
+  const p = commonPrefixLen(wa, wb);
+  if (!(p >= 2 && (wa.length - p) <= 4 && (wb.length - p) <= 4)) return null;
+  return { tokens: tb, diffIdx, prefix: wb.slice(0, p), ending: wb.slice(p) };
+}
+
+/* corrected form with ONLY the changed ending in red + wavy underline */
+function renderEndingFix(diff, attrs){
+  const parts = diff.tokens.map((t, i) =>
+    i === diff.diffIdx
+      ? esc2(diff.prefix) + `<span class="fix-end">${esc2(diff.ending)}</span>`
+      : esc2(t));
+  return `<span class="und-end" ${attrs}>${parts.join(' ')}</span>`;
+}
+
+function renderOneError(text, err, stageId){
   const bad = text.slice(err.start, err.end);
   const kind = annoKind(err);
   const attrs = `data-error-id="${err.error_id}" data-stage="${stageId}"`;
@@ -1261,59 +1278,63 @@ function renderOneError(text, err, stageId, dense){
     return `<span class="und good" data-annotation="good" ${attrs}>${textToHtml(bad)}</span>`;
   }
   const fix = String(err.correction || '').trim();
-  if (!dense && fix && isReorder(bad, fix)){
-    const rr = renderReorder(bad, fix);
-    if (rr) return `<span class="mvw" ${attrs}>${rr}</span>`;
+  if (fix && isReorder(bad, fix)){
+    const rr = buildReorder(bad, fix, err, stageId);
+    if (rr) return rr;
   }
-  if (!dense && isWordFix(err, bad)){
-    return `<span class="fix" ${attrs}>${esc2(fix)}</span>`;
+  const diff = fix ? endingDiff(bad, fix) : null;
+  if (diff){
+    return renderEndingFix(diff, attrs);
   }
   return `<span class="und" data-annotation="${kind}" ${attrs}>${textToHtml(bad)}</span>`;
 }
 
-/* split into contiguous sentence ranges [{s,e}] covering the whole text */
-function sentenceRanges(text){
-  const n = text.length;
-  if (!n) return [{ s: 0, e: 0 }];
-  const out = [];
-  let start = 0;
-  for (let i = 0; i < n; i += 1){
-    if (/[.!?\n]/.test(text[i])){
-      let e = i + 1;
-      while (e < n && /[\s.!?]/.test(text[e])) e += 1;   /* absorb trailing punct + space */
-      out.push({ s: start, e });
-      start = e; i = e - 1;
-    }
-  }
-  if (start < n) out.push({ s: start, e: n });
-  return out.length ? out : [{ s: 0, e: n }];
-}
-
 function renderAnnotatedHTML(text, anchored, stageId){
-  const sents = sentenceRanges(text);
-  const buckets = sents.map(() => []);
+  let html = '', cursor = 0;
   anchored.forEach(err => {
-    const mid = (err.start + err.end) / 2;
-    let bi = sents.findIndex(r => mid >= r.s && mid < r.e);
-    if (bi < 0) bi = sents.length - 1;
-    buckets[bi].push(err);
+    if (err.start < cursor) return;
+    html += textToHtml(text.slice(cursor, err.start));
+    html += renderOneError(text, err, stageId);
+    cursor = err.end;
   });
-  let html = '';
-  sents.forEach((r, bi) => {
-    const errs = buckets[bi].slice().sort((a, b) => a.start - b.start);
-    const dense = errs.length >= DENSE_MIN;
-    let cursor = r.s;
-    errs.forEach(err => {
-      if (err.start < cursor) return;
-      html += textToHtml(text.slice(cursor, err.start));
-      html += renderOneError(text, err, stageId, dense);
-      cursor = err.end;
-    });
-    html += textToHtml(text.slice(cursor, r.e));
-    if (dense) html += ` <span class="rev-badge">${errs.length}</span>`;
-  });
+  html += textToHtml(text.slice(cursor));
   return html;
 }
+
+/* draw a continuous arrow from each circled word to where it should move */
+function drawMoveArrows(){
+  editable.querySelectorAll('.mv-layer').forEach(l => l.remove());
+  if (!reviewMode) return;
+  const moves = editable.querySelectorAll('.mvw');
+  if (!moves.length) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const edRect = editable.getBoundingClientRect();
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'mv-layer');
+  svg.setAttribute('width', editable.scrollWidth);
+  svg.setAttribute('height', editable.scrollHeight);
+  svg.innerHTML = '<defs><marker id="mvHead" viewBox="0 0 10 10" refX="8" refY="5" '
+    + 'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+    + '<path d="M0 0L10 5L0 10z" fill="#c0392b"/></marker></defs>';
+  moves.forEach(mvw => {
+    const id = mvw.getAttribute('data-mv');
+    const src = mvw.querySelector('.mv-src');
+    const dst = mvw.querySelector(`.mv-dst[data-mv="${id}"]`);
+    if (!src || !dst) return;
+    const sr = src.getBoundingClientRect(), dr = dst.getBoundingClientRect();
+    const ox = editable.scrollLeft - edRect.left, oy = editable.scrollTop - edRect.top;
+    const sx = sr.left + sr.width / 2 + ox, sy = sr.top + oy;
+    const dx = dr.left + ox, dy = dr.top + oy;
+    const topY = Math.min(sy, dy) - 13;             /* arc rides above the line */
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', `M ${sx} ${sy} Q ${(sx + dx) / 2} ${topY} ${dx} ${dy}`);
+    path.setAttribute('class', 'mv-path');
+    path.setAttribute('marker-end', 'url(#mvHead)');
+    svg.appendChild(path);
+  });
+  editable.appendChild(svg);
+}
+window.addEventListener('resize', () => { if (reviewMode) drawMoveArrows(); });
 
 /* the whole essay, every non-empty part with its heading, annotated */
 function renderReviewFull(){
@@ -1338,6 +1359,7 @@ function renderStageEditable(){
     editable.setAttribute('contenteditable', 'false');
     editable.classList.add('reviewing');
     editable.innerHTML = renderReviewFull();
+    requestAnimationFrame(drawMoveArrows);
   } else {
     editable.setAttribute('contenteditable', 'true');
     editable.classList.remove('reviewing');

@@ -682,7 +682,7 @@ function _mapApiWord(w) {
   // Grammar from pipeline grammar_data. Tolerant of BOTH the canonical full
   // schema (declension as full case/tense tables) and the legacy compact shape
   // ({Genus, Plural, "Genitiv Singular"}), so the table is never empty while
-  // the DB is being re-processed. Canonical schema is documented in PIPELINE.md.
+  // the DB is being re-processed. Canonical schema is documented in info/pipeline.md.
   const gd = w.grammar_data || {};
   const decl = gd.declension || {};
   const declKeys = Object.keys(decl);

@@ -534,35 +534,33 @@ button{font-family:inherit;cursor:pointer}
 .btn-swap:disabled{opacity:.4;cursor:not-allowed}
 .sheet.starting .btn-swap,.sheet.listing .btn-swap{display:none}
 
-/* read-only annotated view — corrections shown as a teacher's red pen */
-.editable.reviewing{cursor:default}
+/* read-only annotated view — teacher-pen marks, never a red replacement block */
+.editable.reviewing{cursor:default;position:relative}
 .editable span[data-error-id]{cursor:pointer;border-radius:2px;transition:background .12s}
-.editable span[data-error-id]:hover{background:rgba(192,57,43,.1)}
-.editable span[data-error-id].sel{background:rgba(192,57,43,.15)}
+.editable span[data-error-id]:hover{background:rgba(192,57,43,.09)}
+.editable span[data-error-id].sel{background:rgba(192,57,43,.14)}
 
-/* replacement — the corrected word/phrase in red, in place of the wrong one */
-.editable .fix{color:#c0392b;font-weight:600}
-
-/* kept-original with a red underline (multi-word rewrites, dense sentences, style) */
-.editable .und{text-decoration:underline;text-decoration-color:rgba(192,57,43,.5);
-  text-decoration-thickness:2px;text-underline-offset:3px}
-.editable .und.good{text-decoration-color:#5a8a7a}
+/* general mark — wavy underline on the original text, colour by kind */
+.editable .und{text-decoration-thickness:2px;text-underline-offset:3px}
+.editable .und[data-annotation="critical"]{text-decoration:underline wavy #c85a45}
+.editable .und[data-annotation="correction"]{text-decoration:underline wavy #c0883a}
+.editable .und[data-annotation="b2_potential"]{text-decoration:underline wavy #7C6EB6}
+.editable .und[data-annotation="style"]{text-decoration:underline wavy #7C6EB6}
+.editable .und[data-annotation="good"]{text-decoration:underline wavy #5a8a7a}
 .editable span[data-error-id].und.good:hover,
 .editable span[data-error-id].und.good.sel{background:rgba(90,138,122,.14)}
 
-/* word-order move — circle the word, arrow above, red caret at destination */
-.editable .mvw{white-space:nowrap}
-.editable .mv-word{position:relative;display:inline-block;margin:0 2px;padding:0 5px;
-  border:1.5px solid #c0392b;border-radius:11px;color:#c0392b;line-height:1.25}
-.editable .mv-arrow{position:absolute;left:50%;top:-.92em;transform:translateX(-50%);
-  font-size:.72em;color:#c0392b;line-height:1;font-weight:700}
-.editable .mv-caret{display:inline-block;width:0;height:1em;margin:0 2px;
-  border-left:2px solid #c0392b;border-radius:1px;vertical-align:-.18em}
+/* ending change — only the corrected suffix, red + wavy */
+.editable .fix-end{color:#c0392b;text-decoration:underline wavy #c0392b;
+  text-decoration-thickness:1.6px;text-underline-offset:3px}
 
-/* count badge on error-dense sentences (details on click) */
-.editable .rev-badge{display:inline-block;min-width:15px;padding:0 5px;margin-left:5px;
-  border-radius:9px;background:rgba(192,57,43,.14);color:#c0392b;
-  font:600 10px/16px 'Inter',sans-serif;text-align:center;vertical-align:.12em}
+/* word-order move — circle the word; the arrow itself is drawn as SVG */
+.editable .mvw{white-space:nowrap}
+.editable .mv-src{display:inline-block;padding:0 4px;border:1.5px solid #c0392b;
+  border-radius:10px;line-height:1.3}
+.editable .mv-dst{display:inline-block;width:0;overflow:visible}
+.editable .mv-layer{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:2}
+.editable .mv-path{fill:none;stroke:#c0392b;stroke-width:1.6;stroke-linecap:round}
 
 /* correction card popover */
 .ann-backdrop{position:fixed;inset:0;z-index:88;border:none;background:transparent;cursor:default}

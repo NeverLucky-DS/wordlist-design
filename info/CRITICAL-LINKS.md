@@ -203,8 +203,9 @@ POST /api/pipeline/queue
 |------|--------|
 | `screenshots/` | Только README |
 | `images/autumn.png` | Только editor (если editor убираем) |
-| `PIPELINE.md` | Дублирует `info/pipeline.md`, частично устарел |
 | `info/AUDIT.md` | Документация (не runtime) |
+
+> `PIPELINE.md` удалён 2026-07-06 — заменён на `info/pipeline.md`.
 
 ### 🟡 Убрать после проверки
 

@@ -11,3 +11,5 @@ dist/
 venv/
 backend/.env
 backend/data/*.db
+.pytest_cache/
+graphify-out/

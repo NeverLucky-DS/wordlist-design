@@ -12,6 +12,7 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | [data-model.md](data-model.md) | PostgreSQL tables |
 | [files.md](files.md) | Canonical file tree (what matters) |
 | [known-debt.md](known-debt.md) | Remaining tech debt (short) |
+| [graph.md](graph.md) | Code graph (Graphify) — how to navigate the repo structurally |
 | [AUDIT.md](AUDIT.md) | Full audit report (dated) |
 
 ## One-paragraph summary
@@ -32,4 +33,4 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 
 - `backend/scripts/`, `backend/audit_db.py` — manual maintenance CLIs
 - `backend/data/` — local SQLite (gitignored)
-- `PIPELINE.md` — long design doc; use [pipeline.md](pipeline.md) for current behavior
+- `graphify-out/` — generated code-graph artifact (gitignored); see [graph.md](graph.md) for how to use it

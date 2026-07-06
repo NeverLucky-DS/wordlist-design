@@ -15,7 +15,7 @@ FastAPI + PostgreSQL (`backend/`) · vanilla HTML/JS/CSS без сборки (ф
 
 - Запуск: `docker compose up --build`
 - Тесты: `cd backend && pytest -v` — прогонять после любых правок в `backend/`, не считать backend-задачу готовой, если тесты не зелёные
-- Граф проекта: `graphify-out/GRAPH_REPORT.md` — свежесть проверяется через `git rev-parse HEAD` vs commit в отчёте; после крупных структурных правок запусти `graphify update .`
+- Граф проекта (Graphify): `graphify-out/` git-ignored, генерится локально. Как читать/обновлять — `info/graph.md`. Кратко: свежесть = `git rev-parse HEAD` vs «Built from commit» в `graphify-out/GRAPH_REPORT.md`; после крупных структурных правок `graphify update .` (без API-стоимости).
 
 ## Опасные места (сверяться, а не гадать)
 

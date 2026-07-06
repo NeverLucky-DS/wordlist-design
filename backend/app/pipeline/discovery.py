@@ -34,13 +34,6 @@ Return ONLY a JSON array (no other text):
 [{{"url": "https://...", "title": "...", "type": "essay|article|academic"}}]
 """
 
-_DDG_QUERIES = [
-    '"{topic}" Essay Deutsch site:bpb.de OR site:zeit.de OR site:spiegel.de OR site:faz.net',
-    '"{topic}" Argumentation Deutsch B2 C1',
-    'Klimawandel Umwelt Deutsch Essay Argumente',
-]
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

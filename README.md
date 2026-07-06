@@ -42,7 +42,7 @@ index.html / schreiben.html / pipeline.html
 
 **Критические зависимости (не ломать):** [`info/CRITICAL-LINKS.md`](info/CRITICAL-LINKS.md)
 
-Подробнее о pipeline: [`info/pipeline.md`](info/pipeline.md) (актуально) · [`PIPELINE.md`](PIPELINE.md) (длинный design doc, частично устарел).
+Подробнее о pipeline: [`info/pipeline.md`](info/pipeline.md).
 
 ---
 

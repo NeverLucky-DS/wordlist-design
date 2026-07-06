@@ -1,6 +1,6 @@
 # Known tech debt (short)
 
-Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
+Last updated: **2026-07-06**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
 
 ## High priority
 
@@ -16,6 +16,7 @@ Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete ma
 
 | Issue | Where |
 |-------|-------|
+| Essay feedback precision not verified | `mistral_analyzer.py` — corrections + structure/argumentation are LLM-only, no verify-pass / rubric / citation-grounding yet |
 | `schreiben.js` ~1030 lines monolith | essay store, roadmap, tools |
 | 3 Wiktionary clients | `enrichment.py`, `wiktionary_client.py`, `backfill_grammar.py` |
 | 2 Mistral HTTP stacks | `mistral_http.py` vs `mistral_analyzer.py` |
@@ -29,13 +30,17 @@ Last updated: **2026-07-04**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete ma
 
 | Issue | Where |
 |-------|-------|
-| Dead code: `_DDG_QUERIES`, `enrich_word()` | `discovery.py`, `enrichment.py` |
 | `datetime.utcnow()` deprecated | pipeline modules |
 | `@app.on_event` deprecated | `main.py` |
 | `/health` doesn't check DB | `health.py` |
 | Startup v1 cleanup every boot | `main.py` |
 | Nav `href="#"` stubs | all HTML pages |
-| `PIPELINE.md` partially stale | use `info/pipeline.md` |
+
+## Resolved ✅ (2026-07-06 cleanup)
+
+- **Dead code removed** — `_DDG_QUERIES` (`discovery.py`), `enrich_word()` wrapper (`enrichment.py`)
+- **`PIPELINE.md` removed** — superseded by `info/pipeline.md`
+- **`graphify-out/` gitignored** — generated code-graph, regenerable; docs in `info/graph.md`
 
 ## Resolved ✅ (2026-07-04 cleanup)
 
