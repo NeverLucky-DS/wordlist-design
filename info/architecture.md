@@ -38,12 +38,15 @@
 | `db/` | SQLAlchemy models, async session, seed data |
 | `pipeline/` | Autonomous word enrichment (see [pipeline.md](pipeline.md)) |
 
-## Startup sequence ([`main.py`](../backend/app/main.py))
+## Schema & startup sequence
 
-1. `create_all` + ad-hoc `ALTER` for new columns
-2. `ensure_seed_data`
-3. Idempotent cleanup: fix lemmas, dedupe words, normalize topic case
-4. If `pipeline_autorun=true` → start background scheduler
+Schema is owned by **Alembic** (`backend/alembic/`). The container entrypoint
+([`entrypoint.sh`](../backend/entrypoint.sh)) runs `alembic upgrade head` before
+the API boots. App startup ([`main.py`](../backend/app/main.py)) then:
+
+1. `ensure_seed_data`
+2. Idempotent cleanup: fix lemmas, dedupe words, normalize topic case
+3. If `pipeline_autorun=true` → start background scheduler
 
 ## External APIs
 

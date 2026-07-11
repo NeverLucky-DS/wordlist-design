@@ -1,15 +1,33 @@
+# OS / editors
 .DS_Store
+.idea/
+.vscode/
+
+# Claude / tooling artifacts
 .claude/
-*.log
+graphify-out/
+
+# Secrets & env
 .env
 .env.*
+!.env.example
+!backend/.env.example
+backend/.env
+
+# Python
 __pycache__/
 *.pyc
-node_modules/
-dist/
+*.egg-info/
 .venv/
 venv/
-backend/.env
-backend/data/*.db
 .pytest_cache/
-graphify-out/
+.ruff_cache/
+.mypy_cache/
+
+# Node / build
+node_modules/
+dist/
+
+# Logs & local data
+*.log
+backend/data/*.db

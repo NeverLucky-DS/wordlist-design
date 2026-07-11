@@ -16,17 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
+          enable-cache: true
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install dependencies (from uv.lock)
+        run: uv sync --frozen
 
       - name: Run tests
-        run: pytest -v
+        run: uv run pytest -v
         env:
           DATABASE_URL: sqlite+aiosqlite:///./data/ci-test.db
           MISTRAL_API_KEY: ""

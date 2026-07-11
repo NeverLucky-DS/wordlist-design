@@ -7,8 +7,6 @@ from app.api.routes import essays, health, phrases, topics, words
 from app.api.routes import pipeline
 from app.config import settings
 from app.db.init_data import ensure_seed_data
-from app.db.models import Base
-from app.db.session import engine
 from app.db.session import SessionLocal
 
 
@@ -52,42 +50,11 @@ app.include_router(topics.router)
 app.include_router(pipeline.router)
 
 
-async def _ensure_new_columns(conn) -> None:
-    """Lightweight migration: add columns introduced by pipeline v2.
-
-    Works on both SQLite (local dev) and PostgreSQL (docker-compose).
-    """
-    from sqlalchemy import text
-
-    wanted = {
-        "pipeline_runs": {
-            "phrases_added": "INTEGER DEFAULT 0",
-            "target_words": "INTEGER DEFAULT 0",
-        },
-    }
-    dialect = conn.dialect.name  # 'sqlite' | 'postgresql'
-    for table, columns in wanted.items():
-        if dialect == "postgresql":
-            for col, ddl in columns.items():
-                await conn.execute(text(
-                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {ddl}"
-                ))
-        else:
-            try:
-                rows = (await conn.execute(text(f"PRAGMA table_info({table})"))).fetchall()
-            except Exception:
-                continue
-            existing = {row[1] for row in rows}
-            for col, ddl in columns.items():
-                if col not in existing:
-                    await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
-
-
 @app.on_event("startup")
-async def init_schema() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        await _ensure_new_columns(conn)
+async def on_startup() -> None:
+    # The database schema is owned by Alembic migrations (backend/alembic/).
+    # They are applied by the container entrypoint (`alembic upgrade head`)
+    # before this app boots — startup only seeds and tidies data.
     async with SessionLocal() as session:
         await ensure_seed_data(session)
         # Idempotent cleanup: dirty lemmas / duplicates left by pipeline v1

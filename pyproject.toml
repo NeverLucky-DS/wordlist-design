@@ -1,0 +1,45 @@
+[project]
+name = "deutsch-essay-trainer"
+version = "0.1.0"
+description = "Deutsch Essay Trainer — B1-C1 German essay app (FastAPI backend in backend/)"
+requires-python = ">=3.11"
+
+# The Python application lives in backend/app. This pyproject sits at the repo
+# root so `uv sync` / `uv run` work from anywhere (uv searches parent dirs) —
+# there is a single .venv at the repo root.
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "aiosqlite>=0.20.0",
+    "alembic>=1.14.0",
+    "pydantic-settings>=2.6.0",
+    "python-dotenv>=1.0.1",
+    "httpx>=0.28.0",
+    "psycopg2-binary>=2.9.10",
+    "PyYAML>=6.0.2",
+    "eval_type_backport>=0.2.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "requests>=2.32.0",
+    "duckduckgo-search>=6.0.0",
+    "simplemma>=1.0.0",
+]
+
+# Dev-only tools (tests). Excluded from the Docker image via `uv sync --no-dev`.
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.uv]
+# The app is run as `uvicorn app.main:app` (cwd=backend), not installed as a
+# package — so there is nothing to build.
+package = false
+
+# Test config (folded in from the old backend/pytest.ini).
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["backend/tests"]
