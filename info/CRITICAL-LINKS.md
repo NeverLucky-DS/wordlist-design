@@ -262,7 +262,8 @@ POST /api/pipeline/queue
 Фаза 2  ✅ js/words-data.js — единый WASH
 Фаза 3  schreiben.js → /api/words, /api/essays (замена localStorage)
 Фаза 4  ✅ editor.* + autumn.png + screenshots/ удалены
-Фаза 5  Backend: pipeline v2/v3 unify, Alembic, normalize on write
+Фаза 5  ✅ Alembic (backend/alembic/) + uv/pyproject + Makefile + единый backend/.env (2026-07-10)
+Фаза 6  Backend: pipeline v2/v3 unify, normalize on write
 ```
 
 ---

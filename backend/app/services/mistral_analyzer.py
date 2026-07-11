@@ -85,6 +85,17 @@ def _build_part_prompt(
         "    Пример НЕПРАВИЛЬНО: 'von dumme', затем 'von dumme Möglichkeiten', затем 'voll der Varianten: von dumme'.\n"
         "    Пример ПРАВИЛЬНО: одна ошибка на 'von dumme' (или на 'dumme'), и всё.\n"
         "17) Каждое проблемное место в тексте — ровно одна ошибка. Не дроби одно место на несколько строк.\n"
+        "18) НЕ ПРИДУМЫВАЙ ошибок. Помечай только то, что действительно неверно. Если конструкция\n"
+        "    грамматически допустима — НЕ помечай её, особенно как critical. При сомнении не критикуй.\n"
+        "19) Для critical/grammar correction ОБЯЗАНА отличаться от excerpt (реальное исправление).\n"
+        "    Если ты не можешь дать correction, отличающийся от excerpt, — НЕ добавляй эту ошибку.\n"
+        "20) Эти конструкции КОРРЕКТНЫ — не считай их ошибкой:\n"
+        "    • 'davon' как местоименное наречие (z.B. 'zu viel davon essen', 'davon krank werden');\n"
+        "    • 'von etwas leben' (leben von den Einnahmen); 'gelten für jdn als';\n"
+        "    • 'Geld ausgeben' + Akkusativ ('ihr Geld ausgeben' — аккузатив, НЕ датив);\n"
+        "    • инверсия уже верная, если после союза/обстоятельства (Erstens/Deshalb/Auf der einen Seite)\n"
+        "      глагол стоит на 2-м месте — это правильно, НЕ переставляй подлежащее вперёд;\n"
+        "    • 'seit' + Dativ ('seit der Pandemie' — это датив, не ошибка).\n"
         f"Уже выданные смысловые замечания (не повторять): {previous_points_json}\n"
         "start/end должны быть валидными индексами внутри этого фрагмента.\n"
         f"Текст фрагмента:\n{text}\n"
@@ -390,6 +401,87 @@ def _remove_overlapping_errors(errors: list[dict]) -> list[dict]:
     return kept
 
 
+def _norm_txt(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+_HARD_KINDS = {"critical", "style"}
+
+
+def _is_unactionable_hard_error(err: dict) -> bool:
+    """True for a *hard* error the model flagged but couldn't actually fix.
+
+    Evidence (20-essay eval, 2026-07-06): the dangerous false positives were all
+    critical/grammar marks whose ``correction`` was empty or identical to the
+    ``excerpt`` — i.e. the model "found" a mistake in correct German but produced
+    no real fix (``beherrscht, hat`` → ``beherrscht, hat``; ``ohne dass … geprüft
+    haben`` unchanged). Such marks mislead the learner, so we drop them. Soft
+    upgrade hints (suggestion/b2_potential) are left alone — they legitimately
+    keep the original wording and carry the improvement in a variant field.
+    """
+    kind = str(err.get("annotation_kind", "")).lower()
+    if kind == "good_fragment":
+        return False
+    etype = str(err.get("type", "")).lower()
+    severity = str(err.get("severity", "")).lower()
+    is_hard = kind in _HARD_KINDS or etype == "grammar" or severity == "critical"
+    if not is_hard:
+        return False
+    correction = _norm_txt(err.get("correction", ""))
+    excerpt = _norm_txt(err.get("excerpt", ""))
+    return (not correction) or correction == excerpt
+
+
+def _cap_soft_errors(errors: list[dict], level: str, max_soft: int = 3) -> list[dict]:
+    """Beginners drown under stylistic nitpicks — keep every grammar mark but
+    limit optional upgrade hints for B1 (eval showed ~9 marks/essay, mostly
+    suggestions). Hard errors are always kept; soft ones are trimmed to the
+    first ``max_soft`` by position."""
+    if str(level or "").upper() != "B1":
+        return errors
+    soft_kinds = {"suggestion", "b2_potential"}
+    hard = [e for e in errors if str(e.get("annotation_kind", "")).lower() not in soft_kinds]
+    soft = [e for e in errors if str(e.get("annotation_kind", "")).lower() in soft_kinds]
+    kept = hard + soft[:max_soft]
+    kept.sort(key=lambda e: int(e.get("start", 0)))
+    return kept
+
+
+def _filter_part_errors(errors: list[dict], level: str) -> list[dict]:
+    actionable = [e for e in errors if not _is_unactionable_hard_error(e)]
+    return _cap_soft_errors(actionable, level)
+
+
+def _count_critical(errors: list[dict]) -> int:
+    return sum(
+        1
+        for e in errors
+        if str(e.get("annotation_kind", "")).lower() == "critical"
+        or str(e.get("severity", "")).lower() == "critical"
+    )
+
+
+def _grade_from_scores_and_errors(scores: list[int], errors: list[dict]) -> tuple[int, str]:
+    """Widen the grade band by penalising confirmed critical errors.
+
+    The raw per-part scores the model returns are compressed (B1 essays riddled
+    with word-order/case errors still landed at 70/B, barely below a clean C1).
+    A capped penalty (−3 per critical, max −24) restores discrimination without
+    nuking partially-correct work."""
+    base, _ = _grade_from_scores(scores)
+    penalty = min(24, 3 * _count_critical(errors))
+    overall_score = max(0, min(100, base - penalty))
+    if overall_score >= 85:
+        grade = "A"
+    elif overall_score >= 70:
+        grade = "B"
+    elif overall_score >= 55:
+        grade = "C"
+    else:
+        grade = "D"
+    return overall_score, grade
+
+
 async def _chat_json(client: httpx.AsyncClient, prompt: str) -> dict:
     headers = {
         "Authorization": f"Bearer {settings.mistral_api_key}",
@@ -487,7 +579,10 @@ async def _analyze_single_part(
     else:
         normalized_errors = []
 
-    deduped_errors = _dedupe_errors_part(normalized_errors)
+    deduped_errors = _filter_part_errors(
+        _remove_overlapping_errors(_dedupe_errors_part(normalized_errors)),
+        level,
+    )
 
     return {
         "part": part_key,
@@ -634,8 +729,9 @@ async def iter_analyze_events(
                             "Нужно улучшить точность формулировок и связность.",
                         )
                     ),
-                    "errors": _remove_overlapping_errors(
-                        _dedupe_errors_part(normalized_errors)
+                    "errors": _filter_part_errors(
+                        _remove_overlapping_errors(_dedupe_errors_part(normalized_errors)),
+                        level,
                     ),
                     "is_empty": not part_text.strip(),
                 }
@@ -725,7 +821,7 @@ async def iter_analyze_events(
         return
 
     scores = [int(report.get("score", 0)) for report in part_reports if not report.get("is_empty")]
-    overall_score, grade = _grade_from_scores(scores)
+    overall_score, grade = _grade_from_scores_and_errors(scores, all_errors)
 
     logger.info(
         "Essay analysis done · grade=%s score=%d errors=%d",

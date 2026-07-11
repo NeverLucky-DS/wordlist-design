@@ -13,8 +13,13 @@ FastAPI + PostgreSQL (`backend/`) · vanilla HTML/JS/CSS без сборки (ф
 
 ## Команды
 
-- Запуск: `docker compose up --build`
-- Тесты: `cd backend && pytest -v` — прогонять после любых правок в `backend/`, не считать backend-задачу готовой, если тесты не зелёные
+Весь жизненный цикл — через `Makefile` (запусти `make` без аргументов для списка).
+
+- Первый раз: `make setup` (uv sync + создаёт `backend/.env` из шаблона)
+- Запуск: `make up` — поднимает стек, применяет миграции, печатает ссылки. Остановить: `make down`
+- Тесты: `make test` (= `cd backend && uv run pytest -v`) — прогонять после любых правок в `backend/`, не считать backend-задачу готовой, если тесты не зелёные
+- Зависимости: `uv` + корневой `pyproject.toml` (+ `uv.lock`, `.venv/` в корне). `uv sync`/`uv run` работают из любой папки. Не использовать pip/requirements.txt — их больше нет.
+- Миграции БД: **Alembic** (`backend/alembic/`), единый источник схемы. Применяются автоматически в entrypoint контейнера (`alembic upgrade head`). После правок `app/db/models.py`: `make migration name="..."` → `make migrate`. Модели остаются source of truth (тесты создают схему через `create_all`).
 - Граф проекта (Graphify): `graphify-out/` git-ignored, генерится локально. Как читать/обновлять — `info/graph.md`. Кратко: свежесть = `git rev-parse HEAD` vs «Built from commit» в `graphify-out/GRAPH_REPORT.md`; после крупных структурных правок `graphify update .` (без API-стоимости).
 
 ## Опасные места (сверяться, а не гадать)

@@ -19,12 +19,26 @@
 
 ## Быстрый старт
 
-```bash
-export MISTRAL_API_KEY=...   # enrichment + будущий AI-анализ
-export GROK_API_KEY=...      # discovery в pipeline
+Весь жизненный цикл — через `make` (запусти `make` без аргументов, чтобы увидеть все команды):
 
-docker compose up --build
+```bash
+make setup     # uv sync + создаст backend/.env из шаблона
+#              → впиши MISTRAL_API_KEY и GROK_API_KEY в backend/.env
+make up        # соберёт и поднимет db + api + web, применит миграции,
+#                дождётся готовности и напечатает все ссылки на localhost
 ```
+
+| Команда | Что делает |
+|---------|------------|
+| `make up` / `make down` | поднять / остановить весь стек |
+| `make logs` | логи всех сервисов |
+| `make test` | тесты backend |
+| `make migrate` | применить миграции БД |
+| `make migration name="..."` | новая миграция из изменений моделей |
+| `make db` | psql-шелл в контейнере БД |
+| `make clean` | остановить и **удалить данные** (том БД) |
+
+Ключи можно не задавать — стек поднимется, но enrichment/анализ без них работать не будут.
 
 ---
 
@@ -49,7 +63,18 @@ index.html / schreiben.html / pipeline.html
 ## Тесты
 
 ```bash
-cd backend && pip install -r requirements.txt && pytest -v
+make test        # = cd backend && uv run pytest -v
 ```
 
 Покрыто: CRUD эссе, SSE-fallback, фильтры слов/фраз, pipeline API и routing по теме.
+
+## Миграции БД (Alembic)
+
+Схема БД версионируется через Alembic (`backend/alembic/`). Миграции применяются
+автоматически при `make up` (entrypoint контейнера делает `alembic upgrade head`).
+После изменения моделей в `backend/app/db/models.py`:
+
+```bash
+make migration name="add xyz column"   # автогенерация из моделей
+make migrate                           # применить к работающей БД
+```

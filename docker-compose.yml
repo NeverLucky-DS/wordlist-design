@@ -27,15 +27,25 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    # Secrets (MISTRAL_API_KEY, GROK_API_KEY, MISTRAL_MODEL) live in ONE place:
+    # backend/.env. `required: false` keeps a fresh clone bootable before setup.
+    env_file:
+      - path: ./backend/.env
+        required: false
     environment:
+      # Docker-specific overrides — these win over values from backend/.env.
       DATABASE_URL: postgresql+asyncpg://wordlist:wordlist@postgres:5432/wordlist
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
-      MISTRAL_MODEL: ${MISTRAL_MODEL:-mistral-large-latest}
-      GROK_API_KEY: ${GROK_API_KEY:-}
       CORS_ORIGINS: "http://localhost:8753,http://127.0.0.1:8753,http://localhost,http://127.0.0.1"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      # slim image has no curl — probe /health with stdlib urllib instead.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s   # room for `alembic upgrade head` + seeding on first boot
     restart: unless-stopped
 
   # ── nginx — static frontend ──────────────────────────────────────────────
@@ -50,7 +60,8 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - .:/usr/share/nginx/html:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

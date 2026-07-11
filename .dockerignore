@@ -1,12 +1,24 @@
 .git
+# Virtualenvs must never leak into the image (they shadow /app/.venv and are huge)
 .venv
-__pycache__
-*.pyc
-*.pyo
-.pytest_cache
+**/.venv
+venv
+# Python caches
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+# Local data / secrets
 backend/data/*.db
 backend/.env
+.env
+# Assets the backend image doesn't need
 *.png
 *.jpg
 *.pdf
+# Big local-only dirs (keep the build context small)
+graphify-out
+analysis-samples
+screenshots
 node_modules
+dist

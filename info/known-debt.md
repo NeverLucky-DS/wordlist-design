@@ -1,6 +1,6 @@
 # Known tech debt (short)
 
-Last updated: **2026-07-06**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
+Last updated: **2026-07-10**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
 
 ## High priority
 
@@ -8,7 +8,6 @@ Last updated: **2026-07-06**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete ma
 |-------|-------|--------|
 | Pipeline v2 (runner) vs v3 (scripts) | `enrichment.py` vs `content_llm.py`/`verify.py` | Inconsistent `grammar_data` by write path |
 | `normalize_grammar_data()` never called on write | `grammar_schema.py` vs `runner.py` | Messy grammar JSON in DB |
-| No Alembic migrations | `main.py` `_ensure_new_columns` only | Schema drift in prod |
 | Topic casing inconsistency | `pipeline.py` vs `runner.py` | Duplicate topic keys |
 | **schreiben ↔ backend (частично)** | `schreiben.js` + `schreiben-api.js` | Essays + анализ через API; UI/список essays ещё localStorage |
 
@@ -35,6 +34,14 @@ Last updated: **2026-07-06**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete ma
 | `/health` doesn't check DB | `health.py` |
 | Startup v1 cleanup every boot | `main.py` |
 | Nav `href="#"` stubs | all HTML pages |
+
+## Resolved ✅ (2026-07-10 — migrations + tooling)
+
+- **Alembic migrations** — schema now versioned in `backend/alembic/`; `create_all` + `_ensure_new_columns` hack removed from `main.py`. Applied by container entrypoint (`alembic upgrade head`). Models stay source of truth; `make migration`/`make migrate` for changes.
+- **uv + pyproject.toml** — replaced `requirements.txt` + `pytest.ini`; `uv.lock` pins deps; Dockerfile + CI use uv.
+- **Single `.env`** — root `.env` removed; secrets unified into `backend/.env` (docker reads via `env_file`).
+- **`Makefile`** — one-command lifecycle: `make setup`/`up`/`down`/`migrate`/`test`/`logs`/`db`/`clean`.
+- **Backend healthcheck** — compose waits for `/health` before marking backend ready.
 
 ## Resolved ✅ (2026-07-06 cleanup)
 
