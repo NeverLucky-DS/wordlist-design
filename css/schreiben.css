@@ -116,8 +116,7 @@ button{font-family:inherit;cursor:pointer}
 .layout{position:relative;z-index:1;display:grid;
   grid-template-columns:292px minmax(480px,1fr) 424px;
   gap:16px;align-items:start;
-  padding:10px 26px 30px;max-width:1760px;margin:0 auto;
-  zoom:.9}   /* Schreiben interface a touch more compact */
+  padding:10px 26px 30px;max-width:1760px;margin:0 auto}
 @media (max-width:1360px){
   .layout{grid-template-columns:264px minmax(440px,1fr) 384px;gap:14px;padding:8px 18px 26px}
 }
@@ -550,17 +549,23 @@ button{font-family:inherit;cursor:pointer}
 .editable span[data-error-id].und.good:hover,
 .editable span[data-error-id].und.good.sel{background:rgba(90,138,122,.14)}
 
-/* ending change — only the corrected suffix, red + wavy */
-.editable .fix-end{color:#c0392b;text-decoration:underline wavy #c0392b;
-  text-decoration-thickness:1.6px;text-underline-offset:3px}
+/* ending change — student's original ending struck through, needed one beside it */
+.editable .fix-old{color:var(--ink-soft);text-decoration:line-through;
+  text-decoration-color:var(--ink-soft);text-decoration-thickness:1.6px}
+.editable .fix-end{color:#c0392b;font-weight:600;margin-left:1px}
 
-/* word-order move — circle the word; the arrow itself is drawn as SVG */
+/* word-order move — box the misplaced word, caret marks the target slot; the
+   arrow arcs over the text (drawn as SVG in an overlay, colour = theme accent) */
 .editable .mvw{white-space:nowrap}
-.editable .mv-src{display:inline-block;padding:0 4px;border:1.5px solid #c0392b;
-  border-radius:10px;line-height:1.3}
-.editable .mv-dst{display:inline-block;width:0;overflow:visible}
+.editable .mv-src{display:inline-block;padding:0 5px;border:1.5px solid var(--accent);
+  border-radius:5px;color:var(--accent-ink);line-height:1.3}
+/* target slot — a small highlighted place the moved word belongs in */
+.editable .mv-dst{display:inline-block;width:.82em;height:1.12em;vertical-align:-.22em;
+  margin:0 3px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent-ln)}
 .editable .mv-layer{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:2}
-.editable .mv-path{fill:none;stroke:#c0392b;stroke-width:1.6;stroke-linecap:round}
+.editable .mv-path{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round}
+/* room above each line so the move arc never rides onto the heading */
+.editable.reviewing .rev-text{padding-top:10px}
 
 /* correction card popover */
 .ann-backdrop{position:fixed;inset:0;z-index:88;border:none;background:transparent;cursor:default}

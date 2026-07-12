@@ -1215,6 +1215,8 @@ function findMove(ex, cor){
   return null;
 }
 
+/* word-order fix: box the misplaced word, drop a caret at the slot it belongs in;
+   drawMoveArrows() later arcs an arrow over the text from box → caret. */
 let mvSeq = 0;
 function buildReorder(bad, fix, err, stageId){
   const ex = tok(bad), cor = tok(fix);
@@ -1225,7 +1227,7 @@ function buildReorder(bad, fix, err, stageId){
   const idxs = []; for (let k = 0; k < n; k += 1) if (k !== from) idxs.push(k);
   const caretBefore = to < idxs.length ? idxs[to] : n;
   const id = 'mv' + (mvSeq += 1);
-  const dst = `<span class="mv-dst" data-mv="${id}">​</span>`;
+  const dst = `<span class="mv-dst" data-mv="${id}"></span>`;
   let inner = '';
   for (let i = 0; i < n; i += 1){
     if (i === caretBefore) inner += dst;
@@ -1258,15 +1260,18 @@ function endingDiff(bad, fix){
   const wa = ta[diffIdx], wb = tb[diffIdx];
   const p = commonPrefixLen(wa, wb);
   if (!(p >= 2 && (wa.length - p) <= 4 && (wb.length - p) <= 4)) return null;
-  return { tokens: tb, diffIdx, prefix: wb.slice(0, p), ending: wb.slice(p) };
+  return { tokens: tb, diffIdx, prefix: wb.slice(0, p),
+    ending: wb.slice(p), origEnding: wa.slice(p) };
 }
 
-/* corrected form with ONLY the changed ending in red + wavy underline */
+/* keep the student's original ending struck through, write the needed one next
+   to it — so it stays clear what was theirs and what the AI proposes */
 function renderEndingFix(diff, attrs){
-  const parts = diff.tokens.map((t, i) =>
-    i === diff.diffIdx
-      ? esc2(diff.prefix) + `<span class="fix-end">${esc2(diff.ending)}</span>`
-      : esc2(t));
+  const parts = diff.tokens.map((t, i) => {
+    if (i !== diff.diffIdx) return esc2(t);
+    const old = diff.origEnding ? `<s class="fix-old">${esc2(diff.origEnding)}</s>` : '';
+    return esc2(diff.prefix) + old + `<span class="fix-end">${esc2(diff.ending)}</span>`;
+  });
   return `<span class="und-end" ${attrs}>${parts.join(' ')}</span>`;
 }
 
@@ -1301,33 +1306,44 @@ function renderAnnotatedHTML(text, anchored, stageId){
   return html;
 }
 
-/* draw a continuous arrow from each circled word to where it should move */
+/* arc an arrow over the text from each boxed word to the caret where it belongs.
+   Colour comes from the theme accent; the arc rises above the line, and we clamp
+   it inside the part so it never rides up onto the heading. */
 function drawMoveArrows(){
   editable.querySelectorAll('.mv-layer').forEach(l => l.remove());
   if (!reviewMode) return;
   const moves = editable.querySelectorAll('.mvw');
   if (!moves.length) return;
+  const accent = getComputedStyle(document.documentElement)
+    .getPropertyValue('--accent').trim() || '#7C6EB6';
   const NS = 'http://www.w3.org/2000/svg';
   const edRect = editable.getBoundingClientRect();
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'mv-layer');
   svg.setAttribute('width', editable.scrollWidth);
   svg.setAttribute('height', editable.scrollHeight);
-  svg.innerHTML = '<defs><marker id="mvHead" viewBox="0 0 10 10" refX="8" refY="5" '
-    + 'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
-    + '<path d="M0 0L10 5L0 10z" fill="#c0392b"/></marker></defs>';
+  svg.innerHTML = `<defs><marker id="mvHead" viewBox="0 0 10 10" refX="7" refY="5" `
+    + `markerWidth="7" markerHeight="7" orient="auto-start-reverse">`
+    + `<path d="M0 0L10 5L0 10z" fill="${accent}"/></marker></defs>`;
   moves.forEach(mvw => {
     const id = mvw.getAttribute('data-mv');
     const src = mvw.querySelector('.mv-src');
     const dst = mvw.querySelector(`.mv-dst[data-mv="${id}"]`);
     if (!src || !dst) return;
     const sr = src.getBoundingClientRect(), dr = dst.getBoundingClientRect();
+    /* only same-line moves get a drawn arrow; across a wrap the elbow would slash
+       through the text, so we leave just the box + highlighted slot to read it */
+    if (Math.abs(sr.top - dr.top) > sr.height * 0.6) return;
+    const partTop = (mvw.closest('.rev-text') || editable).getBoundingClientRect().top;
     const ox = editable.scrollLeft - edRect.left, oy = editable.scrollTop - edRect.top;
     const sx = sr.left + sr.width / 2 + ox, sy = sr.top + oy;
-    const dx = dr.left + ox, dy = dr.top + oy;
-    const topY = Math.min(sy, dy) - 13;             /* arc rides above the line */
+    const dx = dr.left + dr.width / 2 + ox, dy = dr.top + oy;
+    /* rectangular route: up out of the box, across the gap just above the line,
+       down onto the target slot — kept below the part's top edge (off the heading) */
+    const ceil = partTop + oy - 2;
+    const hy = Math.max(Math.min(sy, dy) - 5, ceil);
     const path = document.createElementNS(NS, 'path');
-    path.setAttribute('d', `M ${sx} ${sy} Q ${(sx + dx) / 2} ${topY} ${dx} ${dy}`);
+    path.setAttribute('d', `M ${sx} ${sy} V ${hy} H ${dx} V ${dy}`);
     path.setAttribute('class', 'mv-path');
     path.setAttribute('marker-end', 'url(#mvHead)');
     svg.appendChild(path);
