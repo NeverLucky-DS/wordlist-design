@@ -49,8 +49,11 @@ migration: ## Create a migration from model changes:  make migration name="add x
 	@test -n "$(name)" || { echo 'usage: make migration name="describe the change"'; exit 1; }
 	cd backend && DATABASE_URL="$(DB_URL)" uv run alembic revision --autogenerate -m "$(name)"
 
-test: ## Run the backend test suite (pytest)
+test: ## Run the full backend test suite incl. live Mistral (requires backend/.env key)
 	uv run pytest -v
+
+test-unit: ## Run unit/API tests only (no live Mistral calls — used in CI without API key)
+	uv run pytest -v -m "not mistral_live"
 
 db: ## Open a psql shell inside the database container
 	docker compose exec postgres psql -U wordlist -d wordlist

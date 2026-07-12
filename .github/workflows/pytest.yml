@@ -25,9 +25,19 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run pytest -v -m "not mistral_live"
         env:
           DATABASE_URL: sqlite+aiosqlite:///./data/ci-test.db
           MISTRAL_API_KEY: ""
+          GROK_API_KEY: ""
+          CORS_ORIGINS: http://127.0.0.1:8753
+
+      - name: Run live Mistral tests
+        if: ${{ secrets.MISTRAL_API_KEY != '' }}
+        run: uv run pytest -v -m mistral_live
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./data/ci-test.db
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          MISTRAL_MODEL: mistral-large-latest
           GROK_API_KEY: ""
           CORS_ORIGINS: http://127.0.0.1:8753
