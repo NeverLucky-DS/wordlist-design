@@ -53,8 +53,9 @@ pipeline.html
 | `schreiben.html` | self (active) | `pipeline.html` | `index.html` |
 | `pipeline.html` | `schreiben.html` | self (active) | `index.html` |
 
-Все три страницы используют одну сегментированную навигацию из
-`css/site-header.css`; контекстный Pomodoro отображается только на Essay.
+Все три страницы используют одну открытую editorial-навигацию из
+`css/site-header.css`; она ссылается на `images/header/*.png`, а контекстный
+Pomodoro отображается только на Essay.
 
 ---
 
@@ -74,7 +75,7 @@ pipeline.html
 
 ## 3. Изображения — полная таблица ссылок
 
-### `images/` (4.1 MB, 16 PNG)
+### Корень `images/` (4.1 MB, 16 PNG)
 
 | Файл | ~KB | Кто ссылается | Production? |
 |------|-----|---------------|-------------|
@@ -94,6 +95,15 @@ pipeline.html
 | `tool-hilfen.png` | 20 | `schreiben.html` L154 | ✅ schreiben |
 | `roadmap-leaf-3.png` | 20 | `schreiben.js` LEAF_SPOTS, MID_LEAVES | ✅ schreiben |
 | `decor-head.png` | 8 | `styles.css`, `schreiben.css`, `editor.css` | ✅ index, schreiben |
+
+### `images/header/` (4 RGBA PNG)
+
+| Файл | ~KB | Кто ссылается | Роль |
+|------|-----|---------------|------|
+| `header-wash-desktop.png` | 2388 | `site-header.css` | Широкий акварельный фон |
+| `header-wash-mobile.png` | 2468 | `site-header.css` | Фон двухстрочной mobile-шапки |
+| `header-flourish-right.png` | 2172 | `site-header.css` | Ботаническая композиция у инструментов |
+| `nav-active-stroke.png` | 2028 | `site-header.css` mask | Акварельное подчёркивание активного раздела |
 
 ### `worte/` (2.4 MB, 15 PNG) — все 15 используются через WASH
 
@@ -117,6 +127,7 @@ pipeline.html
 | **Декор** | `abstract-watercolor-column.png` | index, pipeline, editor CSS | мягкая акварель по краю |
 | **Маска** | `decor-head.png` | CSS `-webkit-mask` / `mask` | WebP-lossy ломает маску → детальная карточка без «головы» |
 | **Washes** | `timer-wash.png`, `tool-card-wash.png` | `schreiben.css` | полупрозрачные подложки |
+| **Header art** | все 4 файла `images/header/*.png` | `site-header.css` | фон, декор и mask с мягкой альфой |
 | **Иконки** | `tool-hilfen.png`, `tool-woerterbuch.png` | `schreiben.html` | RGBA |
 | **Листья** | `roadmap-leaf-1/2/3.png` | `schreiben.js` | RGBA, анимация на roadmap |
 
@@ -242,8 +253,8 @@ POST /api/pipeline/queue
    не возвращать туда отдельную копию `.topbar` / `.nav`.
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
-   (`site-header.css` сейчас `?v=7`, `site-header.js` — `?v=6`,
-   `schreiben.css` — `?v=24`).
+   (`site-header.css` сейчас `?v=8`, `site-header.js` — `?v=6`,
+   `schreiben.css` — `?v=25`).
 
 3. **docker mount `.:/usr/share/nginx/html`** — nginx отдаёт **весь репо** включая `backend/`, `.git`. Только local dev.
 

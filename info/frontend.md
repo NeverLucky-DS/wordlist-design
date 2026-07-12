@@ -10,9 +10,10 @@ Vanilla HTML/CSS/JS. No bundler. Cache bust via `?v=N` query params.
 | [`schreiben.html`](../schreiben.html) | Essay roadmap — Pomodoro, stage drafts, drawer tools | `site-header.js`, `schreiben-api.js`, `schreiben.js` | `site-header.css`, `schreiben.css` |
 | [`pipeline.html`](../pipeline.html) | Pipeline ops dashboard | `site-header.js`, `pipeline.js` | `site-header.css`, `pipeline.css` |
 
-**Navigation:** all three pages use the same segmented `Essay / Pipeline / Wörterbuch`
-topbar. The markup is repeated in the static HTML files; visuals and behavior are
-shared through `site-header.css` and `site-header.js`.
+**Navigation:** all three pages use the same open editorial
+`Essay / Pipeline / Wörterbuch` topbar. The markup is repeated in the static HTML
+files; watercolor visuals, responsive behavior and active brush marks are shared
+through `site-header.css`, `site-header.js` and `images/header/`.
 
 ## JS modules
 
@@ -57,7 +58,7 @@ Landing page scroll/entrance animations (`index.html` only).
 | `css/styles.css` | `index.html` — word grid, detail, watercolor column |
 | `css/schreiben.css` | `schreiben.html` — roadmap, drawer, Pomodoro |
 | `css/pipeline.css` | `pipeline.html` — dashboard tables |
-| `css/site-header.css` | All three production pages — shared topbar and responsive navigation |
+| `css/site-header.css` | All production pages — illustrated topbar, active brush mask and responsive navigation |
 
 Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Brush images from [`worte/`](../worte/). Decor from [`images/`](../images/).
 
@@ -66,7 +67,7 @@ Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Bru
 | Folder | Count | Usage |
 |--------|-------|-------|
 | [`worte/`](../worte/) | 15 PNG | Level×POS watercolor brushes (`B1_Adjectives_...`, etc.) |
-| [`images/`](../images/) | 16 PNG | Decor, schreiben bg, tool icons, roadmap leaves |
+| [`images/`](../images/) | 20 PNG | Decor, schreiben bg, tool icons, roadmap leaves and 4 shared header artworks |
 
 ## Frontend ↔ Backend matrix
 

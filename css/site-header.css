@@ -1,55 +1,73 @@
 /* =====================================================================
    Shared site header · Essay, Pipeline and Wörterbuch
    ---------------------------------------------------------------------
-   The wordmark stays editorial; the three production areas form a quiet
-   segmented switch in the centre. Contextual tools remain on the right.
-   Every selector is scoped to .topbar so page-level styles cannot leak in.
+   An illustrated editorial colophon rather than a conventional app bar:
+   open typography floats over watercolor, with a painted active mark and
+   a botanical flourish around the contextual tools.
    ===================================================================== */
 .topbar{
-  position:sticky;top:0;z-index:60;display:flex;align-items:center;
-  min-height:70px;padding:0 38px;background:rgba(250,248,244,.88);
-  -webkit-backdrop-filter:saturate(150%) blur(18px);
-  backdrop-filter:saturate(150%) blur(18px);
-  border-bottom:1px solid rgba(226,219,208,.82);
-  box-shadow:0 8px 28px -26px rgba(50,38,28,.45)
+  position:sticky;top:0;z-index:60;isolation:isolate;
+  display:flex;align-items:center;min-height:82px;padding:0 42px;
+  background:rgba(251,248,243,.82);
+  -webkit-backdrop-filter:saturate(135%) blur(18px);
+  backdrop-filter:saturate(135%) blur(18px)
 }
+.topbar::before{
+  content:"";position:absolute;z-index:-2;inset:0;pointer-events:none;
+  background:url('../images/header/header-wash-desktop.png') center 72%/100% auto no-repeat;
+  opacity:.72;filter:saturate(.82) contrast(.96)
+}
+.topbar::after{
+  content:"";position:absolute;z-index:0;right:-34px;top:-30px;
+  width:500px;height:185px;pointer-events:none;
+  background:url('../images/header/header-flourish-right.png') center/contain no-repeat;
+  opacity:.64;filter:saturate(.88) contrast(1.06)
+}
+.topbar>*{position:relative;z-index:1}
 
-/* Two-tone wordmark on one baseline: upright ink + italic secondary word. */
+/* The masthead behaves like a small book imprint. */
 .topbar .brand{
-  display:flex;align-items:baseline;gap:10px;flex:none;
+  position:relative;display:flex;align-items:baseline;gap:9px;flex:none;
   font-family:'Cormorant Garamond',Georgia,serif;line-height:1;text-decoration:none
 }
 .topbar .brand span{
-  display:inline;font-size:23px;font-weight:600;color:#2A2420;letter-spacing:.2px
+  display:inline;font-size:24px;font-weight:600;color:#2D2724;letter-spacing:.2px
 }
-.topbar .brand span+span{font-weight:500;font-style:italic;color:#665D54}
+.topbar .brand span+span{
+  font-size:25px;font-weight:500;font-style:italic;color:#746979;
+  transform:translateY(1px)
+}
 .topbar .brand-rule{
-  width:1px;height:28px;background:#E3DDD3;margin:0 28px;flex:none
+  width:54px;height:1px;margin:0 26px;flex:none;
+  background:linear-gradient(90deg,rgba(120,107,137,.58),rgba(185,141,153,.2),transparent);
+  transform:rotate(-2deg);transform-origin:left
 }
 
-/* Three destinations read as one compact piece of wayfinding. */
+/* Open wayfinding: no container, only type and a real painted active stroke. */
 .topbar .nav{
   position:absolute;left:50%;transform:translateX(-50%);
-  display:flex;align-items:center;gap:3px;padding:4px;
-  border:1px solid rgba(218,211,202,.9);border-radius:15px;
-  background:rgba(239,235,231,.72);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.8)
+  display:flex;align-items:center;gap:clamp(24px,3vw,46px)
 }
 .topbar .nav a{
   position:relative;display:flex;align-items:center;justify-content:center;
-  min-width:104px;padding:9px 15px;border-radius:11px;
-  text-decoration:none;color:#82786D;font-size:10.5px;font-weight:650;
-  font-family:inherit;letter-spacing:.13em;text-transform:uppercase;
-  white-space:nowrap;transition:color .18s,background .18s,box-shadow .18s,transform .18s
+  padding:12px 2px;text-decoration:none;color:#8B8179;
+  font-size:10.5px;font-weight:650;font-family:inherit;
+  letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;
+  text-shadow:0 1px rgba(255,255,255,.72);
+  transition:color .22s,transform .22s,letter-spacing .22s
 }
-.topbar .nav a:hover{color:#342E29;background:rgba(255,255,255,.48)}
+.topbar .nav a:hover{
+  color:#4A414C;transform:translateY(-2px);letter-spacing:.19em
+}
 .topbar .nav a.active{
-  color:#342E29;background:rgba(255,253,249,.96);
-  box-shadow:0 1px 2px rgba(50,38,28,.08),0 6px 16px -10px rgba(72,58,88,.38)
+  color:#433A47;font-weight:700
 }
 .topbar .nav a.active::after{
-  content:"";position:absolute;left:24%;right:24%;bottom:3px;height:2px;border-radius:2px;
-  background:linear-gradient(90deg,#777087,#9A91AD)
+  content:"";position:absolute;left:-12px;right:-12px;bottom:2px;height:12px;
+  background:#766783;
+  -webkit-mask:url('../images/header/nav-active-stroke.png') center/100% 100% no-repeat;
+  mask:url('../images/header/nav-active-stroke.png') center/100% 100% no-repeat;
+  opacity:.65;mix-blend-mode:multiply;pointer-events:none
 }
 .topbar .nav a:focus-visible,
 .topbar .brand:focus-visible,
@@ -57,42 +75,54 @@
   outline:2px solid #817795;outline-offset:3px
 }
 
-/* Contextual utility, theme and profile controls. */
+/* Contextual tools float inside the botanical paint without card chrome. */
 .topbar .top-right{
-  margin-left:auto;display:flex;align-items:center;gap:8px;flex:none
+  position:relative;margin-left:auto;display:flex;align-items:center;gap:9px;flex:none
 }
 .topbar .icon-btn{
-  width:36px;height:36px;border-radius:11px;border:0;background:transparent;
+  width:34px;height:34px;border:0;background:transparent;
   color:#82786D;display:flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:color .18s,background .18s
+  transition:color .2s,transform .25s
 }
 .topbar .icon-btn svg{width:18px;height:18px}
-.topbar .icon-btn:hover{background:rgba(255,253,249,.82);color:#2A2420}
+.topbar .icon-btn:hover{color:#51475A;transform:rotate(12deg) scale(1.08)}
 .topbar .top-rule{
-  width:1px;height:22px;background:#E3DDD3;margin:0 8px;flex:none
+  width:1px;height:25px;margin:0 8px;flex:none;
+  background:linear-gradient(transparent,rgba(116,103,121,.38),transparent);
+  transform:rotate(5deg)
 }
 .topbar .avatar{
-  width:36px;height:36px;border-radius:50%;background:#3A3632;color:#fff;display:flex;
+  width:38px;height:38px;border-radius:48% 52% 50% 47%;background:#514957;color:#fff;display:flex;
   align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;
-  font-size:16px;font-weight:600;flex:none;box-shadow:0 4px 12px -8px rgba(35,28,23,.7)
+  font-size:16px;font-weight:600;font-style:italic;flex:none;
+  border:1px solid rgba(255,255,255,.72);outline:1px solid rgba(81,73,87,.22);
+  box-shadow:0 5px 14px -9px rgba(35,28,23,.8);transform:rotate(-4deg)
 }
 
-/* Give the centred switch room before moving it into the normal flow. */
+/* Give the centred composition room before returning nav to normal flow. */
 @media (max-width:1240px){
   .topbar{padding-inline:26px}
   .topbar .brand-rule{margin-inline:20px}
   .topbar .nav{position:static;transform:none;margin-right:auto}
-  .topbar .nav a{min-width:94px;padding-inline:12px}
+  .topbar::after{right:-70px;opacity:.32}
 }
 
 /* Keep all destinations visible: on narrow screens they become a second row. */
 @media (max-width:860px){
   .topbar{
     width:100vw;box-sizing:border-box;flex-wrap:wrap;
-    padding:10px 20px 12px;row-gap:9px
+    padding:11px 20px 13px;row-gap:7px
   }
+  .topbar::before{
+    background-image:url('../images/header/header-wash-mobile.png');
+    background-position:center 78%;background-size:100% auto;opacity:.66
+  }
+  .topbar::after{display:none}
   .topbar .brand{margin-right:auto}
   .topbar .brand-rule{display:none}
-  .topbar .nav{order:3;width:100%;margin:0;display:grid;grid-template-columns:repeat(3,1fr)}
-  .topbar .nav a{min-width:0;padding-inline:8px}
+  .topbar .nav{
+    order:3;width:100%;margin:0;display:grid;grid-template-columns:repeat(3,1fr);gap:0
+  }
+  .topbar .nav a{min-width:0;padding:10px 8px}
+  .topbar .nav a.active::after{left:14%;right:14%;bottom:0}
 }
