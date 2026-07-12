@@ -1,81 +1,135 @@
 /* =====================================================================
-   Shared site header  ·  identical across Editor and Wörterbuch
+   Shared site header · Essay, Pipeline and Wörterbuch
    ---------------------------------------------------------------------
-   A left-aligned editorial masthead (per the design system): a two-tone
-   serif wordmark, a hairline rule, then uppercase letter-tracked nav with
-   a quiet active tick. The right cluster (theme · language · avatar)
-   stays minimal and neutral — ghost icons, plain-text language toggle.
-   Self-contained: every colour is hard-coded (not via a page :root), so
-   the bar renders the same on any page that links this file. Everything
-   is scoped under .topbar so it never collides with a page's own nav/
-   avatar/top-right rules.
+   An illustrated editorial colophon rather than a conventional app bar:
+   open typography floats over watercolor, with a painted active mark and
+   a botanical flourish around the contextual tools.
    ===================================================================== */
-.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:0;
-  height:66px;padding:0 38px;background:rgba(250,248,244,.85);
-  -webkit-backdrop-filter:saturate(150%) blur(16px);backdrop-filter:saturate(150%) blur(16px);
-  border-bottom:1px solid #ECE7DE}
+.topbar{
+  position:sticky;top:0;z-index:60;isolation:isolate;
+  display:flex;align-items:center;min-height:82px;padding:0 42px;
+  background:linear-gradient(to bottom,
+    rgba(251,248,243,.9) 0%,
+    rgba(251,248,243,.8) 62%,
+    rgba(251,248,243,.4) 82%,
+    rgba(251,248,243,0) 100%);
+  -webkit-backdrop-filter:saturate(135%) blur(18px);
+  backdrop-filter:saturate(135%) blur(18px)
+}
+.topbar::before{
+  content:"";position:absolute;z-index:0;inset:0 0 -28px;pointer-events:none;
+  background:url('../images/header/header-wash-desktop.png') center 72%/100% auto no-repeat;
+  opacity:.72;filter:saturate(.82) contrast(.96);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 62%,rgba(0,0,0,.78) 78%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 62%,rgba(0,0,0,.78) 78%,transparent 100%)
+}
+.topbar::after{
+  content:"";position:absolute;z-index:1;right:-34px;top:-30px;
+  width:500px;height:185px;pointer-events:none;
+  background:url('../images/header/header-flourish-right.png') center/contain no-repeat;
+  opacity:.64;filter:saturate(.88) contrast(1.06)
+}
+.topbar>*{position:relative;z-index:2}
 
-/* two-tone wordmark on one baseline: "Deutsch" upright ink, "Essay" italic */
-.topbar .brand{display:flex;align-items:baseline;gap:14px;flex:none;
-  font-family:'Cormorant Garamond',Georgia,serif;line-height:1;text-decoration:none}
-.topbar .brand span{display:inline;font-size:23px;font-weight:600;color:#2A2420;letter-spacing:.2px}
-.topbar .brand span+span{font-weight:500;font-style:italic;color:#5B534A}
+/* The masthead behaves like a small book imprint. */
+.topbar .brand{
+  position:relative;display:flex;align-items:baseline;gap:9px;flex:none;
+  font-family:'Cormorant Garamond',Georgia,serif;line-height:1;text-decoration:none
+}
+.topbar .brand span{
+  display:inline;font-size:24px;font-weight:600;color:#2D2724;letter-spacing:.2px
+}
+.topbar .brand span+span{
+  font-size:25px;font-weight:500;font-style:italic;color:#746979;
+  transform:translateY(1px)
+}
+.topbar .brand-rule{
+  width:54px;height:1px;margin:0 26px;flex:none;
+  background:linear-gradient(90deg,rgba(120,107,137,.58),rgba(185,141,153,.2),transparent);
+  transform:rotate(-2deg);transform-origin:left
+}
 
-/* hairline rule between the masthead and the nav */
-.topbar .brand-rule{width:1px;height:26px;background:#ECE7DE;margin:0 26px;flex:none}
+/* Open wayfinding: no container, only type and a real painted active stroke. */
+.topbar .nav{
+  position:absolute;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:clamp(24px,3vw,46px)
+}
+.topbar .nav a{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  padding:12px 2px;text-decoration:none;color:#8B8179;
+  font-size:10.5px;font-weight:650;font-family:inherit;
+  letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;
+  text-shadow:0 1px rgba(255,255,255,.72);
+  transition:color .22s,transform .22s,letter-spacing .22s
+}
+.topbar .nav a:hover{
+  color:#4A414C;transform:translateY(-2px);letter-spacing:.19em
+}
+.topbar .nav a.active{
+  color:#433A47;font-weight:700
+}
+.topbar .nav a.active::after{
+  content:"";position:absolute;left:-12px;right:-12px;bottom:2px;height:12px;
+  background:#766783;
+  -webkit-mask:url('../images/header/nav-active-stroke.png') center/100% 100% no-repeat;
+  mask:url('../images/header/nav-active-stroke.png') center/100% 100% no-repeat;
+  opacity:.65;mix-blend-mode:multiply;pointer-events:none
+}
+.topbar .nav a:focus-visible,
+.topbar .brand:focus-visible,
+.topbar .icon-btn:focus-visible{
+  outline:2px solid #817795;outline-offset:3px
+}
 
-/* left-aligned nav — uppercase, tracked, quiet active tick */
-.topbar .nav{display:flex;align-items:center;gap:28px;margin-right:auto}
-.topbar .nav a,
-.topbar .nav .nav-drop>button{position:relative;display:inline-flex;align-items:center;gap:5px;
-  text-decoration:none;color:#8C8377;font-size:11.5px;font-weight:600;font-family:inherit;
-  letter-spacing:.15em;text-transform:uppercase;
-  padding:22px 1px;border:0;background:none;cursor:pointer;transition:color .18s}
-.topbar .nav a:hover,
-.topbar .nav .nav-drop>button:hover{color:#2A2420}
-.topbar .nav a.active,
-.topbar .nav .nav-drop>button.active{color:#2A2420}
-.topbar .nav a::after,
-.topbar .nav .nav-drop>button::after{content:"";position:absolute;left:0;right:0;bottom:0;
-  height:2px;border-radius:2px;background:#C8C1B6;opacity:0;transform:scaleX(.3);
-  transform-origin:center;transition:opacity .18s,transform .18s}
-.topbar .nav a:hover::after,
-.topbar .nav .nav-drop>button:hover::after{opacity:.55;transform:scaleX(1)}
-.topbar .nav a.active::after,
-.topbar .nav .nav-drop>button.active::after{opacity:1;transform:scaleX(1);
-  background:linear-gradient(90deg,#6C6580,#8A8299)}
-.topbar .nav .chev{width:11px;height:11px;opacity:.65;transition:transform .2s}
-.topbar .nav-drop{position:relative}
-.topbar .nav-drop.open .chev{transform:rotate(180deg)}
-.topbar .nav-menu{position:absolute;top:calc(100% + 2px);left:0;min-width:190px;background:#FFFFFF;
-  border:1px solid #ECE7DE;border-radius:14px;padding:7px;
-  box-shadow:0 12px 34px -16px rgba(60,40,20,.4),0 4px 12px rgba(60,40,20,.06);
-  opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .16s,transform .16s,visibility .16s}
-.topbar .nav-drop.open .nav-menu{opacity:1;visibility:visible;transform:none}
-.topbar .nav-menu a{display:flex;width:100%;padding:10px 12px;border-radius:9px;font-size:13.5px;
-  font-weight:500;letter-spacing:0;text-transform:none;color:#5B534A;border:0}
-.topbar .nav-menu a::after{display:none}
-.topbar .nav-menu a:hover{background:#F0EFF3;color:#524C63}
-
-/* right cluster — ghost icon · plain-text language · hairline · avatar */
-.topbar .top-right{display:flex;align-items:center;gap:8px;flex:none}
-.topbar .icon-btn{width:36px;height:36px;border-radius:11px;border:0;background:transparent;
-  color:#8C8377;display:flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:color .18s,background .18s}
+/* Contextual tools float inside the botanical paint without card chrome. */
+.topbar .top-right{
+  position:relative;margin-left:auto;display:flex;align-items:center;gap:9px;flex:none
+}
+.topbar .icon-btn{
+  width:34px;height:34px;border:0;background:transparent;
+  color:#82786D;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:color .2s,transform .25s
+}
 .topbar .icon-btn svg{width:18px;height:18px}
-.topbar .icon-btn:hover{background:#FBFAF6;color:#2A2420}
-.topbar .lang-pill{display:flex;align-items:center;gap:5px;padding:8px 4px;height:36px;
-  border:0;background:none;color:#5B534A;font-size:11.5px;font-weight:700;letter-spacing:.12em;
-  font-family:inherit;cursor:pointer;transition:color .18s}
-.topbar .lang-pill:hover{color:#2A2420}
-.topbar .lang-pill svg{width:11px;height:11px;opacity:.65}
-.topbar .top-rule{width:1px;height:22px;background:#ECE7DE;margin:0 8px;flex:none}
-.topbar .avatar{width:36px;height:36px;border-radius:50%;background:#33312C;color:#fff;display:flex;
+.topbar .icon-btn:hover{color:#51475A;transform:rotate(12deg) scale(1.08)}
+.topbar .top-rule{
+  width:1px;height:25px;margin:0 8px;flex:none;
+  background:linear-gradient(transparent,rgba(116,103,121,.38),transparent);
+  transform:rotate(5deg)
+}
+.topbar .avatar{
+  width:38px;height:38px;border-radius:48% 52% 50% 47%;background:#514957;color:#fff;display:flex;
   align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;
-  font-size:16px;font-weight:600;flex:none}
+  font-size:16px;font-weight:600;font-style:italic;flex:none;
+  border:1px solid rgba(255,255,255,.72);outline:1px solid rgba(81,73,87,.22);
+  box-shadow:0 5px 14px -9px rgba(35,28,23,.8);transform:rotate(-4deg)
+}
 
-@media (max-width:1080px){
-  .topbar{padding:0 24px}
-  .topbar .brand-rule,.topbar .nav{display:none}
+/* Give the centred composition room before returning nav to normal flow. */
+@media (max-width:1240px){
+  .topbar{padding-inline:26px}
+  .topbar .brand-rule{margin-inline:20px}
+  .topbar .nav{position:static;transform:none;margin-right:auto}
+  .topbar::after{right:-70px;opacity:.32}
+}
+
+/* Keep all destinations visible: on narrow screens they become a second row. */
+@media (max-width:860px){
+  .topbar{
+    width:100vw;box-sizing:border-box;flex-wrap:wrap;
+    padding:11px 20px 13px;row-gap:7px
+  }
+  .topbar::before{
+    inset:0 0 -20px;
+    background-image:url('../images/header/header-wash-mobile.png');
+    background-position:center 78%;background-size:100% auto;opacity:.66
+  }
+  .topbar::after{display:none}
   .topbar .brand{margin-right:auto}
+  .topbar .brand-rule{display:none}
+  .topbar .nav{
+    order:3;width:100%;margin:0;display:grid;grid-template-columns:repeat(3,1fr);gap:0
+  }
+  .topbar .nav a{min-width:0;padding:10px 8px}
+  .topbar .nav a.active::after{left:14%;right:14%;bottom:0}
 }

@@ -7,11 +7,13 @@ Vanilla HTML/CSS/JS. No bundler. Cache bust via `?v=N` query params.
 | File | Purpose | JS | CSS |
 |------|---------|----|----|
 | [`index.html`](../index.html) | Wörterbuch — word grid, filters, detail card | `site-header.js`, `app.js`, `animations.js` | `site-header.css`, `styles.css` |
-| [`editor.html`](../editor.html) | Essay editor — 4 sections, Kli, analysis, word panel | `site-header.js`, `editor-api.js`, `editor.js` | `site-header.css`, `editor.css` |
-| [`schreiben.html`](../schreiben.html) | Essay roadmap — Pomodoro, stage drafts, drawer tools | `schreiben.js` | `schreiben.css` |
-| [`pipeline.html`](../pipeline.html) | Pipeline ops dashboard | `site-header.js` + **inline script** | `site-header.css`, `pipeline.css` |
+| [`schreiben.html`](../schreiben.html) | Essay roadmap — Pomodoro, stage drafts, drawer tools | `site-header.js`, `schreiben-api.js`, `schreiben.js` | `site-header.css`, `schreiben.css` |
+| [`pipeline.html`](../pipeline.html) | Pipeline ops dashboard | `site-header.js`, `pipeline.js` | `site-header.css`, `pipeline.css` |
 
-**Nav note:** `index.html` / `pipeline.html` link Schreiben → `editor.html`. `schreiben.html` is deployed but not linked from other pages yet.
+**Navigation:** all three pages use the same open editorial
+`Essay / Pipeline / Wörterbuch` topbar. The markup is repeated in the static HTML
+files; watercolor visuals, responsive behavior and active brush marks are shared
+through `site-header.css`, `site-header.js` and `images/header/`.
 
 ## JS modules
 
@@ -25,40 +27,25 @@ Vanilla HTML/CSS/JS. No bundler. Cache bust via `?v=N` query params.
 | `renderDetail()`, `openDetail()` | Word detail panel + grammar blocks |
 | `loadApiWords()` | `GET /api/words` → merges into list |
 
-### [`js/editor.js`](../js/editor.js) — Editor (~1593 lines)
-
-| Area | Key functions |
-|------|---------------|
-| State | `state` object — sections, essay id, errors, words |
-| Persistence | `persistEssayNow()`, `schedulePersistEssay()` → PATCH `/api/essays/{id}` |
-| Analysis | `initAnalyze()` → `EditorApi.streamAnalyze()` SSE |
-| Annotations | `mapErrorsToSections()`, `renderAnnotationPopover()`, `onAnnotationAction()` |
-| Sections | `renderMap()`, `selectSection()`, `renderEditorText()` |
-| Kli (clichés) | `renderKlischees()`, `insertCliche()` — loads `GET /api/phrases` |
-| Word panel | `renderWordList()`, `openCard()` — loads `GET /api/words` |
-| Pomodoro | `initPomo()`, `togglePomo()` |
-| Boot | `initBackendBridge()` → topics/words/phrases from API; `boot()` |
-
 ### [`js/schreiben.js`](../js/schreiben.js) — Schreiben (~1052 lines)
 
 | Symbol | Role |
 |--------|------|
 | `STAGES` | 6 essay stages (Einleitung → Schluss) |
-| `store` / `localStorage` | Essay lifecycle (drafts, snapshots, reports) — **backend hookup planned** |
+| `store` / `localStorage` | Local essay lifecycle; editable essays sync to the backend when available |
 | `THEMEN` | Static theme picker (12 topics); comment: pipeline DB later |
 | `buildRoadmap()` | SVG path + decorative leaves |
 | `openTool()` | Inline expanding tool cards (Wörterbuch / Hilfen) |
 | `WORDS` / `WASH` | Static word data (duplicated from `app.js`) |
 
-**No API calls yet** — unlike `editor.js`.
+### [`js/schreiben-api.js`](../js/schreiben-api.js) — API bridge
 
-### [`js/editor-api.js`](../js/editor-api.js) — API bridge
-
-IIFE exporting `window.EditorApi`: `createEssay`, `updateEssay`, `listWords`, `listPhrases`, `queueWord`, `streamAnalyze`, `probeHealth`.
+Exports `window.SchreibenApi`: essay create/update, health probe and streamed analysis.
 
 ### [`js/site-header.js`](../js/site-header.js)
 
-Shared nav dropdown behavior.
+Shared theme-toggle behavior. Primary navigation uses direct links and needs no
+dropdown JavaScript.
 
 ### [`js/animations.js`](../js/animations.js)
 
@@ -69,10 +56,9 @@ Landing page scroll/entrance animations (`index.html` only).
 | File | Used by |
 |------|---------|
 | `css/styles.css` | `index.html` — word grid, detail, watercolor column |
-| `css/editor.css` | `editor.html` — manuscript, annotations, Kli |
-| `css/schreiben.css` | `schreiben.html` — roadmap, drawer, pomodoro |
+| `css/schreiben.css` | `schreiben.html` — roadmap, drawer, Pomodoro |
 | `css/pipeline.css` | `pipeline.html` — dashboard tables |
-| `css/site-header.css` | All pages — topbar |
+| `css/site-header.css` | All production pages — illustrated topbar, active brush mask and responsive navigation |
 
 Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Brush images from [`worte/`](../worte/). Decor from [`images/`](../images/).
 
@@ -81,13 +67,12 @@ Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Bru
 | Folder | Count | Usage |
 |--------|-------|-------|
 | [`worte/`](../worte/) | 15 PNG | Level×POS watercolor brushes (`B1_Adjectives_...`, etc.) |
-| [`images/`](../images/) | 16 PNG | Decor, schreiben bg, tool icons, roadmap leaves |
+| [`images/`](../images/) | 20 PNG | Decor, schreiben bg, tool icons, roadmap leaves and 4 shared header artworks |
 
 ## Frontend ↔ Backend matrix
 
 | Page | Endpoints used |
 |------|----------------|
 | `index.html` | `GET /api/words` (optional overlay) |
-| `editor.html` | `/api/essays`, `/api/words`, `/api/phrases`, `/api/essays/{id}/analyze/stream` |
-| `schreiben.html` | — (static) |
+| `schreiben.html` | `/api/essays`, `/api/essays/{id}/analyze/stream` |
 | `pipeline.html` | `GET /api/pipeline/overview`, `POST /api/pipeline/queue`, `POST /api/pipeline/run` |
