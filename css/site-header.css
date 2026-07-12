@@ -1,81 +1,95 @@
 /* =====================================================================
-   Shared site header  ·  identical across Editor and Wörterbuch
+   Shared site header · Essay, Pipeline and Wörterbuch
    ---------------------------------------------------------------------
-   A left-aligned editorial masthead (per the design system): a two-tone
-   serif wordmark, a hairline rule, then uppercase letter-tracked nav with
-   a quiet active tick. The right cluster (theme · language · avatar)
-   stays minimal and neutral — ghost icons, plain-text language toggle.
-   Self-contained: every colour is hard-coded (not via a page :root), so
-   the bar renders the same on any page that links this file. Everything
-   is scoped under .topbar so it never collides with a page's own nav/
-   avatar/top-right rules.
+   The wordmark stays editorial; the three production areas form a quiet
+   segmented switch in the centre. Contextual tools remain on the right.
+   Every selector is scoped to .topbar so page-level styles cannot leak in.
    ===================================================================== */
-.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:0;
-  height:66px;padding:0 38px;background:rgba(250,248,244,.85);
-  -webkit-backdrop-filter:saturate(150%) blur(16px);backdrop-filter:saturate(150%) blur(16px);
-  border-bottom:1px solid #ECE7DE}
+.topbar{
+  position:sticky;top:0;z-index:60;display:flex;align-items:center;
+  min-height:70px;padding:0 38px;background:rgba(250,248,244,.88);
+  -webkit-backdrop-filter:saturate(150%) blur(18px);
+  backdrop-filter:saturate(150%) blur(18px);
+  border-bottom:1px solid rgba(226,219,208,.82);
+  box-shadow:0 8px 28px -26px rgba(50,38,28,.45)
+}
 
-/* two-tone wordmark on one baseline: "Deutsch" upright ink, "Essay" italic */
-.topbar .brand{display:flex;align-items:baseline;gap:14px;flex:none;
-  font-family:'Cormorant Garamond',Georgia,serif;line-height:1;text-decoration:none}
-.topbar .brand span{display:inline;font-size:23px;font-weight:600;color:#2A2420;letter-spacing:.2px}
-.topbar .brand span+span{font-weight:500;font-style:italic;color:#5B534A}
+/* Two-tone wordmark on one baseline: upright ink + italic secondary word. */
+.topbar .brand{
+  display:flex;align-items:baseline;gap:10px;flex:none;
+  font-family:'Cormorant Garamond',Georgia,serif;line-height:1;text-decoration:none
+}
+.topbar .brand span{
+  display:inline;font-size:23px;font-weight:600;color:#2A2420;letter-spacing:.2px
+}
+.topbar .brand span+span{font-weight:500;font-style:italic;color:#665D54}
+.topbar .brand-rule{
+  width:1px;height:28px;background:#E3DDD3;margin:0 28px;flex:none
+}
 
-/* hairline rule between the masthead and the nav */
-.topbar .brand-rule{width:1px;height:26px;background:#ECE7DE;margin:0 26px;flex:none}
+/* Three destinations read as one compact piece of wayfinding. */
+.topbar .nav{
+  position:absolute;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:3px;padding:4px;
+  border:1px solid rgba(218,211,202,.9);border-radius:15px;
+  background:rgba(239,235,231,.72);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.8)
+}
+.topbar .nav a{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  min-width:104px;padding:9px 15px;border-radius:11px;
+  text-decoration:none;color:#82786D;font-size:10.5px;font-weight:650;
+  font-family:inherit;letter-spacing:.13em;text-transform:uppercase;
+  white-space:nowrap;transition:color .18s,background .18s,box-shadow .18s,transform .18s
+}
+.topbar .nav a:hover{color:#342E29;background:rgba(255,255,255,.48)}
+.topbar .nav a.active{
+  color:#342E29;background:rgba(255,253,249,.96);
+  box-shadow:0 1px 2px rgba(50,38,28,.08),0 6px 16px -10px rgba(72,58,88,.38)
+}
+.topbar .nav a.active::after{
+  content:"";position:absolute;left:24%;right:24%;bottom:3px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,#777087,#9A91AD)
+}
+.topbar .nav a:focus-visible,
+.topbar .brand:focus-visible,
+.topbar .icon-btn:focus-visible{
+  outline:2px solid #817795;outline-offset:3px
+}
 
-/* left-aligned nav — uppercase, tracked, quiet active tick */
-.topbar .nav{display:flex;align-items:center;gap:28px;margin-right:auto}
-.topbar .nav a,
-.topbar .nav .nav-drop>button{position:relative;display:inline-flex;align-items:center;gap:5px;
-  text-decoration:none;color:#8C8377;font-size:11.5px;font-weight:600;font-family:inherit;
-  letter-spacing:.15em;text-transform:uppercase;
-  padding:22px 1px;border:0;background:none;cursor:pointer;transition:color .18s}
-.topbar .nav a:hover,
-.topbar .nav .nav-drop>button:hover{color:#2A2420}
-.topbar .nav a.active,
-.topbar .nav .nav-drop>button.active{color:#2A2420}
-.topbar .nav a::after,
-.topbar .nav .nav-drop>button::after{content:"";position:absolute;left:0;right:0;bottom:0;
-  height:2px;border-radius:2px;background:#C8C1B6;opacity:0;transform:scaleX(.3);
-  transform-origin:center;transition:opacity .18s,transform .18s}
-.topbar .nav a:hover::after,
-.topbar .nav .nav-drop>button:hover::after{opacity:.55;transform:scaleX(1)}
-.topbar .nav a.active::after,
-.topbar .nav .nav-drop>button.active::after{opacity:1;transform:scaleX(1);
-  background:linear-gradient(90deg,#6C6580,#8A8299)}
-.topbar .nav .chev{width:11px;height:11px;opacity:.65;transition:transform .2s}
-.topbar .nav-drop{position:relative}
-.topbar .nav-drop.open .chev{transform:rotate(180deg)}
-.topbar .nav-menu{position:absolute;top:calc(100% + 2px);left:0;min-width:190px;background:#FFFFFF;
-  border:1px solid #ECE7DE;border-radius:14px;padding:7px;
-  box-shadow:0 12px 34px -16px rgba(60,40,20,.4),0 4px 12px rgba(60,40,20,.06);
-  opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .16s,transform .16s,visibility .16s}
-.topbar .nav-drop.open .nav-menu{opacity:1;visibility:visible;transform:none}
-.topbar .nav-menu a{display:flex;width:100%;padding:10px 12px;border-radius:9px;font-size:13.5px;
-  font-weight:500;letter-spacing:0;text-transform:none;color:#5B534A;border:0}
-.topbar .nav-menu a::after{display:none}
-.topbar .nav-menu a:hover{background:#F0EFF3;color:#524C63}
-
-/* right cluster — ghost icon · plain-text language · hairline · avatar */
-.topbar .top-right{display:flex;align-items:center;gap:8px;flex:none}
-.topbar .icon-btn{width:36px;height:36px;border-radius:11px;border:0;background:transparent;
-  color:#8C8377;display:flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:color .18s,background .18s}
+/* Contextual utility, theme and profile controls. */
+.topbar .top-right{
+  margin-left:auto;display:flex;align-items:center;gap:8px;flex:none
+}
+.topbar .icon-btn{
+  width:36px;height:36px;border-radius:11px;border:0;background:transparent;
+  color:#82786D;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:color .18s,background .18s
+}
 .topbar .icon-btn svg{width:18px;height:18px}
-.topbar .icon-btn:hover{background:#FBFAF6;color:#2A2420}
-.topbar .lang-pill{display:flex;align-items:center;gap:5px;padding:8px 4px;height:36px;
-  border:0;background:none;color:#5B534A;font-size:11.5px;font-weight:700;letter-spacing:.12em;
-  font-family:inherit;cursor:pointer;transition:color .18s}
-.topbar .lang-pill:hover{color:#2A2420}
-.topbar .lang-pill svg{width:11px;height:11px;opacity:.65}
-.topbar .top-rule{width:1px;height:22px;background:#ECE7DE;margin:0 8px;flex:none}
-.topbar .avatar{width:36px;height:36px;border-radius:50%;background:#33312C;color:#fff;display:flex;
+.topbar .icon-btn:hover{background:rgba(255,253,249,.82);color:#2A2420}
+.topbar .top-rule{
+  width:1px;height:22px;background:#E3DDD3;margin:0 8px;flex:none
+}
+.topbar .avatar{
+  width:36px;height:36px;border-radius:50%;background:#3A3632;color:#fff;display:flex;
   align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;
-  font-size:16px;font-weight:600;flex:none}
+  font-size:16px;font-weight:600;flex:none;box-shadow:0 4px 12px -8px rgba(35,28,23,.7)
+}
 
-@media (max-width:1080px){
-  .topbar{padding:0 24px}
-  .topbar .brand-rule,.topbar .nav{display:none}
+/* Give the centred switch room before moving it into the normal flow. */
+@media (max-width:1240px){
+  .topbar{padding-inline:26px}
+  .topbar .brand-rule{margin-inline:20px}
+  .topbar .nav{position:static;transform:none;margin-right:auto}
+  .topbar .nav a{min-width:94px;padding-inline:12px}
+}
+
+/* Keep all destinations visible: on narrow screens they become a second row. */
+@media (max-width:860px){
+  .topbar{flex-wrap:wrap;padding:10px 20px 12px;row-gap:9px}
   .topbar .brand{margin-right:auto}
+  .topbar .brand-rule{display:none}
+  .topbar .nav{order:3;width:100%;margin:0;display:grid;grid-template-columns:repeat(3,1fr)}
+  .topbar .nav a{min-width:0;padding-inline:8px}
 }
