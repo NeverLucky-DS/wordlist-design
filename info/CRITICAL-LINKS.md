@@ -20,8 +20,8 @@ index.html
     └── GET /api/words?limit=500            (app.js loadApiWords — merge в WORDS)
 
 schreiben.html
-├── css/schreiben.css
-├── js/site-header.js, js/words-data.js, js/schreiben.js
+├── css/site-header.css, css/schreiben.css
+├── js/site-header.js, js/words-data.js, js/schreiben-api.js, js/schreiben.js
 ├── images/background_schreiben.png         (body bg)
 ├── images/timer-wash.png, tool-card-wash.png
 ├── images/kli-1/2/3.png, decor-head.png, Deklination.png
@@ -47,11 +47,14 @@ pipeline.html
 
 ### Навигация между страницами
 
-| Откуда | Schreiben ведёт на | Wörterbuch | Pipeline |
-|--------|-------------------|------------|----------|
-| `index.html` | `schreiben.html` ✅ | self | `pipeline.html` |
-| `schreiben.html` | `#` (active) | `index.html` | `pipeline.html` |
-| `pipeline.html` | `schreiben.html` ✅ | `index.html` | self |
+| Откуда | Essay | Pipeline | Wörterbuch |
+|--------|-------|----------|------------|
+| `index.html` | `schreiben.html` | `pipeline.html` | self (active) |
+| `schreiben.html` | self (active) | `pipeline.html` | `index.html` |
+| `pipeline.html` | `schreiben.html` | self (active) | `index.html` |
+
+Все три страницы используют одну сегментированную навигацию из
+`css/site-header.css`; контекстный Pomodoro отображается только на Essay.
 
 ---
 
@@ -234,9 +237,12 @@ POST /api/pipeline/queue
 
 ## 7. Известные ловушки (ломались бы при наивной уборке)
 
-1. **schreiben без site-header.js** — свой topbar в CSS, не shared header JS. Theme toggle на schreiben — только HTML-кнопка без логики? (проверить: `#themeBtn` в schreiben — нет site-header.js!)
+1. **Единая шапка** — все три production-страницы подключают `site-header.css` и
+   `site-header.js`. Essay-специфичные стили Pomodoro остаются в `schreiben.css`;
+   не возвращать туда отдельную копию `.topbar` / `.nav`.
 
-2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML (`index.html` styles `?v=21`, schreiben `?v=10`).
+2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
+   (`site-header.css` / `site-header.js` сейчас `?v=6`, `schreiben.css` — `?v=24`).
 
 3. **docker mount `.:/usr/share/nginx/html`** — nginx отдаёт **весь репо** включая `backend/`, `.git`. Только local dev.
 
