@@ -11,6 +11,7 @@ class EssayCreate(BaseModel):
     essay_type: str = "argumentativ"
     topic: str = ""
     level: str = "B1"
+    content_json: dict = Field(default_factory=dict)
 
 
 class EssayUpdate(BaseModel):
@@ -19,6 +20,7 @@ class EssayUpdate(BaseModel):
     essay_type: str | None = None
     topic: str | None = None
     level: str | None = None
+    content_json: dict | None = None
 
 
 class EssayOut(BaseModel):
@@ -28,6 +30,7 @@ class EssayOut(BaseModel):
     essay_type: str
     topic: str
     level: str
+    content_json: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
@@ -41,6 +44,7 @@ class EssayListItemOut(BaseModel):
     essay_type: str
     topic: str
     level: str
+    content_json: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
     grade: str | None = None
@@ -58,6 +62,7 @@ class EssayAnalysisErrorOut(BaseModel):
     annotation_kind: str = ""
     explanation_ru: str
     correction: str
+    corrected_sentence_de: str = ""
     rule: str
     what_wrong_ru: str = ""
     why_bad_ru: str = ""
@@ -98,6 +103,79 @@ class EssayAnalysisOut(BaseModel):
 
 class EssayAnalysisRecordOut(EssayAnalysisOut):
     created_at: datetime | None = None
+    text_snapshot: str = ""
+    is_stale: bool = False
+
+
+class RegisterIn(BaseModel):
+    email: str
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginIn(RegisterIn):
+    pass
+
+
+class DeleteAccountIn(BaseModel):
+    password: str
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AuthStateOut(BaseModel):
+    authenticated: bool
+    user: UserOut | None = None
+    guest_expires_at: datetime | None = None
+
+
+class EssayVersionCreate(BaseModel):
+    reason: str = "manual"
+
+
+class EssayVersionOut(BaseModel):
+    id: int
+    essay_id: int
+    title: str
+    text: str
+    content_json: dict = Field(default_factory=dict)
+    reason: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AnalysisStartIn(BaseModel):
+    part: str | None = None
+
+
+class AnalysisRunOut(BaseModel):
+    id: int
+    essay_id: int
+    version_id: int | None = None
+    scope: str
+    part: str | None = None
+    status: str
+    progress_step: str
+    cancellation_requested: bool = False
+    overall_score: int | None = None
+    grade: str | None = None
+    errors: list[EssayAnalysisErrorOut] = Field(default_factory=list)
+    part_reports: list[EssayPartReportOut] = Field(default_factory=list)
+    final_summary: EssayFinalSummaryOut | None = None
+    warnings: list[dict] = Field(default_factory=list)
+    model: str | None = None
+    schema_version: int = 1
+    prompt_version: str = ""
+    error_message: str | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     text_snapshot: str = ""
     is_stale: bool = False
 

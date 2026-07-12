@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import sys
+import hashlib
 from collections.abc import AsyncGenerator, Generator
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -16,10 +18,12 @@ TEST_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 os.environ["MISTRAL_API_KEY"] = ""
 os.environ["CORS_ORIGINS"] = "http://127.0.0.1:8753"
+os.environ["ADMIN_EMAILS"] = "tester@example.com"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db.models import Base  # noqa: E402
+from app.db.models import AuthSession, User  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -55,7 +59,53 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db
+    token = "test-auth-token"
+    user = User(email="tester@example.com", password_hash="unused-in-tests")
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add(
+        AuthSession(
+            user_id=user.id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+    )
+    await db_session.commit()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as c:
+        c.cookies.set("essay_auth", token)
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def guest_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    async def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def non_admin_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Authenticated user who is NOT in ADMIN_EMAILS."""
+    async def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as c:
+        reg = await c.post(
+            "/api/auth/register",
+            json={"email": "regular@example.com", "password": "password123"},
+        )
+        assert reg.status_code == 201
+        yield c
+    app.dependency_overrides.clear()
+
+
+from tests.helpers import essay_payload, seed_words_and_phrases

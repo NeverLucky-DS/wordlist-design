@@ -3,8 +3,9 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import essays, health, phrases, topics, words
+from app.api.routes import auth, essays, health, phrases, topics, words
 from app.api.routes import pipeline
+from app.auth import cleanup_expired_sessions
 from app.config import settings
 from app.db.init_data import ensure_seed_data
 from app.db.session import SessionLocal
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(essays.router)
 app.include_router(words.router)
 app.include_router(phrases.router)
@@ -56,6 +58,7 @@ async def on_startup() -> None:
     # They are applied by the container entrypoint (`alembic upgrade head`)
     # before this app boots — startup only seeds and tidies data.
     async with SessionLocal() as session:
+        await cleanup_expired_sessions(session)
         await ensure_seed_data(session)
         # Idempotent cleanup: dirty lemmas / duplicates left by pipeline v1
         from app.services.topic_pack_service import (
@@ -75,6 +78,10 @@ async def on_startup() -> None:
                 fixed, deduped, topics_fixed,
             )
 
+    from app.services.analysis_jobs import mark_interrupted_analyses
+
+    await mark_interrupted_analyses()
+
     # Autonomous mode: background scheduler over the topic queue
     if settings.pipeline_autorun:
         from app.pipeline.scheduler import start_scheduler
@@ -85,5 +92,7 @@ async def on_startup() -> None:
 @app.on_event("shutdown")
 async def stop_background() -> None:
     from app.pipeline.scheduler import stop_scheduler
+    from app.services.analysis_jobs import stop_analysis_jobs
 
     stop_scheduler()
+    await stop_analysis_jobs()

@@ -10,7 +10,6 @@ from app.db.models import UserStats, UserWordProgress
 
 STREAK_TZ = ZoneInfo("Europe/Berlin")
 LEARNED_SCORE_THRESHOLD = 80
-DEFAULT_USER_ID = 1
 
 
 def next_streak(current: int, last_date: date | None, today: date) -> tuple[int, date]:
@@ -30,7 +29,7 @@ def today_berlin() -> date:
     return datetime.now(STREAK_TZ).date()
 
 
-async def get_or_create_stats(session: AsyncSession, user_id: int = DEFAULT_USER_ID) -> UserStats:
+async def get_or_create_stats(session: AsyncSession, user_id: int) -> UserStats:
     result = await session.execute(select(UserStats).where(UserStats.user_id == user_id))
     row = result.scalar_one_or_none()
     if row:
@@ -41,7 +40,7 @@ async def get_or_create_stats(session: AsyncSession, user_id: int = DEFAULT_USER
     return row
 
 
-async def count_learned_words(session: AsyncSession, user_id: int = DEFAULT_USER_ID) -> int:
+async def count_learned_words(session: AsyncSession, user_id: int) -> int:
     stmt = (
         select(func.count())
         .select_from(UserWordProgress)
@@ -54,14 +53,14 @@ async def count_learned_words(session: AsyncSession, user_id: int = DEFAULT_USER
     return int(result.scalar_one() or 0)
 
 
-async def sync_words_learned(session: AsyncSession, user_id: int = DEFAULT_USER_ID) -> int:
+async def sync_words_learned(session: AsyncSession, user_id: int) -> int:
     stats = await get_or_create_stats(session, user_id)
     learned = await count_learned_words(session, user_id)
     stats.total_words_learned = learned
     return learned
 
 
-async def record_activity(session: AsyncSession, user_id: int = DEFAULT_USER_ID) -> UserStats:
+async def record_activity(session: AsyncSession, user_id: int) -> UserStats:
     """Фиксирует день активности (тренировка или анализ) и пересчитывает выученные слова."""
     stats = await get_or_create_stats(session, user_id)
     today = today_berlin()

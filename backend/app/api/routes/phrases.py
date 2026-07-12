@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
+from app.auth import Principal, get_principal, require_user
 from app.db.session import get_db
 from app.schemas import PhraseKnownUpdate, PhraseOut
 from app.services import phrases_repo
@@ -16,6 +16,7 @@ async def list_phrases(
     level: str | None = None,
     part: str | None = None,
     topic: str | None = None,
+    principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
     phrases = await phrases_repo.list_phrases(
@@ -24,11 +25,13 @@ async def list_phrases(
         essay_part=part,
         topic=topic,
     )
-    known_map = await phrases_repo.get_phrase_known_map(
-        db,
-        user_id=settings.default_user_id,
-        phrase_ids=[p.id for p in phrases],
-    )
+    known_map = {}
+    if principal.user_id is not None:
+        known_map = await phrases_repo.get_phrase_known_map(
+            db,
+            user_id=principal.user_id,
+            phrase_ids=[p.id for p in phrases],
+        )
     result = []
     for phrase in phrases:
         result.append(
@@ -49,11 +52,12 @@ async def list_phrases(
 async def set_known(
     phrase_id: int,
     body: PhraseKnownUpdate,
+    principal: Principal = Depends(require_user),
     db: AsyncSession = Depends(get_db),
 ):
     row = await phrases_repo.set_phrase_known(
         db,
-        user_id=settings.default_user_id,
+        user_id=principal.user_id,
         phrase_id=phrase_id,
         known=body.known,
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
+from app.auth import Principal, require_user
 from app.db.session import get_db
 from app.schemas import WordOut
 from app.services import words_repo
@@ -49,13 +49,17 @@ async def get_word(word_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{word_id}/queue")
-async def queue_word(word_id: int, db: AsyncSession = Depends(get_db)):
+async def queue_word(
+    word_id: int,
+    principal: Principal = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
     word = await words_repo.get_word(db, word_id)
     if not word:
         raise HTTPException(status_code=404, detail="Word not found")
     progress = await words_repo.add_word_to_queue(
         db,
-        user_id=settings.default_user_id,
+        user_id=principal.user_id,
         word_id=word_id,
     )
     return {"word_id": word_id, "score": progress.score}

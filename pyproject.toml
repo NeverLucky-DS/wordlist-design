@@ -25,6 +25,7 @@ dependencies = [
     "requests>=2.32.0",
     "duckduckgo-search>=6.0.0",
     "simplemma>=1.0.0",
+    "pwdlib[argon2]>=0.3.0",
 ]
 
 # Dev-only tools (tests). Excluded from the Docker image via `uv sync --no-dev`.

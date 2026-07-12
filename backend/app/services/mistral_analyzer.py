@@ -652,7 +652,17 @@ async def iter_analyze_events(
                 r for r in result["part_reports"] if r.get("part") == only_part
             ]
             result["final_summary"] = None
-        yield {"type": "done", "only_part": only_part, **result}
+        yield {
+            "type": "done",
+            "only_part": only_part,
+            "warnings": [
+                {
+                    "code": "ai_not_configured",
+                    "message": "Mistral API is not configured; fallback feedback was used.",
+                }
+            ],
+            **result,
+        }
         return
 
     logger.info(
@@ -666,6 +676,7 @@ async def iter_analyze_events(
     all_errors: list[dict] = []
     final_summary: dict | None = None
     previous_points: list[str] = []
+    warnings: list[dict] = []
 
     try:
         for part_key in order:
@@ -737,6 +748,13 @@ async def iter_analyze_events(
                 }
             except Exception:
                 logger.exception("Part analysis failed [%s] — using per-part fallback", part_key)
+                warnings.append(
+                    {
+                        "code": "part_failed",
+                        "part": part_key,
+                        "message": "This part could not be analyzed.",
+                    }
+                )
                 part_result = {
                     "part": part_key,
                     "score": 60 if part_text.strip() else 0,
@@ -776,6 +794,7 @@ async def iter_analyze_events(
                 "errors_count": len(part_errors),
                 "all_errors": list(all_errors),
                 "part_reports": list(part_reports),
+                "warnings": list(warnings),
             }
 
         if not only_part:
@@ -813,11 +832,26 @@ async def iter_analyze_events(
                 }
             except Exception:
                 logger.exception("Final-summary analysis failed — using fallback summary")
+                warnings.append(
+                    {
+                        "code": "summary_failed",
+                        "message": "The final summary could not be generated.",
+                    }
+                )
                 final_summary = _fallback_final_summary()
     except Exception:
         logger.exception("Essay analysis aborted — returning full fallback analysis")
         result = _fallback_analysis(parts)
-        yield {"type": "done", **result}
+        yield {
+            "type": "done",
+            "warnings": [
+                {
+                    "code": "analysis_failed",
+                    "message": "The analysis failed; fallback feedback was used.",
+                }
+            ],
+            **result,
+        }
         return
 
     scores = [int(report.get("score", 0)) for report in part_reports if not report.get("is_empty")]
@@ -838,6 +872,7 @@ async def iter_analyze_events(
         "part_reports": part_reports,
         "final_summary": None if only_part else (final_summary or _fallback_final_summary()),
         "model": settings.mistral_model,
+        "warnings": warnings,
     }
 
 

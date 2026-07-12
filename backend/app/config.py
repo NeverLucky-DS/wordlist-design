@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     mistral_model: str = "mistral-large-latest"
     grok_api_key: str = ""
     grok_model: str = "grok-4"  # grok-3 retired (HTTP 410)
-    default_user_id: int = 1
+    secure_cookies: bool = False
+    admin_emails: str = ""
 
     # Pipeline tuning
     pipeline_target_words: int = 60     # control loop: keep going until this many words/topic

@@ -6,11 +6,16 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import require_admin
 from app.db.models import PipelineRun
 from app.db.session import SessionLocal, get_db
 from app.pipeline.runner import run_pipeline
 
-router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
+router = APIRouter(
+    prefix="/api/pipeline",
+    tags=["pipeline"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 class PipelineRequest(BaseModel):
