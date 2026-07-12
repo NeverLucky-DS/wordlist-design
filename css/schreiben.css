@@ -116,8 +116,7 @@ button{font-family:inherit;cursor:pointer}
 .layout{position:relative;z-index:1;display:grid;
   grid-template-columns:292px minmax(480px,1fr) 424px;
   gap:16px;align-items:start;
-  padding:10px 26px 30px;max-width:1760px;margin:0 auto;
-  zoom:.9}   /* Schreiben interface a touch more compact */
+  padding:10px 26px 30px;max-width:1760px;margin:0 auto}
 @media (max-width:1360px){
   .layout{grid-template-columns:264px minmax(440px,1fr) 384px;gap:14px;padding:8px 18px 26px}
 }
@@ -550,36 +549,41 @@ button{font-family:inherit;cursor:pointer}
 .editable span[data-error-id].und.good:hover,
 .editable span[data-error-id].und.good.sel{background:rgba(90,138,122,.14)}
 
-/* ending change — only the corrected suffix, red + wavy */
-.editable .fix-end{color:#c0392b;text-decoration:underline wavy #c0392b;
-  text-decoration-thickness:1.6px;text-underline-offset:3px}
+/* ending change — student's original ending struck through, needed one beside it */
+.editable .fix-old{color:var(--ink-soft);text-decoration:line-through;
+  text-decoration-color:var(--ink-soft);text-decoration-thickness:1.6px}
+.editable .fix-end{color:#c0392b;font-weight:600;margin-left:1px}
 
-/* word-order move — circle the word; the arrow itself is drawn as SVG */
+/* word-order move — box the misplaced word, caret marks the target slot; the
+   arrow arcs over the text (drawn as SVG in an overlay, colour = theme accent) */
 .editable .mvw{white-space:nowrap}
-.editable .mv-src{display:inline-block;padding:0 4px;border:1.5px solid #c0392b;
-  border-radius:10px;line-height:1.3}
-.editable .mv-dst{display:inline-block;width:0;overflow:visible}
+.editable .mv-src{display:inline-block;padding:0 5px;border:1.5px solid var(--accent);
+  border-radius:5px;color:var(--accent-ink);line-height:1.3}
+/* target slot — a small highlighted place the moved word belongs in */
+.editable .mv-dst{display:inline-block;width:.82em;height:1.12em;vertical-align:-.22em;
+  margin:0 3px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent-ln)}
 .editable .mv-layer{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:2}
-.editable .mv-path{fill:none;stroke:#c0392b;stroke-width:1.6;stroke-linecap:round}
+.editable .mv-path{fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round}
+/* room above each line so the move arc never rides onto the heading */
+.editable.reviewing .rev-text{padding-top:10px}
 
 /* correction card popover */
 .ann-backdrop{position:fixed;inset:0;z-index:88;border:none;background:transparent;cursor:default}
-.ann-popover{position:fixed;z-index:90;width:min(360px,calc(100vw - 28px));
-  max-height:min(76vh,520px);overflow-y:auto;padding:20px 22px 18px;
-  background:var(--card);border:1px solid var(--accent-ln);border-radius:14px;
+.ann-popover{position:fixed;z-index:90;width:min(440px,calc(100vw - 28px));
+  max-height:min(82vh,600px);overflow-y:auto;padding:24px 26px 22px;cursor:grab;
+  background:linear-gradient(rgba(252,251,249,.60),rgba(252,251,249,.72)),
+    url('../images/background-image.png') top center/cover no-repeat, var(--card);
+  border:1px solid var(--accent-ln);border-radius:16px;
   box-shadow:0 1px 2px rgba(44,40,51,.05),0 24px 48px -20px rgba(44,40,51,.28);
   font-family:'Inter',system-ui,sans-serif}
+.ann-popover.ann-dragging{cursor:grabbing;user-select:none;box-shadow:0 2px 4px rgba(44,40,51,.08),0 32px 60px -20px rgba(44,40,51,.36)}
+#annLink{z-index:89}
 .ann-popover[hidden]{display:none}
 .ann-close{position:absolute;top:12px;right:12px;width:26px;height:26px;display:grid;place-items:center;
   border:none;background:none;color:var(--ink-mute);cursor:pointer;border-radius:7px}
 .ann-close:hover{background:var(--accent-soft);color:var(--ink)}
 .ann-close svg{width:15px;height:15px}
-.annotation-card{position:relative;padding-left:12px}
-.annotation-card::before{content:"";position:absolute;left:-2px;top:2px;bottom:2px;width:3px;border-radius:3px}
-.annotation-card--critical::before{background:#c85a45}
-.annotation-card--correction::before{background:#c0883a}
-.annotation-card--style::before{background:var(--accent)}
-.annotation-card--good::before{background:#5a8a7a}
+.annotation-card{position:relative}
 .annotation-kicker{display:inline-block;margin-bottom:12px;padding:3px 9px;border-radius:6px;
   font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .annotation-kicker--critical{background:rgba(200,90,69,.12);color:#b34a37}
@@ -595,16 +599,19 @@ button{font-family:inherit;cursor:pointer}
 .annotation-popover-sub{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.45}
 .annotation-variant{margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--line)}
 .annotation-variant:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
-.annotation-variant p{margin:0 0 7px;font-family:'Cormorant Garamond',serif;font-size:16px;
-  font-style:italic;line-height:1.42;color:var(--ink)}
+.annotation-variant p{margin:0 0 7px}
+/* the German example — a quiet quoted box; visually distinct from the RU note */
+.annotation-variant .ann-var-de{margin:5px 0 7px;font-family:'Cormorant Garamond',serif;
+  font-size:18px;font-style:normal;line-height:1.4;color:var(--ink);
+  background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:8px;padding:8px 11px}
 .annotation-variant-level{display:inline-block;margin-bottom:6px;padding:2px 8px;font-size:9.5px;
   font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:4px}
 .annotation-variant-b1{padding-left:11px;border-left:3px solid #5a8a7a}
 .annotation-variant-b1 .annotation-variant-level{background:rgba(90,138,122,.14);color:#4c7767}
 .annotation-variant-b2{padding-left:11px;border-left:3px solid var(--accent)}
 .annotation-variant-b2 .annotation-variant-level{background:var(--accent-soft);color:var(--accent-ink)}
-.annotation-variant-explain{margin:0 0 7px!important;font-size:12px!important;font-style:normal!important;
-  color:var(--ink-soft);line-height:1.4}
+.annotation-variant-explain{margin:0!important;font-size:12.5px!important;font-style:normal!important;
+  color:var(--ink-mute);line-height:1.45}
 .annotation-tips{margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-soft);line-height:1.5}
 .annotation-tips li{margin-bottom:3px}
 .annotation-rule{margin:10px 0 0;font-size:11.5px;line-height:1.4;color:var(--ink-mute);font-style:italic}
@@ -632,7 +639,7 @@ button{font-family:inherit;cursor:pointer}
 .ann-mark-fix{background:rgba(90,138,122,.2);color:#3f6d5c;border-radius:3px;padding:0 2px;font-style:normal;font-weight:600}
 .ann-more{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
 .ann-more>summary{cursor:pointer;list-style:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--accent-ink);padding:4px 0}
+  text-transform:uppercase;color:var(--accent-ink);padding:6px 0;text-align:center}
 .ann-more>summary::-webkit-details-marker{display:none}
 .ann-more>summary::after{content:' ▾';color:var(--accent)}
 .ann-more[open]>summary::after{content:' ▴'}

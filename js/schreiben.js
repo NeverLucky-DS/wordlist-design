@@ -1095,6 +1095,29 @@ document.querySelector('.new-essay-row .btn-icon').addEventListener('click', () 
    ===================================================================== */
 let reviewMode = false;
 let selectedAnnotation = null;   /* {stageId, error_id} */
+let annSpanEl = null;            /* the marked word the open card belongs to */
+
+/* flowing dashed connector from the marked word to the correction card */
+function drawAnnLink(){
+  const line = $('#annLink'), pop = $('#annPopover');
+  if (!line || !pop || pop.hasAttribute('hidden') || !annSpanEl || !annSpanEl.isConnected){
+    if (line) line.setAttribute('hidden', ''); return;
+  }
+  const s = annSpanEl.getBoundingClientRect(), c = pop.getBoundingClientRect();
+  const scx = s.left + s.width / 2;
+  const cardRight = c.left >= scx;                       /* which side the card sits */
+  const sx = cardRight ? s.right : s.left;               /* leave from the word's edge */
+  const sy = s.top + s.height / 2;
+  const ex = cardRight ? c.left : c.right;               /* land on the card's near edge */
+  const ey = Math.max(c.top + 20, Math.min(sy, c.bottom - 20));
+  const mx = (sx + ex) / 2;
+  $('#annLinkPath').setAttribute('d', `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ey}, ${ex} ${ey}`);
+  $('#annLinkDot').setAttribute('cx', sx); $('#annLinkDot').setAttribute('cy', sy);
+  $('#annLinkAnchor').setAttribute('cx', ex); $('#annLinkAnchor').setAttribute('cy', ey);
+  line.removeAttribute('hidden');
+}
+window.addEventListener('scroll', drawAnnLink, true);
+window.addEventListener('resize', drawAnnLink);
 
 function esc2(t){
   return String(t == null ? '' : t)
@@ -1215,6 +1238,8 @@ function findMove(ex, cor){
   return null;
 }
 
+/* word-order fix: box the misplaced word, drop a caret at the slot it belongs in;
+   drawMoveArrows() later arcs an arrow over the text from box → caret. */
 let mvSeq = 0;
 function buildReorder(bad, fix, err, stageId){
   const ex = tok(bad), cor = tok(fix);
@@ -1225,7 +1250,7 @@ function buildReorder(bad, fix, err, stageId){
   const idxs = []; for (let k = 0; k < n; k += 1) if (k !== from) idxs.push(k);
   const caretBefore = to < idxs.length ? idxs[to] : n;
   const id = 'mv' + (mvSeq += 1);
-  const dst = `<span class="mv-dst" data-mv="${id}">​</span>`;
+  const dst = `<span class="mv-dst" data-mv="${id}"></span>`;
   let inner = '';
   for (let i = 0; i < n; i += 1){
     if (i === caretBefore) inner += dst;
@@ -1258,15 +1283,18 @@ function endingDiff(bad, fix){
   const wa = ta[diffIdx], wb = tb[diffIdx];
   const p = commonPrefixLen(wa, wb);
   if (!(p >= 2 && (wa.length - p) <= 4 && (wb.length - p) <= 4)) return null;
-  return { tokens: tb, diffIdx, prefix: wb.slice(0, p), ending: wb.slice(p) };
+  return { tokens: tb, diffIdx, prefix: wb.slice(0, p),
+    ending: wb.slice(p), origEnding: wa.slice(p) };
 }
 
-/* corrected form with ONLY the changed ending in red + wavy underline */
+/* keep the student's original ending struck through, write the needed one next
+   to it — so it stays clear what was theirs and what the AI proposes */
 function renderEndingFix(diff, attrs){
-  const parts = diff.tokens.map((t, i) =>
-    i === diff.diffIdx
-      ? esc2(diff.prefix) + `<span class="fix-end">${esc2(diff.ending)}</span>`
-      : esc2(t));
+  const parts = diff.tokens.map((t, i) => {
+    if (i !== diff.diffIdx) return esc2(t);
+    const old = diff.origEnding ? `<s class="fix-old">${esc2(diff.origEnding)}</s>` : '';
+    return esc2(diff.prefix) + old + `<span class="fix-end">${esc2(diff.ending)}</span>`;
+  });
   return `<span class="und-end" ${attrs}>${parts.join(' ')}</span>`;
 }
 
@@ -1301,33 +1329,44 @@ function renderAnnotatedHTML(text, anchored, stageId){
   return html;
 }
 
-/* draw a continuous arrow from each circled word to where it should move */
+/* arc an arrow over the text from each boxed word to the caret where it belongs.
+   Colour comes from the theme accent; the arc rises above the line, and we clamp
+   it inside the part so it never rides up onto the heading. */
 function drawMoveArrows(){
   editable.querySelectorAll('.mv-layer').forEach(l => l.remove());
   if (!reviewMode) return;
   const moves = editable.querySelectorAll('.mvw');
   if (!moves.length) return;
+  const accent = getComputedStyle(document.documentElement)
+    .getPropertyValue('--accent').trim() || '#7C6EB6';
   const NS = 'http://www.w3.org/2000/svg';
   const edRect = editable.getBoundingClientRect();
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'mv-layer');
   svg.setAttribute('width', editable.scrollWidth);
   svg.setAttribute('height', editable.scrollHeight);
-  svg.innerHTML = '<defs><marker id="mvHead" viewBox="0 0 10 10" refX="8" refY="5" '
-    + 'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
-    + '<path d="M0 0L10 5L0 10z" fill="#c0392b"/></marker></defs>';
+  svg.innerHTML = `<defs><marker id="mvHead" viewBox="0 0 10 10" refX="7" refY="5" `
+    + `markerWidth="7" markerHeight="7" orient="auto-start-reverse">`
+    + `<path d="M0 0L10 5L0 10z" fill="${accent}"/></marker></defs>`;
   moves.forEach(mvw => {
     const id = mvw.getAttribute('data-mv');
     const src = mvw.querySelector('.mv-src');
     const dst = mvw.querySelector(`.mv-dst[data-mv="${id}"]`);
     if (!src || !dst) return;
     const sr = src.getBoundingClientRect(), dr = dst.getBoundingClientRect();
+    /* only same-line moves get a drawn arrow; across a wrap the elbow would slash
+       through the text, so we leave just the box + highlighted slot to read it */
+    if (Math.abs(sr.top - dr.top) > sr.height * 0.6) return;
+    const partTop = (mvw.closest('.rev-text') || editable).getBoundingClientRect().top;
     const ox = editable.scrollLeft - edRect.left, oy = editable.scrollTop - edRect.top;
     const sx = sr.left + sr.width / 2 + ox, sy = sr.top + oy;
-    const dx = dr.left + ox, dy = dr.top + oy;
-    const topY = Math.min(sy, dy) - 13;             /* arc rides above the line */
+    const dx = dr.left + dr.width / 2 + ox, dy = dr.top + oy;
+    /* rectangular route: up out of the box, across the gap just above the line,
+       down onto the target slot — kept below the part's top edge (off the heading) */
+    const ceil = partTop + oy - 2;
+    const hy = Math.max(Math.min(sy, dy) - 5, ceil);
     const path = document.createElementNS(NS, 'path');
-    path.setAttribute('d', `M ${sx} ${sy} Q ${(sx + dx) / 2} ${topY} ${dx} ${dy}`);
+    path.setAttribute('d', `M ${sx} ${sy} V ${hy} H ${dx} V ${dy}`);
     path.setAttribute('class', 'mv-path');
     path.setAttribute('marker-end', 'url(#mvHead)');
     svg.appendChild(path);
@@ -1408,9 +1447,6 @@ function toggleReview(){
 }
 
 /* ---- correction card (popover) ---- */
-function splitStrategies(text){
-  return String(text || '').split(/\d\)\s+/g).map(s => s.trim()).filter(Boolean);
-}
 function normalizeExplanation(text){
   const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean);
   const rows = lines.map(l => {
@@ -1454,7 +1490,6 @@ function annotationCardHTML(err){
     || (explanation[0] || {}).value || 'Есть неточность в формулировке.';
   const whyBad = err.why_bad_ru
     || (explanation.find(x => x.label.toLowerCase().includes('почему')) || {}).value || '';
-  const hints = splitStrategies(err.how_to_fix_ru || '');
   const isGood = kind === 'good';
 
   /* the error in its sentence, and the corrected sentence */
@@ -1472,8 +1507,14 @@ function annotationCardHTML(err){
     sentenceHTML = markedSentence(text.slice(s, e), rs, re, 'ann-mark-err');
   }
   if (!isGood && fixSentence && fixSentence !== origSentence){
-    /* whole corrected sentence from the model — no fragile reconstruction */
-    fixedHTML = `<mark class="ann-mark-fix">${esc2(fixSentence)}</mark>`;
+    /* mark ONLY the changed fragment (correction) inside the sentence, not the
+       whole thing — highlighting everything green reads as "nothing to see" */
+    const i = fix ? fixSentence.indexOf(fix) : -1;
+    fixedHTML = i >= 0
+      ? esc2(fixSentence.slice(0, i))
+        + `<mark class="ann-mark-fix">${esc2(fix)}</mark>`
+        + esc2(fixSentence.slice(i + fix.length))
+      : esc2(fixSentence);
   } else if (!isGood && fix && fix !== excerpt && sentenceHTML){
     /* fallback: swap the fragment in place */
     const { s, e } = sentenceAround(text, err.start, err.end);
@@ -1484,13 +1525,13 @@ function annotationCardHTML(err){
   const variants = [];
   if (err.b1_variant_de){
     variants.push(`<div class="annotation-variant annotation-variant-b1">
-      <span class="annotation-variant-level">B1</span><p>${esc2(err.b1_variant_de)}</p>
+      <span class="annotation-variant-level">B1</span><p class="ann-var-de" lang="de">${esc2(err.b1_variant_de)}</p>
       ${err.b1_explain_ru ? `<p class="annotation-variant-explain">${esc2(err.b1_explain_ru)}</p>` : ''}
     </div>`);
   }
   if (err.b2_variant_de){
     variants.push(`<div class="annotation-variant annotation-variant-b2">
-      <span class="annotation-variant-level">B2</span><p>${esc2(err.b2_variant_de)}</p>
+      <span class="annotation-variant-level">B2</span><p class="ann-var-de" lang="de">${esc2(err.b2_variant_de)}</p>
       ${err.b2_explain_ru ? `<p class="annotation-variant-explain">${esc2(err.b2_explain_ru)}</p>` : ''}
     </div>`);
   }
@@ -1498,10 +1539,9 @@ function annotationCardHTML(err){
   const moreBits = [];
   if (whyBad && !isGood) moreBits.push(`<div class="ann-block"><h4>Почему важно</h4><p>${esc2(whyBad)}</p></div>`);
   if (variants.length && !isGood) moreBits.push(`<div class="ann-block"><h4>Варианты формулировки</h4>${variants.join('')}</div>`);
-  if (hints.length && !isGood) moreBits.push(`<div class="ann-block"><h4>Как улучшить</h4><ol class="annotation-tips">${hints.map(x => `<li>${esc2(x)}</li>`).join('')}</ol></div>`);
   if (err.rule) moreBits.push(`<div class="ann-block"><h4>Правило</h4><p class="annotation-rule">${esc2(err.rule)}</p></div>`);
   const moreHTML = moreBits.length
-    ? `<details class="ann-more"><summary>Подробнее</summary>${moreBits.join('')}</details>`
+    ? `<details class="ann-more"><summary>Больше</summary>${moreBits.join('')}</details>`
     : '';
 
   return `<div class="annotation-card annotation-card--${kind}">
@@ -1514,7 +1554,7 @@ function annotationCardHTML(err){
 }
 
 function computePopoverPos(anchorRect, cardH){
-  const gap = 20, width = 360, margin = 14;
+  const gap = 44, width = 440, margin = 14;
   const spaceRight = window.innerWidth - anchorRect.right - gap - margin;
   const spaceLeft = anchorRect.left - gap - margin;
   const side = (spaceRight >= width || spaceRight >= spaceLeft) ? 'right' : 'left';
@@ -1527,9 +1567,11 @@ function computePopoverPos(anchorRect, cardH){
 
 function closeAnnotationPopover(){
   selectedAnnotation = null;
-  const pop = $('#annPopover'), bd = $('#annBackdrop');
-  if (pop) pop.setAttribute('hidden', '');
+  annSpanEl = null;
+  const pop = $('#annPopover'), bd = $('#annBackdrop'), line = $('#annLink');
+  if (pop){ pop.setAttribute('hidden', ''); pop.classList.remove('ann-dragging'); }
   if (bd) bd.setAttribute('hidden', '');
+  if (line) line.setAttribute('hidden', '');
   document.querySelectorAll('#editable span[data-error-id].sel')
     .forEach(s => s.classList.remove('sel'));
 }
@@ -1543,10 +1585,12 @@ function openAnnotationPopover(err, spanEl){
   document.querySelectorAll('#editable span[data-error-id].sel')
     .forEach(s => s.classList.remove('sel'));
   spanEl.classList.add('sel');
+  annSpanEl = spanEl;
   requestAnimationFrame(() => {
     const pos = computePopoverPos(spanEl.getBoundingClientRect(), pop.offsetHeight || 300);
     pop.style.top = pos.top + 'px';
     pop.style.left = pos.left + 'px';
+    drawAnnLink();
   });
   selectedAnnotation = { stageId: activeStage, error_id: err.error_id };
 }
@@ -1574,6 +1618,29 @@ function bindAnnotationEvents(){
   if (bd) bd.addEventListener('click', closeAnnotationPopover);
   const closeBtn = $('#annClose');
   if (closeBtn) closeBtn.addEventListener('click', closeAnnotationPopover);
+
+  /* drag the card around; the connector follows */
+  const pop = $('#annPopover');
+  let drag = null;
+  if (pop){
+    pop.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button, a, summary, input, textarea, mark, .ann-close')) return;
+      const r = pop.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+      pop.classList.add('ann-dragging');
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!drag) return;
+      const w = pop.offsetWidth, h = pop.offsetHeight, m = 8;
+      pop.style.left = Math.max(m, Math.min(e.clientX - drag.dx, window.innerWidth - w - m)) + 'px';
+      pop.style.top  = Math.max(m, Math.min(e.clientY - drag.dy, window.innerHeight - h - m)) + 'px';
+      drawAnnLink();
+    });
+    window.addEventListener('mouseup', () => {
+      if (drag){ drag = null; pop.classList.remove('ann-dragging'); }
+    });
+  }
   const content = $('#annContent');
   if (content) content.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-annotation-action]');

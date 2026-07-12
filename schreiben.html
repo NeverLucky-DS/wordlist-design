@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/schreiben.css?v=18">
+<link rel="stylesheet" href="css/schreiben.css?v=23">
 </head>
 <body>
 
@@ -217,6 +217,13 @@
     <div id="annContent"></div>
   </div>
 
+  <!-- flowing dashed connector: marked word ↔ correction card -->
+  <svg class="link-line" id="annLink" aria-hidden="true" hidden>
+    <path id="annLinkPath" d=""/>
+    <circle id="annLinkDot" class="ll-dot" r="4"/>
+    <circle id="annLinkAnchor" class="ll-anchor" r="4.5"/>
+  </svg>
+
   <!-- live dashed connector: card word ↔ list word -->
   <svg class="link-line" id="linkLine" aria-hidden="true" hidden>
     <path id="linkPath" d=""/>
@@ -227,6 +234,6 @@
   <script src="js/site-header.js?v=5"></script>
   <script src="js/words-data.js?v=1"></script>
   <script src="js/schreiben-api.js?v=4"></script>
-  <script src="js/schreiben.js?v=21"></script>
+  <script src="js/schreiben.js?v=27"></script>
 </body>
 </html>
