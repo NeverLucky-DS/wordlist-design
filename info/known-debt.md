@@ -1,6 +1,6 @@
 # Known tech debt (short)
 
-Last updated: **2026-07-10**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
+Last updated: **2026-07-13**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
 
 ## High priority
 
@@ -9,21 +9,21 @@ Last updated: **2026-07-10**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete ma
 | Pipeline v2 (runner) vs v3 (scripts) | `enrichment.py` vs `content_llm.py`/`verify.py` | Inconsistent `grammar_data` by write path |
 | `normalize_grammar_data()` never called on write | `grammar_schema.py` vs `runner.py` | Messy grammar JSON in DB |
 | Topic casing inconsistency | `pipeline.py` vs `runner.py` | Duplicate topic keys |
-| **schreiben ↔ backend (частично)** | `schreiben.js` + `schreiben-api.js` | Essays + анализ через API; UI/список essays ещё localStorage |
 
 ## Medium priority
 
 | Issue | Where |
 |-------|-------|
 | Essay feedback precision not verified | `mistral_analyzer.py` — corrections + structure/argumentation are LLM-only, no verify-pass / rubric / citation-grounding yet |
+| Open signup + guest AI has no quota | auth + essay analysis | Cost/abuse risk; private beta only |
+| No email verification/password reset | auth | Email is a login identifier; lost passwords cannot be recovered in v1 |
+| Analysis worker is in-process | `analysis_jobs.py` | Navigation survives, backend restart interrupts the run |
 | `schreiben.js` ~1030 lines monolith | essay store, roadmap, tools |
 | 3 Wiktionary clients | `enrichment.py`, `wiktionary_client.py`, `backfill_grammar.py` |
 | 2 Mistral HTTP stacks | `mistral_http.py` vs `mistral_analyzer.py` |
 | `PIPELINE_*` env not in docker-compose | tuning blocked |
 | Topic YAML packs missing | `/api/topics` empty in Docker |
 | Tests mock pipeline I/O | no discovery/enrichment/extraction tests |
-| Docker mounts whole repo to nginx | dev-only; exposes `backend/` via :8753 |
-| `schreiben.html` без `site-header.css` | theme toggle частично (site-header.js подключён) |
 
 ## Low priority
 
@@ -42,6 +42,16 @@ Last updated: **2026-07-10**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete ma
 - **Single `.env`** — root `.env` removed; secrets unified into `backend/.env` (docker reads via `env_file`).
 - **`Makefile`** — one-command lifecycle: `make setup`/`up`/`down`/`migrate`/`test`/`logs`/`db`/`clean`.
 - **Backend healthcheck** — compose waits for `/health` before marking backend ready.
+
+## Resolved ✅ (2026-07-13 — accounts + essay persistence)
+
+- **Accounts and ownership** — email/password sessions, 30-day guests, account
+  deletion, guest claim on registration, owner-scoped essays/progress.
+- **Schreiben split-brain** — server hydration, visible save states, manual retry,
+  immutable versions and restore checkpoints.
+- **Analysis history** — background full/part runs, polling after navigation,
+  cancellation, partial warnings and stale-result markers.
+- **Static exposure** — nginx now mounts only public frontend files.
 
 ## Resolved ✅ (2026-07-06 cleanup)
 

@@ -21,15 +21,16 @@ index.html
 
 schreiben.html
 ├── css/site-header.css, css/schreiben.css
-├── js/site-header.js, js/words-data.js, js/schreiben-api.js, js/schreiben.js
+├── js/site-header.js, js/words-data.js, js/schreiben-api.js
+├── js/analysis-waiting-phrases.js, js/schreiben.js
 ├── images/background_schreiben.png         (body bg)
 ├── images/timer-wash.png, tool-card-wash.png
 ├── images/kli-1/2/3.png, decor-head.png, Deklination.png
 ├── images/tool-hilfen.png, tool-woerterbuch.png  (HTML <img>)
 ├── images/roadmap-leaf-1/2/3.png           (schreiben.js LEAF_SPOTS)
 ├── worte/*.png                             (words-data.js brushOf)
-└── API: POST/PATCH /api/essays + POST …/analyze/stream (schreiben-api.js)
-    localStorage: drafts, snapshots, report cache (ключ `deutschEssay.schreiben.v1`)
+└── API: owner-scoped /api/essays + /versions + /analyses (schreiben-api.js)
+    localStorage: offline dirty copy/cache (ключ `deutschEssay.schreiben.v1`)
 
 pipeline.html
 ├── css/site-header.css, css/pipeline.css
@@ -67,7 +68,7 @@ Pomodoro отображается только на Essay.
 |------|------|
 | `js/words-data.js` | WASH, typeKey, brushOf, PIPELINE_WASHES |
 | `js/app.js` | WORDS + API merge (index) |
-| `js/schreiben.js` | demo WORDS + essay store (localStorage) |
+| `js/schreiben.js` | demo WORDS + server-hydrated essay store/local offline copy |
 
 **Маппинг WASH:** ключ = `{level}|{type}` где type = `der`|`die`|`das`|`verb`|`adj`.
 
@@ -172,7 +173,7 @@ nginx.conf: добавить webp в cache location
 
 ```
 nginx :8753  →  proxy /api/*, /health  →  FastAPI :8000
-docker-compose: postgres + backend + frontend (mount всего репо в nginx!)
+docker-compose: postgres + backend + frontend (только публичные frontend mounts)
 ```
 
 ### API routes (backend/app/main.py)
@@ -180,7 +181,8 @@ docker-compose: postgres + backend + frontend (mount всего репо в ngin
 | Router | Prefix | Кто вызывает |
 |--------|--------|--------------|
 | `health` | `/health` | nginx proxy; `editor-api.js` |
-| `essays` | `/api/essays` | **только editor** |
+| `auth` | `/api/auth` | общий header |
+| `essays` | `/api/essays` | `schreiben.js` |
 | `words` | `/api/words` | `app.js`, `editor.js` |
 | `phrases` | `/api/phrases` | **только editor** |
 | `topics` | `/api/topics` | никто на фронте |
@@ -253,12 +255,14 @@ POST /api/pipeline/queue
    не возвращать туда отдельную копию `.topbar` / `.nav`.
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
-   (`site-header.css` сейчас `?v=8`, `site-header.js` — `?v=6`,
-   `schreiben.css` — `?v=25`).
+   (`site-header.css` сейчас `?v=9`, `site-header.js` — `?v=8`,
+   `schreiben.css` — `?v=28`).
 
-3. **docker mount `.:/usr/share/nginx/html`** — nginx отдаёт **весь репо** включая `backend/`, `.git`. Только local dev.
+3. **Frontend mounts** — при добавлении нового публичного корневого файла/каталога
+   явно добавить его в `docker-compose.yml`; весь репозиторий намеренно не монтируется.
 
-4. **schreiben localStorage** vs **editor API** — два несовместимых essay flow. Удаление editor ≠ замена schreiben на API.
+4. **schreiben localStorage** — теперь только offline dirty-копия; серверный список
+   и owner scope каноничны, не возвращать localStorage в роль единственного источника.
 
 5. **THEMEN в schreiben.js** — статика (12 тем). Pipeline DB темы пока не подключены.
 

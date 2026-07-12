@@ -4,11 +4,26 @@ Source: [`backend/app/db/models.py`](../backend/app/db/models.py). JSON columns 
 
 ## Core entities
 
+### `users`, `auth_sessions`, `guest_sessions`
+Accounts use normalized email + Argon2id password hashes. Opaque session tokens
+are stored only as SHA-256 hashes. Guest sessions expire after 30 days and own
+the same essay graph until registration claims it.
+
 ### `essays`
-User essays. Fields: `title`, `text`, `essay_type`, `topic`, `level`, timestamps.
+Current editable state. Exactly one of `user_id` or `guest_session_id` is set.
+`text` is the analyzer format; `content_json` preserves per-stage drafts and task.
+
+### `essay_versions`
+Immutable checkpoints containing title, flat text and structured content.
+Created manually, immediately before analysis, and before restoring an older
+version.
 
 ### `essay_analyses`
-Mistral analysis results per essay. `errors_json`, `part_reports_json`, `final_summary_json`, `overall_score`, `grade`, `text_snapshot`.
+Immutable run/result linked to the exact `essay_version`. Relational columns hold
+scope, part, status, progress, model/schema/prompt versions and timestamps;
+variable feedback stays in JSONB (`errors_json`, `part_reports_json`,
+`final_summary_json`, `warnings_json`). Statuses include queued, running,
+completed, completed_with_warnings, cancelled, interrupted and failed.
 
 ### `words`
 German vocabulary entries.
@@ -63,7 +78,7 @@ Autonomous scheduler queue.
 ### `word_failures`
 Words that failed enrichment; auto-retried on next run (max 3 attempts).
 
-### User progress (single-user prototype)
+### User progress
 
 | Table | Role |
 |-------|------|
@@ -71,7 +86,8 @@ Words that failed enrichment; auto-retried on next run (max 3 attempts).
 | `user_phrase_known` | Known phrases |
 | `user_stats` | Daily counters |
 
-All use `user_id` — hardcoded to `1` in API.
+All `user_id` columns reference `users.id`; guest essay analysis does not create
+account streak/progress rows.
 
 ## Conventions
 

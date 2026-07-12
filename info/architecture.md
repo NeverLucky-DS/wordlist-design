@@ -16,7 +16,7 @@
 
 | Service | Image / build | Ports | Volumes |
 |---------|---------------|-------|---------|
-| `frontend` | nginx:alpine | 8753→80 | `nginx.conf` + **whole project dir** `.:/usr/share/nginx/html:ro` (dev — avoids stale inode on file replace) |
+| `frontend` | nginx:alpine | 8753→80 | Only public HTML plus `css/`, `js/`, `images/`, `worte/` |
 | `backend` | `Dockerfile` | 8000 | — |
 | `postgres` | postgres:16-alpine | internal | `pg_data` |
 
@@ -24,7 +24,8 @@
 
 1. Browser loads static HTML from nginx.
 2. JS calls `/api/...` — nginx proxies to `backend:8000` ([`nginx.conf`](../nginx.conf)).
-3. [`js/editor-api.js`](../js/editor-api.js) wraps fetch for editor; [`pipeline.html`](../pipeline.html) uses inline fetch.
+3. `site-header.js` manages the cookie-backed account session;
+   `schreiben-api.js` wraps owner-scoped essay/version/analysis requests.
 
 ## Backend layout ([`backend/app/`](../backend/app/))
 
@@ -44,9 +45,10 @@ Schema is owned by **Alembic** (`backend/alembic/`). The container entrypoint
 ([`entrypoint.sh`](../backend/entrypoint.sh)) runs `alembic upgrade head` before
 the API boots. App startup ([`main.py`](../backend/app/main.py)) then:
 
-1. `ensure_seed_data`
-2. Idempotent cleanup: fix lemmas, dedupe words, normalize topic case
-3. If `pipeline_autorun=true` → start background scheduler
+1. Clean expired auth/guest sessions and mark pre-restart analysis runs interrupted
+2. `ensure_seed_data`
+3. Idempotent cleanup: fix lemmas, dedupe words, normalize topic case
+4. If `pipeline_autorun=true` → start background scheduler
 
 ## External APIs
 
@@ -65,3 +67,5 @@ See [`backend/app/config.py`](../backend/app/config.py). Minimum for full stack:
 - `MISTRAL_API_KEY` — essays + pipeline
 - `GROK_API_KEY` — discovery
 - `DATABASE_URL` — set by compose for Postgres
+- `ADMIN_EMAILS` — comma-separated accounts allowed to operate the pipeline
+- `SECURE_COOKIES=true` — required behind HTTPS outside local development

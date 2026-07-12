@@ -2,7 +2,18 @@
 
 Base: `http://localhost:8000`. Interactive docs: `/docs`.
 
-All routes use `default_user_id=1` from config (no auth).
+User data is scoped by an opaque `HttpOnly` session cookie. Visitors without an
+account receive a 30-day guest session; registering claims that guest's essays.
+
+## Auth
+
+| Method | Path | Role |
+|--------|------|------|
+| GET | `/api/auth/me` | Current account or guest state |
+| POST | `/api/auth/register` | Create email/password account and claim guest essays |
+| POST | `/api/auth/login` | Start account session (does not claim guest data) |
+| POST | `/api/auth/logout` | Revoke current session |
+| DELETE | `/api/auth/account` | Delete account and owned data after password check |
 
 ## Health
 
@@ -17,12 +28,21 @@ All routes use `default_user_id=1` from config (no auth).
 | POST | `/api/essays` | Create essay |
 | GET | `/api/essays` | List essays |
 | GET | `/api/essays/{id}` | Get essay |
-| PATCH | `/api/essays/{id}` | Update title/text/topic/level |
+| PATCH | `/api/essays/{id}` | Autosave text, structured sections and metadata |
+| DELETE | `/api/essays/{id}` | Delete essay and all versions/analyses |
+| POST/GET | `/api/essays/{id}/versions` | Create/list immutable checkpoints |
+| POST | `/api/essays/{id}/versions/{version_id}/restore` | Restore while preserving current state |
+| POST | `/api/essays/{id}/analyses` | Start background full/part analysis (202) |
+| GET | `/api/essays/{id}/analyses` | Immutable analysis timeline |
+| GET | `/api/essays/{id}/analyses/active` | Resume active run after navigation |
+| GET | `/api/essays/{id}/analyses/{analysis_id}` | Poll status/result |
+| POST | `/api/essays/{id}/analyses/{analysis_id}/cancel` | Request cooperative cancellation |
 | GET | `/api/essays/{id}/analysis/latest` | Latest stored analysis |
-| POST | `/api/essays/{id}/analyze` | Sync Mistral analysis |
-| POST | `/api/essays/{id}/analyze/stream` | SSE stream of analysis events |
+| POST | `/api/essays/{id}/analyze` | Legacy synchronous compatibility endpoint |
+| POST | `/api/essays/{id}/analyze/stream` | Legacy SSE compatibility endpoint |
 
-**Service:** [`services/mistral_analyzer.py`](../backend/app/services/mistral_analyzer.py) — separate httpx client (no shared 429 cooldown with pipeline).
+**Services:** `analysis_jobs.py` owns in-process runs and database status;
+`mistral_analyzer.py` emits part events and uses the shared Mistral retry/cooldown.
 
 ## Words — [`api/routes/words.py`](../backend/app/api/routes/words.py)
 
@@ -54,6 +74,8 @@ All routes use `default_user_id=1` from config (no auth).
 
 ## Pipeline — [`api/routes/pipeline.py`](../backend/app/api/routes/pipeline.py)
 
+All pipeline routes require an authenticated email listed in `ADMIN_EMAILS`.
+
 | Method | Path | Role |
 |--------|------|------|
 | POST | `/api/pipeline/run` | Start pipeline for one topic (`topic`, `article_urls?`, `target_words?`) |
@@ -70,10 +92,11 @@ All routes use `default_user_id=1` from config (no auth).
 
 | Module | Responsibility |
 |--------|----------------|
-| `essays_repo.py` | Essay CRUD |
+| `essays_repo.py` | Owner-scoped essay/version/analysis persistence |
+| `analysis_jobs.py` | Background analysis lifecycle and cancellation |
 | `words_repo.py` | Word queries |
 | `phrases_repo.py` | Phrase queries |
-| `user_stats_service.py` | Progress stats (user_id=1) |
+| `user_stats_service.py` | Authenticated per-user progress stats |
 | `topic_pack_service.py` | YAML import, lemma fix, dedupe, topic linking |
 | `mistral_analyzer.py` | Essay analysis prompts + streaming |
 | `wiktionary_client.py` | REST Wiktionary for refresh-grammar |

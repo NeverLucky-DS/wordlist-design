@@ -27,12 +27,15 @@ through `site-header.css`, `site-header.js` and `images/header/`.
 | `renderDetail()`, `openDetail()` | Word detail panel + grammar blocks |
 | `loadApiWords()` | `GET /api/words` → merges into list |
 
-### [`js/schreiben.js`](../js/schreiben.js) — Schreiben (~1052 lines)
+### [`js/schreiben.js`](../js/schreiben.js) — Schreiben
 
 | Symbol | Role |
 |--------|------|
 | `STAGES` | 6 essay stages (Einleitung → Schluss) |
-| `store` / `localStorage` | Local essay lifecycle; editable essays sync to the backend when available |
+| `store` / `localStorage` | Offline dirty copy; server hydrates canonical owner-scoped essay list |
+| `persistEssayToApi()` | Debounced autosave with explicit dirty/saving/saved/offline states |
+| `loadAnalysisHistory()` | Immutable full/part timeline and stale-result handling |
+| `pollAnalysis()` | Resumable background run status, cancellation and result hydration |
 | `THEMEN` | Static theme picker (12 topics); comment: pipeline DB later |
 | `buildRoadmap()` | SVG path + decorative leaves |
 | `openTool()` | Inline expanding tool cards (Wörterbuch / Hilfen) |
@@ -40,12 +43,19 @@ through `site-header.css`, `site-header.js` and `images/header/`.
 
 ### [`js/schreiben-api.js`](../js/schreiben-api.js) — API bridge
 
-Exports `window.SchreibenApi`: essay create/update, health probe and streamed analysis.
+Exports `window.SchreibenApi`: essay CRUD, versions, background analysis
+start/status/history/cancel, health probe and the legacy stream bridge.
+
+### [`js/analysis-waiting-phrases.js`](../js/analysis-waiting-phrases.js)
+
+Approved 60-line German culture/history fact pool. While the real step indicator
+tracks server progress, Schreiben rotates one entertainment line every 10
+seconds and excludes the five most recently shown indices.
 
 ### [`js/site-header.js`](../js/site-header.js)
 
-Shared theme-toggle behavior. Primary navigation uses direct links and needs no
-dropdown JavaScript.
+Shared theme toggle plus the account dialog (register/login/logout/delete) and
+`site-auth-change` event used by Schreiben to rehydrate after identity changes.
 
 ### [`js/animations.js`](../js/animations.js)
 
@@ -74,5 +84,6 @@ Design tokens: CSS variables in each file (`--ink`, `--rose`, level colors). Bru
 | Page | Endpoints used |
 |------|----------------|
 | `index.html` | `GET /api/words` (optional overlay) |
-| `schreiben.html` | `/api/essays`, `/api/essays/{id}/analyze/stream` |
-| `pipeline.html` | `GET /api/pipeline/overview`, `POST /api/pipeline/queue`, `POST /api/pipeline/run` |
+| all pages | `/api/auth/*` |
+| `schreiben.html` | `/api/essays`, `/versions`, `/analyses` background lifecycle |
+| `pipeline.html` | Admin-only `GET /api/pipeline/overview`, `POST /api/pipeline/queue`, `POST /api/pipeline/run` |

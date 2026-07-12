@@ -24,7 +24,7 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | URL | File | Backend |
 |-----|------|---------|
 | `/` | `index.html` | `GET /api/words` (optional overlay) |
-| `/schreiben.html` | `schreiben.html` | none yet (localStorage) |
+| `/schreiben.html` | `schreiben.html` | `/api/auth/*`, `/api/essays/*` (localStorage offline copy) |
 | `/pipeline.html` | `pipeline.html` | `/api/pipeline/*` |
 | `/api/*` | — | all routes |
 | `/health` | — | liveness |
