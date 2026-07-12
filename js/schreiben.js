@@ -206,8 +206,10 @@ function newEssayObj(thema, aufgabe, niveau){
     apiId: null,
     drafts: Object.fromEntries(STAGES.map(s => [s.id, ''])),
     snapshots: [],
-    analysis: null,          /* latest Mistral analysis (no history) */
+    analysis: null,
+    analysisHistory: [],
     partFeedback: {},
+    dirty: true,
     created: Date.now(), updated: Date.now(),
   };
 }
@@ -234,36 +236,78 @@ function buildEssayText() {
 let apiReady = false;
 let apiSaveTimer = null;
 let analyzing = false;
+let activeAnalysisId = null;
+let analysisPollTimer = null;
+let waitingPhraseTimer = null;
+const waitingRecent = [];
 
-async function persistEssayToApi() {
-  const e = currentEssay();
-  if (!e || !apiReady || !window.SchreibenApi) return;
-  const payload = {
+function setSaveState(state, detail) {
+  const box = $('#saveStatus');
+  if (!box) return;
+  box.dataset.state = state;
+  const labels = {
+    dirty: 'Nicht auf dem Server gespeichert',
+    saving: 'Wird gespeichert…',
+    saved: detail || 'Auf dem Server gespeichert',
+    offline: 'Nur lokal gespeichert — klicken zum Wiederholen',
+    error: 'Speichern fehlgeschlagen — klicken zum Wiederholen',
+  };
+  box.title = labels[state] || detail || '';
+  $('#savedMsg').textContent = box.title;
+}
+
+function essayPayload(e) {
+  return {
     title: e.thema || 'Essay',
     text: buildEssayText(),
     essay_type: 'argumentativ',
     topic: (e.thema || '').toLowerCase(),
     level: e.niveau || 'B1',
+    content_json: { drafts: { ...drafts }, aufgabe: e.aufgabe || '' },
   };
+}
+
+async function persistEssayToApi(force = false) {
+  const e = currentEssay();
+  if (!e || !window.SchreibenApi) return null;
+  if (!apiReady && !force) {
+    setSaveState('offline');
+    return null;
+  }
+  syncActiveDraft();
+  saveStore();
+  setSaveState('saving');
   try {
+    let saved;
     if (e.apiId) {
-      await SchreibenApi.updateEssay(e.apiId, payload);
+      saved = await SchreibenApi.updateEssay(e.apiId, essayPayload(e));
     } else {
-      const created = await SchreibenApi.createEssay(payload);
-      e.apiId = created.id;
-      saveStore();
-      alog('essay created on backend · apiId =', created.id);
+      saved = await SchreibenApi.createEssay(essayPayload(e));
+      e.apiId = saved.id;
+      alog('essay created on backend · apiId =', saved.id);
     }
+    apiReady = true;
+    e.dirty = false;
+    e.updated = new Date(saved.updated_at).getTime();
+    saveStore();
+    setSaveState('saved', `Auf dem Server gespeichert · ${fmtDate(e.updated)}`);
+    return saved;
   } catch (err) {
     aerr('API save failed', err);
-    flashSaved('Speichern fehlgeschlagen');
+    e.dirty = true;
+    apiReady = false;
+    saveStore();
+    setSaveState('error');
     throw err;
   }
 }
 
 function scheduleApiPersist() {
-  if (!apiReady) return;
   clearTimeout(apiSaveTimer);
+  if (!apiReady) {
+    setSaveState('offline');
+    return;
+  }
   apiSaveTimer = setTimeout(() => {
     persistEssayToApi().catch(() => {});
   }, 1200);
@@ -278,6 +322,7 @@ async function initBackend() {
     aerr('SchreibenApi not loaded — is js/schreiben-api.js included before schreiben.js?');
     return;
   }
+  if (window.SiteAuth?.refresh) await window.SiteAuth.refresh();
   try {
     apiReady = await SchreibenApi.health();
   } catch (err) {
@@ -285,6 +330,54 @@ async function initBackend() {
     apiReady = false;
   }
   alog('initBackend · apiReady =', apiReady);
+  if (apiReady) await hydrateEssaysFromApi();
+}
+
+function serverEssayToLocal(row, old) {
+  const content = row.content_json || {};
+  const serverDrafts = content.drafts || {};
+  const mappedDrafts = Object.fromEntries(STAGES.map(s => [s.id, serverDrafts[s.id] || '']));
+  return {
+    ...(old || {}),
+    id: old?.id || `api-${row.id}`,
+    apiId: row.id,
+    thema: row.title || 'Essay',
+    aufgabe: content.aufgabe || '',
+    niveau: row.level || 'B1',
+    drafts: mappedDrafts,
+    snapshots: old?.snapshots || [],
+    analysis: old?.analysis || null,
+    analysisHistory: old?.analysisHistory || [],
+    partFeedback: old?.partFeedback || {},
+    dirty: false,
+    created: new Date(row.created_at).getTime(),
+    updated: new Date(row.updated_at).getTime(),
+  };
+}
+
+async function hydrateEssaysFromApi() {
+  if (!apiReady || !window.SchreibenApi) return;
+  const auth = window.SiteAuth?.getState?.() || { authenticated: false };
+  const previous = currentEssay();
+  let rows = await SchreibenApi.listEssays();
+  if (!auth.authenticated) {
+    const serverIds = new Set(rows.map(row => row.id));
+    const unsynced = store.essays.filter(e => !e.apiId || !serverIds.has(e.apiId));
+    for (const local of unsynced) {
+      local.apiId = null;
+      store.activeId = local.id;
+      drafts = local.drafts;
+      await persistEssayToApi(true);
+    }
+    if (unsynced.length) rows = await SchreibenApi.listEssays();
+  }
+  const oldByApi = new Map(store.essays.filter(e => e.apiId).map(e => [e.apiId, e]));
+  store.essays = rows.map(row => serverEssayToLocal(row, oldByApi.get(row.id)));
+  const selected = previous?.apiId
+    ? store.essays.find(e => e.apiId === previous.apiId)
+    : store.essays[0];
+  store.activeId = selected?.id || null;
+  saveStore();
 }
 
 /* Re-probe the backend when a request is about to run but apiReady is false —
@@ -309,6 +402,12 @@ function schedulePersist(){
   const e = currentEssay();
   if (!e) return;
   e.updated = Date.now();
+  e.dirty = true;
+  if (e.analysis) {
+    e.analysis.is_stale = true;
+    updateSwapBtn();
+  }
+  setSaveState('dirty');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveStore, 600);
   scheduleApiPersist();
@@ -701,18 +800,84 @@ function mlEsc(s) {
   return String(s ?? '').split('\n').map(esc).join('<br>');
 }
 
-/* Latest analysis only — overall grade, per-part scores, final summary.
-   The per-error detail lives inline in the text (swap ⇄ button). */
+function analysisFromRun(run) {
+  const byStage = Object.fromEntries(STAGES.map(s => [s.id, []]));
+  (run.errors || []).forEach(err => {
+    const stageId = apiToStage(err.part);
+    if (byStage[stageId]) byStage[stageId].push({ ...err, error_id: errorKey(stageId, err) });
+  });
+  return {
+    id: run.id,
+    errorsByStage: byStage,
+    part_reports: run.part_reports || [],
+    final_summary: run.final_summary || null,
+    grade: run.grade,
+    overall_score: run.overall_score,
+    model: run.model || '',
+    warnings: run.warnings || [],
+    status: run.status,
+    scope: run.scope,
+    part: run.part,
+    is_stale: !!run.is_stale,
+    text_snapshot: run.text_snapshot || '',
+    created: new Date(run.created_at).getTime(),
+  };
+}
+
+async function loadAnalysisHistory(e = currentEssay()) {
+  if (!e?.apiId || !apiReady) return;
+  try {
+    e.analysisHistory = await SchreibenApi.listAnalyses(e.apiId);
+    const completed = e.analysisHistory.find(run =>
+      run.status === 'completed' || run.status === 'completed_with_warnings');
+    if (completed && (!e.analysis || !e.analysis.id)) e.analysis = analysisFromRun(completed);
+    saveStore();
+    if (openedTool === 'analysen') renderAnalysen();
+    updateSwapBtn();
+  } catch (err) {
+    aerr('analysis history failed', err);
+  }
+}
+
 function renderAnalysen(){
   const body = $('#anaBody');
   const e = currentEssay();
   const a = e && e.analysis;
-  if (!a) {
+  const history = e?.analysisHistory || [];
+  if (!a && !history.length) {
     body.innerHTML = '<p class="ana-empty">Noch keine Analyse — schreibe deinen Text und klicke „Analysieren“. Die Korrekturen erscheinen dann direkt im Text.</p>';
     return;
   }
 
+  const timeline = history.length ? `<div class="ana-timeline">${history.map(run => {
+    const label = run.scope === 'part' ? (run.part || 'Teil') : 'Gesamtes Essay';
+    const score = run.overall_score == null ? '' : ` · ${run.overall_score}/100`;
+    return `<button type="button" data-analysis-id="${run.id}" class="${a?.id === run.id ? 'active' : ''}">
+      <b>${esc(label)}</b><span>${fmtDate(run.created_at)}${score}</span>
+      <i data-status="${esc(run.status)}">${esc(run.status.replaceAll('_', ' '))}</i>
+    </button>`;
+  }).join('')}</div>` : '';
+  if (!a) {
+    body.innerHTML = timeline;
+    body.querySelectorAll('[data-analysis-id]').forEach(button => {
+      button.addEventListener('click', () => {
+        const run = history.find(item => item.id === Number(button.dataset.analysisId));
+        if (!run || !['completed', 'completed_with_warnings'].includes(run.status)) return;
+        e.analysis = analysisFromRun(run);
+        renderAnalysen();
+        updateSwapBtn();
+        saveStore();
+      });
+    });
+    return;
+  }
   const totalErrors = STAGES.reduce((n, s) => n + ((a.errorsByStage?.[s.id] || []).length), 0);
+  const notices = [
+    a.is_stale ? '<p class="ana-warning">Diese Analyse gehört zu einer früheren Textversion.</p>' : '',
+    a.warnings?.length ? `<div class="ana-warning">Teilweise abgeschlossen · ${a.warnings.length} Hinweis(e)
+      ${a.warnings.filter(w => w.part).map(w => `<button type="button" data-retry-part="${esc(w.part)}">${esc(w.part)} erneut prüfen</button>`).join('')}
+    </div>` : '',
+  ].join('');
   const head = `
     <div class="ana-head">
       <span class="ana-grade">${esc(a.grade || '—')}</span>
@@ -738,10 +903,27 @@ function renderAnalysen(){
   const summary = summaryInner.trim()
     ? `<details class="ana-fold"><summary>Struktur & Thema</summary><div class="ana-summary">${summaryInner}</div></details>`
     : '';
+  const snapshot = a.text_snapshot
+    ? `<details class="ana-fold"><summary>Analysierte Textversion</summary><div class="ana-snapshot">${mlEsc(a.text_snapshot)}</div></details>`
+    : '';
 
-  body.innerHTML = `<div class="ana-detail">${head}${parts}${summary}</div>`;
+  body.innerHTML = `${timeline}<div class="ana-detail">${notices}${head}${parts}${summary}${snapshot}</div>`;
   const link = $('#anaSwapLink');
   if (link) link.addEventListener('click', enterReview);
+  body.querySelectorAll('[data-analysis-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      const run = history.find(item => item.id === Number(button.dataset.analysisId));
+      if (!run || !['completed', 'completed_with_warnings'].includes(run.status)) return;
+      e.analysis = analysisFromRun(run);
+      reviewMode = false;
+      renderAnalysen();
+      updateSwapBtn();
+      saveStore();
+    });
+  });
+  body.querySelectorAll('[data-retry-part]').forEach(button => {
+    button.addEventListener('click', () => runAnalysis(apiToStage(button.dataset.retryPart)));
+  });
 }
 
 /* =====================================================================
@@ -1006,18 +1188,32 @@ function renderEssays(){
   }
   items.forEach(e => {
     const words = STAGES.reduce((s, st) => s + countOf(e.drafts[st.id]), 0);
-    const row = document.createElement('button');
-    row.type = 'button';
+    const row = document.createElement('div');
     row.className = 'essay-row' + (e.id === store.activeId ? ' current' : '');
     row.innerHTML = `
-      <span class="er-main"><b>${esc(e.thema)}</b>${e.aufgabe ? `<i>${esc(e.aufgabe)}</i>` : ''}</span>
-      <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · ${e.snapshots.length} Var. · ${fmtDate(e.updated)}</span>`;
-    row.addEventListener('click', () => {
+      <button class="essay-open" type="button">
+        <span class="er-main"><b>${esc(e.thema)}</b>${e.aufgabe ? `<i>${esc(e.aufgabe)}</i>` : ''}</span>
+        <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · ${fmtDate(e.updated)}</span>
+      </button>
+      <button class="essay-delete" type="button" aria-label="Essay löschen">×</button>`;
+    row.querySelector('.essay-open').addEventListener('click', () => {
       store.activeId = e.id;
       saveStore();
       setSheetMode('write');
       bindEssay(e);
       editable.focus();
+    });
+    row.querySelector('.essay-delete').addEventListener('click', async () => {
+      if (!window.confirm(`„${e.thema}“ löschen?`)) return;
+      try {
+        if (e.apiId) await SchreibenApi.deleteEssay(e.apiId);
+        store.essays = store.essays.filter(item => item.id !== e.id);
+        if (store.activeId === e.id) store.activeId = store.essays[0]?.id || null;
+        saveStore();
+        renderEssays();
+      } catch (err) {
+        flashSaved(`Löschen fehlgeschlagen: ${err.message}`);
+      }
     });
     list.appendChild(row);
   });
@@ -1058,6 +1254,10 @@ function bindEssay(e){
   $('#themaAufgabe').textContent = e.aufgabe || '';
   refreshAll();
   updateSwapBtn();
+  setSaveState(e.dirty ? (apiReady ? 'dirty' : 'offline') : 'saved',
+    e.dirty ? undefined : `Auf dem Server gespeichert · ${fmtDate(e.updated)}`);
+  loadAnalysisHistory(e);
+  resumeActiveAnalysis(e);
 }
 
 $('#startBegin').addEventListener('click', () => {
@@ -1068,6 +1268,7 @@ $('#startBegin').addEventListener('click', () => {
   $('#startAufgabe').value = '';
   setSheetMode('write');
   bindEssay(e);
+  persistEssayToApi().catch(() => {});
   editable.focus();
 });
 $$('#startNiveau button').forEach(b =>
@@ -1415,17 +1616,17 @@ function updateSwapBtn(){
   const btn = $('#btnSwap');
   if (!btn) return;
   const es = currentEssay();
-  const on = !!(es && es.analysis);
+  const on = !!(es && es.analysis && !es.analysis.is_stale);
   btn.disabled = !on;
   btn.classList.toggle('active', reviewMode);
   btn.title = !on
-    ? 'Erst analysieren, dann die Korrekturen im Text ansehen'
+    ? (es?.analysis?.is_stale ? 'Diese Korrekturen gehören zu einer früheren Version' : 'Erst analysieren, dann die Korrekturen im Text ansehen')
     : (reviewMode ? 'Zurück zum Schreiben' : 'Korrekturen im Text ansehen');
 }
 
 function enterReview(){
   const es = currentEssay();
-  if (!es || !es.analysis) return;
+  if (!es || !es.analysis || es.analysis.is_stale) return;
   syncActiveDraft();
   reviewMode = true;
   renderStageEditable();
@@ -1690,16 +1891,9 @@ async function runAnalysis(scope) {
   const es = currentEssay();
   if (!es) { aerr('runAnalysis: no active essay'); return; }
   if (analyzing) { alog('runAnalysis: already running, ignoring click'); return; }
-  alog('runAnalysis start · scope =', scope, '· essay =', es.id, '· apiId =', es.apiId);
-
-  if (!window.SchreibenApi) {
-    aerr('runAnalysis: SchreibenApi missing');
-    flashSaved('Backend nicht erreichbar');
-    return;
-  }
+  if (!window.SchreibenApi) return;
   if (!(await ensureBackendReady())) {
-    aerr('runAnalysis: backend not reachable (health failed)');
-    flashSaved('Backend nicht erreichbar');
+    setSaveState('offline');
     return;
   }
 
@@ -1711,94 +1905,141 @@ async function runAnalysis(scope) {
   btnFull.disabled = true;
   btnPart.disabled = true;
 
-  let snapshotId = null;
-  if (scope === 'full') {
-    const snap = takeSnapshot('Analyse');
-    snapshotId = snap ? snap.id : null;
-  } else {
-    saveStore();
-  }
-
   try {
-    flashSaved('Speichern…');
-    await persistEssayToApi();
+    await persistEssayToApi(true);
     if (!es.apiId) throw new Error('Essay nicht gespeichert');
-
     const apiPart = scope === 'full' ? null : (API_PART[scope] || null);
-    alog('essay persisted · apiId =', es.apiId, '— starting stream · part =', apiPart || 'all');
-    let donePayload = null;
-    await SchreibenApi.streamAnalyze(es.apiId, (event) => {
-      if (!event || !event.type) return;
-      if (event.type === 'part_start') {
-        alog('part_start', event.part);
-        flashSaved(`Analysiere ${event.label || event.part}…`);
-        return;
-      }
-      if (event.type === 'part_done') {
-        alog('part_done', event.part, '· score', event.score, '· errors', (event.errors || []).length);
-        applyPartFeedback(event);
-      }
-      if (event.type === 'done') {
-        alog('done · grade', event.grade, '· score', event.overall_score, '· errors', (event.errors || []).length);
-        donePayload = {
-          overall_score: event.overall_score,
-          grade: event.grade,
-          errors: event.errors || [],
-          part_reports: event.part_reports || [],
-          final_summary: event.final_summary || null,
-          model: event.model || '',
-        };
-      }
-    }, apiPart);
-
-    if (!donePayload) throw new Error('Keine Analyse-Antwort');
-
-    /* group the flat error list by stage, tag each with a stable id */
-    const byStage = Object.fromEntries(STAGES.map(s => [s.id, []]));
-    (donePayload.errors || []).forEach(err => {
-      const stageId = apiToStage(err.part);
-      if (!byStage[stageId]) return;
-      byStage[stageId].push({ ...err, error_id: errorKey(stageId, err) });
-    });
-
-    if (scope === 'full' || !es.analysis) {
-      es.analysis = {
-        errorsByStage: byStage,
-        part_reports: donePayload.part_reports || [],
-        final_summary: donePayload.final_summary || null,
-        grade: donePayload.grade,
-        overall_score: donePayload.overall_score,
-        model: donePayload.model || '',
-        created: Date.now(),
-      };
-    } else {
-      /* scoped part run — replace only that stage, keep the rest */
-      es.analysis.errorsByStage[scope] = byStage[scope] || [];
-      const others = (es.analysis.part_reports || []).filter(r => apiToStage(r.part) !== scope);
-      es.analysis.part_reports = [...others, ...(donePayload.part_reports || [])];
-      es.analysis.created = Date.now();
+    let run;
+    try {
+      run = await SchreibenApi.startAnalysis(es.apiId, apiPart);
+    } catch (err) {
+      if (err.status === 409) run = await SchreibenApi.getActiveAnalysis(es.apiId);
+      else throw err;
     }
-    delete es.reports;            /* drop the old timestamped history */
-    delete es.activeReportId;
-    saveStore();
-
-    const errCount = (donePayload.errors || []).length;
-    flashSaved(scope === 'full'
-      ? `Analysiert · ${donePayload.grade} (${donePayload.overall_score}) · ${errCount} Hinweise`
-      : `Teil analysiert · ${errCount} Hinweise`);
-    alog('runAnalysis complete · scope', scope, '· errors', errCount);
-    enterReview();                /* flip the sheet to show marks in the text */
-    renderAnalysen();             /* refresh the summary panel */
-    setAnaState('done');
+    if (!run) throw new Error('Analyse konnte nicht gestartet werden');
+    activeAnalysisId = run.id;
+    showAnalysisProgress(run);
+    pollAnalysis(es, run.id);
   } catch (err) {
     aerr('runAnalysis failed', err);
     flashSaved(`Analyse fehlgeschlagen: ${err && err.message ? err.message : 'Unbekannter Fehler'}`);
     setAnaState('error');
-  } finally {
     analyzing = false;
     btnFull.disabled = false;
     btnPart.disabled = false;
-    alog('runAnalysis end · analyzing =', analyzing);
+  }
+}
+
+function showAnalysisProgress(run) {
+  const panel = $('#analysisProgress');
+  panel.hidden = false;
+  const step = run.progress_step || 'queued';
+  const idx = step === 'queued' || step === 'preparing' ? 0
+    : step.startsWith('analyzing:') ? 1
+      : step.startsWith('reviewed:') ? 2
+        : step === 'saving' ? 3 : 4;
+  $$('#analysisSteps span').forEach((dot, i) => {
+    dot.classList.toggle('done', i < idx);
+    dot.classList.toggle('active', i === Math.min(idx, 3));
+  });
+  if (run.cancellation_requested) {
+    stopWaitingPhrases();
+    $('#analysisProgressText').textContent = 'Analyse wird abgebrochen…';
+  } else {
+    startWaitingPhrases();
+  }
+}
+
+function hideAnalysisProgress() {
+  stopWaitingPhrases();
+  $('#analysisProgress').hidden = true;
+}
+
+function nextWaitingPhrase() {
+  const phrases = window.ANALYSIS_WAITING_PHRASES || [];
+  if (!phrases.length) {
+    $('#analysisProgressText').textContent = 'Analyse läuft';
+    return;
+  }
+  const candidates = phrases
+    .map((_, index) => index)
+    .filter(index => !waitingRecent.includes(index));
+  const pool = candidates.length ? candidates : phrases.map((_, index) => index);
+  const index = pool[Math.floor(Math.random() * pool.length)];
+  waitingRecent.push(index);
+  while (waitingRecent.length > 5) waitingRecent.shift();
+  $('#analysisProgressText').textContent = phrases[index];
+}
+
+function startWaitingPhrases() {
+  if (waitingPhraseTimer) return;
+  nextWaitingPhrase();
+  waitingPhraseTimer = setInterval(nextWaitingPhrase, 10000);
+}
+
+function stopWaitingPhrases() {
+  clearInterval(waitingPhraseTimer);
+  waitingPhraseTimer = null;
+}
+
+async function pollAnalysis(es, analysisId) {
+  clearTimeout(analysisPollTimer);
+  if (!es?.apiId) return;
+  try {
+    const run = await SchreibenApi.getAnalysis(es.apiId, analysisId);
+    showAnalysisProgress(run);
+    if (run.status === 'queued' || run.status === 'running') {
+      analysisPollTimer = setTimeout(() => pollAnalysis(es, analysisId), 1500);
+      return;
+    }
+    analyzing = false;
+    activeAnalysisId = null;
+    $('#btnAnalyze').disabled = false;
+    $('#btnAnalyzePart').disabled = false;
+    hideAnalysisProgress();
+    if (run.status === 'completed' || run.status === 'completed_with_warnings') {
+      es.analysis = analysisFromRun(run);
+      saveStore();
+      await loadAnalysisHistory(es);
+      if (currentEssay()?.id === es.id) {
+        enterReview();
+        renderAnalysen();
+      }
+      flashSaved(run.status === 'completed_with_warnings'
+        ? 'Analyse teilweise abgeschlossen'
+        : 'Analyse abgeschlossen');
+      setAnaState('done');
+    } else if (run.status === 'cancelled') {
+      flashSaved('Analyse abgebrochen');
+      setAnaState('idle');
+    } else {
+      flashSaved(`Analyse fehlgeschlagen: ${run.error_message || 'Unbekannter Fehler'}`);
+      setAnaState('error');
+    }
+  } catch (err) {
+    aerr('analysis polling failed', err);
+    analysisPollTimer = setTimeout(() => pollAnalysis(es, analysisId), 3000);
+  }
+}
+
+async function resumeActiveAnalysis(es = currentEssay()) {
+  clearTimeout(analysisPollTimer);
+  if (!es?.apiId || !apiReady) return;
+  try {
+    const run = await SchreibenApi.getActiveAnalysis(es.apiId);
+    if (!run) {
+      hideAnalysisProgress();
+      return;
+    }
+    analyzing = true;
+    activeAnalysisId = run.id;
+    $('#btnAnalyze').disabled = true;
+    $('#btnAnalyzePart').disabled = true;
+    setAnaState('pending');
+    showAnalysisProgress(run);
+    pollAnalysis(es, run.id);
+  } catch (err) {
+    aerr('resume analysis failed', err);
   }
 }
 function takeSnapshot(label){
@@ -1851,13 +2092,71 @@ function setAnaState(state){
     anaResetId = setTimeout(() => setAnaState('idle'), state === 'done' ? 2600 : 3600);
   }
 }
-$('#btnSnapshot').addEventListener('click', () => {
-  if (!currentEssay()) return;
-  takeSnapshot('Manuell');
-  flashSaved('Variante gemerkt ✓');
+$('#saveStatus').addEventListener('click', () => {
+  persistEssayToApi(true).catch(() => {});
+});
+$('#btnSnapshot').addEventListener('click', async () => {
+  const e = currentEssay();
+  if (!e) return;
+  try {
+    await persistEssayToApi(true);
+    await SchreibenApi.createVersion(e.apiId, 'manual');
+    takeSnapshot('Manuell');
+    flashSaved('Version gespeichert ✓');
+  } catch (err) {
+    flashSaved(`Speichern fehlgeschlagen: ${err.message}`);
+  }
+});
+$('#btnVersions').addEventListener('click', openVersions);
+$('#versionsShell .versions-backdrop').addEventListener('click', closeVersions);
+$('#versionsShell .versions-close').addEventListener('click', closeVersions);
+$('#btnCancelAnalysis').addEventListener('click', async () => {
+  const e = currentEssay();
+  if (!e?.apiId || !activeAnalysisId) return;
+  const run = await SchreibenApi.cancelAnalysis(e.apiId, activeAnalysisId);
+  showAnalysisProgress(run);
 });
 $('#btnAnalyzePart').addEventListener('click', () => runAnalysis(activeStage));
 $('#btnAnalyze').addEventListener('click', () => runAnalysis('full'));
+
+async function openVersions() {
+  const e = currentEssay();
+  if (!e?.apiId) return;
+  const shell = $('#versionsShell');
+  const list = $('#versionsList');
+  shell.hidden = false;
+  list.innerHTML = '<p class="versions-empty">Versionen werden geladen…</p>';
+  try {
+    const versions = await SchreibenApi.listVersions(e.apiId);
+    if (!versions.length) {
+      list.innerHTML = '<p class="versions-empty">Noch keine manuell gespeicherten Versionen.</p>';
+      return;
+    }
+    list.innerHTML = versions.map(version => `
+      <article class="version-row">
+        <div><b>${version.reason === 'analysis' ? 'Vor der Analyse' : (version.reason === 'pre_restore' ? 'Vor Wiederherstellung' : 'Manuell gespeichert')}</b>
+        <span>${fmtDate(version.created_at)}</span></div>
+        <button type="button" data-version-id="${version.id}">Wiederherstellen</button>
+      </article>`).join('');
+    list.querySelectorAll('[data-version-id]').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (!window.confirm('Diese Version wiederherstellen? Der aktuelle Text bleibt als Kontrollpunkt erhalten.')) return;
+        const row = await SchreibenApi.restoreVersion(e.apiId, Number(button.dataset.versionId));
+        const restored = serverEssayToLocal(row, e);
+        Object.assign(e, restored);
+        e.analysis = null;
+        drafts = e.drafts;
+        saveStore();
+        bindEssay(e);
+        closeVersions();
+        flashSaved('Version wiederhergestellt');
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p class="versions-empty">Laden fehlgeschlagen: ${esc(err.message)}</p>`;
+  }
+}
+function closeVersions() { $('#versionsShell').hidden = true; }
 
 /* =====================================================================
    init
@@ -1879,4 +2178,30 @@ initBackend().then(() => {
     setSheetMode('start');
   }
 });
+window.addEventListener('site-auth-change', async () => {
+  if (!apiReady) return;
+  await hydrateEssaysFromApi();
+  const initial = currentEssay();
+  if (initial) {
+    setSheetMode('write');
+    bindEssay(initial);
+  } else {
+    setSheetMode('start');
+  }
+});
+window.SchreibenBeforeRegister = async () => {
+  if (!window.SchreibenApi) return;
+  apiReady = await SchreibenApi.health();
+  if (!apiReady) throw new Error('Gast-Essays konnten nicht synchronisiert werden');
+  const selectedId = store.activeId;
+  for (const e of store.essays.filter(item => item.dirty || !item.apiId)) {
+    store.activeId = e.id;
+    drafts = e.drafts;
+    await persistEssayToApi(true);
+  }
+  store.activeId = selectedId;
+  const selected = currentEssay();
+  if (selected) drafts = selected.drafts;
+  saveStore();
+};
 window.addEventListener('resize', buildRoadmap);

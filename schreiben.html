@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/site-header.css?v=8">
-<link rel="stylesheet" href="css/schreiben.css?v=25">
+<link rel="stylesheet" href="css/site-header.css?v=9">
+<link rel="stylesheet" href="css/schreiben.css?v=28">
 </head>
 <body>
 
@@ -133,6 +133,14 @@
         </button>
       </div>
 
+      <div class="analysis-progress" id="analysisProgress" hidden>
+        <div class="analysis-steps" id="analysisSteps" aria-label="Analysefortschritt">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <span id="analysisProgressText">Analyse läuft</span>
+        <button id="btnCancelAnalysis" type="button">Abbrechen</button>
+      </div>
+
       <div class="sheet-foot">
         <span class="wc" id="wordCount">0 Wörter</span>
         <div class="foot-actions">
@@ -146,9 +154,14 @@
             Analysieren
           </button>
         </div>
-        <span class="saved"><span class="dot"></span><span id="savedMsg">Automatisch gespeichert</span>
+        <span class="saved">
+          <button class="save-status" id="saveStatus" type="button" title="Lokal gespeichert">
+            <span class="dot"></span><span class="sr-only" id="savedMsg">Lokal gespeichert</span>
+          </button>
           <span class="sep">·</span>
-          <button class="save-var" id="btnSnapshot" type="button">Variante merken</button></span>
+          <button class="save-var" id="btnSnapshot" type="button">Speichern</button>
+          <button class="save-var" id="btnVersions" type="button">Versionen</button>
+        </span>
       </div>
     </main>
 
@@ -209,6 +222,16 @@
     <div id="annContent"></div>
   </div>
 
+  <div class="versions-shell" id="versionsShell" hidden>
+    <button class="versions-backdrop" type="button" aria-label="Schließen"></button>
+    <section class="versions-dialog" role="dialog" aria-modal="true" aria-labelledby="versionsTitle">
+      <button class="versions-close" type="button" aria-label="Schließen">×</button>
+      <p class="start-eyebrow">Kontrollpunkte</p>
+      <h2 class="serif" id="versionsTitle">Gespeicherte Versionen</h2>
+      <div id="versionsList"></div>
+    </section>
+  </div>
+
   <!-- flowing dashed connector: marked word ↔ correction card -->
   <svg class="link-line" id="annLink" aria-hidden="true" hidden>
     <path id="annLinkPath" d=""/>
@@ -223,9 +246,10 @@
     <circle id="linkDot" class="ll-dot" r="4"/>
   </svg>
 
-  <script src="js/site-header.js?v=6"></script>
+  <script src="js/site-header.js?v=8"></script>
   <script src="js/words-data.js?v=1"></script>
-  <script src="js/schreiben-api.js?v=4"></script>
-  <script src="js/schreiben.js?v=27"></script>
+  <script src="js/schreiben-api.js?v=5"></script>
+  <script src="js/analysis-waiting-phrases.js?v=1"></script>
+  <script src="js/schreiben.js?v=30"></script>
 </body>
 </html>

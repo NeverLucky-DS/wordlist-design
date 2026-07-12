@@ -251,11 +251,16 @@ button{font-family:inherit;cursor:pointer}
 .essays[hidden]{display:none}
 .essays .start-eyebrow,.essays .start-title{text-align:center}
 .essays-list{display:flex;flex-direction:column;gap:10px;margin-top:26px}
-.essay-row{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+.essay-row{display:flex;align-items:center;gap:10px;
   background:var(--card);border:1px solid var(--line);border-radius:14px;
-  padding:14px 18px;text-align:left;transition:border-color .18s,box-shadow .18s}
+  padding:5px 8px 5px 16px;text-align:left;transition:border-color .18s,box-shadow .18s}
 .essay-row:hover{border-color:var(--accent-ln);box-shadow:0 8px 20px -12px rgba(106,93,163,.35)}
 .essay-row.current{border-color:var(--accent-ln);box-shadow:0 0 0 3px var(--accent-soft)}
+.essay-open{min-width:0;flex:1;display:flex;align-items:baseline;justify-content:space-between;
+  gap:16px;padding:9px 2px;border:0;background:none;text-align:left}
+.essay-delete{width:30px;height:30px;border:0;border-radius:50%;background:none;
+  color:var(--ink-mute);font-size:20px;cursor:pointer}
+.essay-delete:hover{background:rgba(162,58,53,.08);color:#a23a35}
 .er-main{min-width:0;display:flex;flex-direction:column;gap:2px}
 .er-main b{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:var(--ink)}
 .er-main i{font-style:italic;font-family:'Cormorant Garamond',serif;font-size:14.5px;
@@ -306,6 +311,14 @@ button{font-family:inherit;cursor:pointer}
 .sheet-foot .saved{justify-self:end;display:flex;align-items:center;gap:7px;
   font-size:12.5px;color:var(--ink-mute);white-space:nowrap}
 .sheet-foot .dot{width:7px;height:7px;border-radius:50%;background:#7FAE8B;flex:none}
+.save-status{width:24px;height:24px;display:grid;place-items:center;border:0;border-radius:50%;
+  background:none;cursor:pointer}
+.save-status[data-state="dirty"] .dot,.save-status[data-state="saving"] .dot{background:#c79d55}
+.save-status[data-state="offline"] .dot,.save-status[data-state="error"] .dot{background:#bf5b52}
+.save-status[data-state="saving"] .dot{animation:savePulse .8s ease-in-out infinite alternate}
+@keyframes savePulse{to{transform:scale(1.55);opacity:.45}}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .sheet-foot .sep{color:var(--muted)}
 .save-var{background:none;border:0;padding:0;font-size:12.5px;font-weight:600;
   color:var(--accent-ink);text-decoration:underline dashed rgba(87,73,126,.45);
@@ -314,6 +327,51 @@ button{font-family:inherit;cursor:pointer}
 .save-var:disabled{color:var(--ink-mute);text-decoration:none;cursor:default}
 
 .foot-actions{justify-self:center;display:flex;align-items:center;gap:10px}
+
+.analysis-progress{position:absolute;z-index:5;right:26px;bottom:78px;display:flex;
+  align-items:center;gap:12px;padding:10px 13px;border:1px solid var(--line);
+  border-radius:13px;background:var(--card);box-shadow:0 12px 30px rgba(44,40,51,.12);
+  max-width:min(560px,calc(100% - 52px));color:var(--ink-soft);font-size:12px}
+.analysis-progress[hidden]{display:none}
+#analysisProgressText{min-width:0;line-height:1.35}
+.analysis-steps{display:flex;align-items:center;gap:5px}
+.analysis-steps span{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.analysis-steps span.done{background:#7fae8b}
+.analysis-steps span.active{background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.analysis-progress button{border:0;background:none;color:var(--accent-ink);
+  font-size:11px;text-decoration:underline;cursor:pointer}
+
+.versions-shell{position:fixed;inset:0;z-index:150}
+.versions-shell[hidden]{display:none}
+.versions-backdrop{position:absolute;inset:0;border:0;background:rgba(42,36,34,.28);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.versions-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(560px,calc(100vw - 34px));max-height:min(640px,80vh);overflow:auto;
+  box-sizing:border-box;padding:30px;border:1px solid var(--line);border-radius:24px;
+  background:var(--sheet);box-shadow:0 24px 70px rgba(44,40,51,.22)}
+.versions-dialog h2{margin:4px 0 22px;font-size:30px}
+.versions-close{position:absolute;right:16px;top:12px;border:0;background:none;
+  color:var(--ink-mute);font-size:28px;cursor:pointer}
+.version-row{display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:13px 0;border-top:1px solid var(--line-soft)}
+.version-row div{display:grid;gap:3px}.version-row span{font-size:11px;color:var(--ink-mute)}
+.version-row button{border:1px solid var(--line);border-radius:10px;background:var(--card);
+  padding:8px 11px;color:var(--accent-ink);font-size:11px;cursor:pointer}
+.versions-empty{color:var(--ink-mute);font-size:13px}
+
+.ana-timeline{display:grid;gap:7px;margin-bottom:14px}
+.ana-timeline button{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:9px 10px;
+  border:1px solid var(--line-soft);border-radius:10px;background:var(--card);text-align:left;
+  color:var(--ink-soft);cursor:pointer}
+.ana-timeline button.active{border-color:var(--accent-ln);box-shadow:0 0 0 2px var(--accent-soft)}
+.ana-timeline button b{font-size:12px}.ana-timeline button span{font-size:10px;color:var(--ink-mute)}
+.ana-timeline button i{grid-column:1/-1;font-size:9px;color:var(--ink-mute);font-style:normal}
+.ana-warning{padding:8px 10px;border-radius:9px;background:rgba(199,157,85,.12);
+  color:#856629;font-size:11px}
+.ana-warning button{display:block;margin-top:7px;border:0;background:none;padding:0;
+  color:inherit;font-size:10px;font-weight:600;text-decoration:underline;cursor:pointer}
+.ana-snapshot{max-height:220px;overflow:auto;padding:10px;border-radius:9px;
+  background:rgba(255,255,255,.5);color:var(--ink-soft);font-size:11px;line-height:1.55}
 
 /* analysis request state — smiley (idle/done), spinner + live timer (waiting) */
 .ana-status{display:inline-flex;align-items:center;gap:6px;margin-right:2px;

@@ -19,7 +19,10 @@
   }
 
   async function request(path, options = {}) {
-    const response = await fetch(`${API_BASE}${path}`, options);
+    const response = await fetch(`${API_BASE}${path}`, {
+      credentials: 'same-origin',
+      ...options,
+    });
     if (!response.ok) {
       const payload = await parseMaybeJson(response).catch(() => '');
       const detail =
@@ -28,7 +31,10 @@
           : typeof payload === 'string' && payload
             ? payload
             : `HTTP ${response.status}`;
-      throw new Error(detail);
+      const error = new Error(typeof detail === 'string' ? detail : (detail.message || `HTTP ${response.status}`));
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
     }
     return parseMaybeJson(response);
   }
@@ -46,6 +52,62 @@
       method: 'PATCH',
       headers: HEADERS_JSON,
       body: JSON.stringify(payload),
+    });
+  }
+
+  async function listEssays() {
+    return request('/api/essays');
+  }
+
+  async function getEssay(essayId) {
+    return request(`/api/essays/${essayId}`);
+  }
+
+  async function deleteEssay(essayId) {
+    return request(`/api/essays/${essayId}`, { method: 'DELETE' });
+  }
+
+  async function createVersion(essayId, reason = 'manual') {
+    return request(`/api/essays/${essayId}/versions`, {
+      method: 'POST',
+      headers: HEADERS_JSON,
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async function listVersions(essayId) {
+    return request(`/api/essays/${essayId}/versions`);
+  }
+
+  async function restoreVersion(essayId, versionId) {
+    return request(`/api/essays/${essayId}/versions/${versionId}/restore`, {
+      method: 'POST',
+    });
+  }
+
+  async function startAnalysis(essayId, part = null) {
+    return request(`/api/essays/${essayId}/analyses`, {
+      method: 'POST',
+      headers: HEADERS_JSON,
+      body: JSON.stringify({ part }),
+    });
+  }
+
+  async function listAnalyses(essayId) {
+    return request(`/api/essays/${essayId}/analyses`);
+  }
+
+  async function getAnalysis(essayId, analysisId) {
+    return request(`/api/essays/${essayId}/analyses/${analysisId}`);
+  }
+
+  async function getActiveAnalysis(essayId) {
+    return request(`/api/essays/${essayId}/analyses/active`);
+  }
+
+  async function cancelAnalysis(essayId, analysisId) {
+    return request(`/api/essays/${essayId}/analyses/${analysisId}/cancel`, {
+      method: 'POST',
     });
   }
 
@@ -123,6 +185,17 @@
   window.SchreibenApi = {
     createEssay,
     updateEssay,
+    listEssays,
+    getEssay,
+    deleteEssay,
+    createVersion,
+    listVersions,
+    restoreVersion,
+    startAnalysis,
+    listAnalyses,
+    getAnalysis,
+    getActiveAnalysis,
+    cancelAnalysis,
     streamAnalyze,
     health,
   };
