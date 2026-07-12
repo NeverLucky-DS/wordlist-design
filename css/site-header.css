@@ -87,7 +87,10 @@
 
 /* Keep all destinations visible: on narrow screens they become a second row. */
 @media (max-width:860px){
-  .topbar{flex-wrap:wrap;padding:10px 20px 12px;row-gap:9px}
+  .topbar{
+    width:100vw;box-sizing:border-box;flex-wrap:wrap;
+    padding:10px 20px 12px;row-gap:9px
+  }
   .topbar .brand{margin-right:auto}
   .topbar .brand-rule{display:none}
   .topbar .nav{order:3;width:100%;margin:0;display:grid;grid-template-columns:repeat(3,1fr)}

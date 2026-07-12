@@ -242,7 +242,8 @@ POST /api/pipeline/queue
    не возвращать туда отдельную копию `.topbar` / `.nav`.
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
-   (`site-header.css` / `site-header.js` сейчас `?v=6`, `schreiben.css` — `?v=24`).
+   (`site-header.css` сейчас `?v=7`, `site-header.js` — `?v=6`,
+   `schreiben.css` — `?v=24`).
 
 3. **docker mount `.:/usr/share/nginx/html`** — nginx отдаёт **весь репо** включая `backend/`, `.git`. Только local dev.
 
