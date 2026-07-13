@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,14 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/site-header.css?v=11">
-<link rel="stylesheet" href="css/pipeline.css?v=1">
+<link rel="stylesheet" href="css/site-header.css?v=9">
+<link rel="stylesheet" href="css/pipeline.css?v=2">
 </head>
 <body>
 
   <!-- left edge decoration — watercolor strip + vertical label -->
   <div class="bg-column" aria-hidden="true"></div>
-  <div class="side-label">SAMMELN</div>
+  <div class="side-label">WORTSCHATZ</div>
 
   <!-- ===================== Shared top bar ===================== -->
   <header class="topbar">
@@ -38,94 +38,69 @@
 
   <!-- ===================== Page ===================== -->
   <main class="page">
+    <div class="eyebrow">Pipeline · Wortschatz</div>
+    <h1 class="title serif">Обработка словаря</h1>
+    <p class="lede">Читаем словари, собираем по каждому слову подтверждённую информацию из всех
+      источников, ранжируем по частоте и раскладываем по уровням. Всё прозрачно — видно каждую
+      стадию и что дал каждый словарь.</p>
 
-    <div class="eyebrow">Pipeline</div>
-    <h1 class="title">Wörter sammeln</h1>
-    <p class="lede">Die Pipeline liest Quellen, sammelt Wortschatz und Redemittel zu jedem
-      Thema — und arbeitet von selbst weiter, bis die Sammlung vollständig ist.</p>
-    <div class="autopilot" id="autopilot" hidden>
-      <span class="ap-dot"></span><span id="autopilotText">Autopilot aktiv</span>
+    <div class="pg-grid">
+      <!-- ── control ── -->
+      <section class="pg-card">
+        <h2 class="serif">Панель запуска</h2>
+        <p class="sub">Детерминированная загрузка из словарей (без LLM). Полнота базы задаётся порогом частоты.</p>
+        <div class="presets" id="presets">
+          <button class="preset on" data-z="2.3"><b>Оптимал · ~46k</b><span>zipf ≥ 2.3</span></button>
+          <button class="preset" data-z="2.0"><b>Шире · ~58k</b><span>zipf ≥ 2.0</span></button>
+          <button class="preset" data-z="0"><b>Всё реальное · ~108k</b><span>zipf &gt; 0</span></button>
+        </div>
+        <button class="run" id="runBtn">Запустить обработку</button>
+        <p class="hint" id="keyHint">Обработка идёт на серверном ключе. Персональные ключи Mistral — следующим этапом, после авторизации.</p>
+      </section>
+
+      <!-- ── progress ── -->
+      <section class="pg-card">
+        <div class="card-head">
+          <h2 class="serif">Прогресс</h2><span class="elapsed" id="elapsed"></span>
+        </div>
+        <div class="stage" id="stage">Готов к запуску.</div>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="srcs" id="srcs"></div>
+        <div class="log" id="log"></div>
+      </section>
     </div>
 
-    <!-- compose -->
-    <div class="compose">
-      <label class="field">
-        <span class="ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
-        <input id="topicInput" type="text" autocomplete="off"
-          placeholder="Neues Thema, z. B. „Plastikmüll“ oder „Work-Life-Balance“ …">
-      </label>
-      <button class="btn-queue" id="queueBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M19 15v6M16 18h6"/></svg>
-        Einreihen
-      </button>
-    </div>
-    <div class="suggest" id="suggest" hidden>
-      <span class="sg-cap">Vorschläge</span>
-    </div>
-
-    <!-- ── Warteschlange ── -->
-    <section class="sec">
-      <div class="sec-head">
-        <span class="sec-title">Warteschlange</span>
-        <span class="sec-count" id="queueCount"></span>
-      </div>
-      <div class="queue-stack" id="queueStack">
-        <div class="empty"><p>Die Warteschlange ist leer — der Autopilot ergänzt
-          bei Bedarf <b>neue Themen von selbst</b>.</p></div>
-      </div>
+    <!-- ── stats ── -->
+    <section class="pg-card">
+      <h2 class="serif">Состояние базы</h2>
+      <p class="sub" id="statsSub">—</p>
+      <div class="kpis" id="kpis"></div>
+      <div class="levelbar" id="levelbar"></div>
+      <div class="legend" id="legend"></div>
+      <div class="fields" id="fields"></div>
     </section>
 
-    <!-- ── Sammlung ── -->
-    <section class="sec">
-      <div class="sec-head">
-        <span class="sec-title">Sammlung</span>
-        <span class="sec-count" id="shelfCount"></span>
+    <!-- ── word browser ── -->
+    <section class="pg-card">
+      <h2 class="serif">Сохранённые слова</h2>
+      <p class="sub">Найди слово и раскрой карточку — видно вклад каждого словаря.</p>
+      <div class="wsearch">
+        <input id="q" placeholder="Начни вводить лемму, напр. Umwelt, gehen, Freiheit…" autocomplete="off">
+        <div class="lvls" id="lvls">
+          <button class="on" data-l="">все</button>
+          <button data-l="b1_core">B1</button>
+          <button data-l="b2_core">B2</button>
+          <button data-l="c1_core">C1</button>
+          <button data-l="extended">ext</button>
+        </div>
       </div>
-      <p class="sec-note">Jedes Thema wird bis zum Ziel aufgefüllt — Wörter, dazu Redemittel für alle Essay-Teile.</p>
-      <div class="shelf" id="shelf">
-        <div class="empty" style="grid-column:1/-1"><p>Noch keine Themen in der Sammlung.</p></div>
-      </div>
+      <div id="results"><div class="empty">Загрузка…</div></div>
     </section>
-
-    <!-- ── Verlauf ── -->
-    <section class="sec">
-      <div class="sec-head">
-        <span class="sec-title">Verlauf</span>
-        <span class="sec-count" id="logCount"></span>
-      </div>
-      <div class="log-stack" id="logStack">
-        <div class="empty"><p>Noch keine abgeschlossenen Läufe.</p></div>
-      </div>
-    </section>
-
   </main>
-
-  <!-- ===================== Right rail — totals ===================== -->
-  <aside class="rail">
-    <div class="rail-label">Sammlung</div>
-    <div class="rail-big"><b id="railWords">–</b><span>Wörter in Themen</span></div>
-    <div class="rail-duo">
-      <div><b id="railTopics">–</b><span>Themen</span></div>
-      <div><b id="railPhrases">–</b><span>Redemittel</span></div>
-    </div>
-    <div class="rail-duo">
-      <div><b id="railTarget">–</b><span>Ziel je Thema</span></div>
-      <div class="warn-v"><b id="railFails">–</b><span>Offene Fehler</span></div>
-    </div>
-    <div class="rail-hr"></div>
-    <div class="rail-auto" id="railAuto">
-      <span class="st"><span class="d"></span> Autopilot</span><br>
-      <span id="railAutoText">–</span>
-    </div>
-    <div class="rail-hr"></div>
-    <div class="rail-quote">Wer fremde Sprachen nicht kennt, weiß nichts von seiner eigenen.
-      <span class="au">Goethe</span></div>
-  </aside>
 
   <div class="toast" id="toast"></div>
 
 <script src="js/site-header.js?v=8"></script>
-<script src="js/words-data.js?v=1"></script>
-<script src="js/pipeline.js?v=1"></script>
+<script src="js/pipeline.js?v=2"></script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+# Extra deps for the vocab ingestion prototype (kept out of the shared
+# pyproject.toml for now to avoid churn while parallel agents work; fold into
+# uv later). Install into an isolated venv:
+#   python3 -m venv .venv && ./.venv/bin/pip install -r backend/app/vocab/requirements-vocab.txt
+pyglossary>=4.6      # reads StarDict (.ifo/.idx/.dict) and MDict (.mdx)
+wordfreq>=3.0        # German Zipf frequency for ranking / CEFR banding
+fastapi>=0.110       # standalone dashboard API (Phase 1)
+uvicorn>=0.27        # ASGI server for the dashboard

@@ -36,6 +36,13 @@ services:
       # Docker-specific overrides — these win over values from backend/.env.
       DATABASE_URL: postgresql+asyncpg://wordlist:wordlist@postgres:5432/wordlist
       CORS_ORIGINS: "http://localhost:8753,http://127.0.0.1:8753,http://localhost,http://127.0.0.1"
+      # vocab dashboard (dictionary ingestion) — mounted DB + read-only dictionaries
+      VOCAB_DB: /app/vocab_data/vocab.db
+      DICT_ROOT: /app/dictionaries
+      PIPELINE_AUTORUN: "false"   # old web-discovery autopilot disabled
+    volumes:
+      - ./backend/app/vocab/vocab_data:/app/vocab_data
+      - ./dictionaries:/app/dictionaries:ro
     depends_on:
       postgres:
         condition: service_healthy

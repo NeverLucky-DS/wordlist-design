@@ -22,3 +22,9 @@ analysis-samples
 screenshots
 node_modules
 dist
+
+# vocab pipeline: big local-only data (mounted at runtime, never baked)
+dictionaries
+backend/app/vocab/vocab.db
+backend/app/vocab/vocab_data
+backend/app/vocab/.venv

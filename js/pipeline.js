@@ -1,336 +1,158 @@
 /* =====================================================================
-   Pipeline page — talks to /api/pipeline/{overview,queue,runs,run}
+   Pipeline page — dictionary-ingestion dashboard.
+   Talks to /api/vocab/{build,status,stats,words,word}. Transparent by design:
+   launch the run, watch every stage, browse the saved words per source.
    ===================================================================== */
 'use strict';
 
-const API = "";
+const SRC_LABEL = {universal:"Universal", langenscheidt:"Langenscheidt", lein:"Lein",
+  allgemein:"Общелексический", advanced:"Advanced", duden_syn:"Duden синонимы",
+  collocations:"Коллокации", idioms:"Идиомы"};
+const LVL = {b1_core:{n:"B1",v:"--b1"}, b2_core:{n:"B2",v:"--b2"},
+  c1_core:{n:"C1",v:"--c1"}, extended:{n:"ext",v:"--ext"}};
 
-/* mirror of the backend's curated catalog — for the suggestion chips */
-const CATALOG = [
-  'Klimawandel', 'Digitalisierung', 'Migration', 'Soziale Medien',
-  'Künstliche Intelligenz', 'Globalisierung', 'Bildungssystem', 'Arbeitswelt der Zukunft',
-  'Umweltschutz', 'Energiewende', 'Massentourismus', 'Datenschutz', 'Homeoffice',
-  'Konsumgesellschaft', 'Generationenkonflikt', 'Sprachenlernen',
-];
+let minZipf = 2.3, polling = null, curLevel = "", deb = null;
+const $ = id => document.getElementById(id);
+const fmt = n => (n==null ? "–" : n.toLocaleString("ru-RU"));
+const esc = s => (s||"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 
-let overview = null, runs = [], queueItems = [];
-const openRuns = new Set();
-let pollTimer = null;
-
-function api(path, opts) {
-  return fetch(API + path, opts).then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  });
-}
-
-async function refresh() {
-  try {
-    const [ov, rs, q] = await Promise.all([
-      api('/api/pipeline/overview'),
-      api('/api/pipeline/runs'),
-      api('/api/pipeline/queue'),
-    ]);
-    overview = ov; runs = rs; queueItems = q;
-    render();
-  } catch (_) { /* backend asleep — keep last view */ }
-  schedule();
-}
-
-function schedule() {
-  clearTimeout(pollTimer);
-  const busy = runs.some(r => r.status === 'running') ||
-               queueItems.some(i => i.status === 'running');
-  pollTimer = setTimeout(refresh, busy ? 3000 : 9000);
-}
-
-async function queueTopic() {
-  const input = document.getElementById('topicInput');
-  const topic = input.value.trim();
-  if (!topic) { input.focus(); return; }
-  const btn = document.getElementById('queueBtn');
-  btn.disabled = true;
-  try {
-    const res = await api('/api/pipeline/queue', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topics: [topic] }),
-    });
-    input.value = '';
-    toast(res.queued?.length ? `„${topic}“ eingereiht` : `„${topic}“ ist bereits in der Warteschlange`);
-    await refresh();
-  } catch (e) { toast('Fehler: ' + e.message); }
-  btn.disabled = false;
-}
-
-async function startNow(topic, btnEl) {
-  if (btnEl) btnEl.disabled = true;
-  try {
-    await api('/api/pipeline/run', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, article_urls: [] }),
-    });
-    toast(`„${topic}“ gestartet`);
-    await refresh();
-  } catch (e) { toast('Fehler: ' + e.message); if (btnEl) btnEl.disabled = false; }
-}
-
-function render() {
-  renderAutopilot();
-  renderSuggest();
-  renderQueue();
-  renderShelf();
-  renderLog();
-  renderRail();
-}
-
-function renderAutopilot() {
-  const s = overview?.settings;
-  const el = document.getElementById('autopilot');
-  if (!s) { el.hidden = true; return; }
-  el.hidden = false;
-  el.classList.toggle('off', !s.autorun);
-  document.getElementById('autopilotText').textContent = s.autorun
-    ? `Autopilot aktiv — prüft alle ${s.interval_minutes} Min${s.auto_topics ? ', ergänzt Themen von selbst' : ''}`
-    : 'Autopilot pausiert';
-}
-
-function renderSuggest() {
-  const host = document.getElementById('suggest');
-  const known = new Set([
-    ...(overview?.topics || []).map(t => t.topic.toLowerCase()),
-    ...queueItems.map(i => i.topic.trim().toLowerCase()),
-  ]);
-  const fresh = CATALOG.filter(t => !known.has(t.toLowerCase())).slice(0, 5);
-  host.querySelectorAll('.sg-chip').forEach(c => c.remove());
-  host.hidden = fresh.length === 0;
-  fresh.forEach(t => {
-    const chip = document.createElement('button');
-    chip.className = 'sg-chip'; chip.type = 'button'; chip.textContent = t;
-    chip.onclick = () => {
-      const input = document.getElementById('topicInput');
-      input.value = t; input.focus();
-    };
-    host.appendChild(chip);
-  });
-}
-
-function renderQueue() {
-  const stack = document.getElementById('queueStack');
-  const active = queueItems.filter(i => i.status === 'pending' || i.status === 'running');
-  document.getElementById('queueCount').textContent = active.length || '';
-  stack.innerHTML = '';
-  if (!active.length) {
-    stack.innerHTML = `<div class="empty"><p>Die Warteschlange ist leer — der Autopilot ergänzt
-      bei Bedarf <b>neue Themen von selbst</b>.</p></div>`;
-    return;
-  }
-  active.forEach(item => {
-    const running = item.status === 'running';
-    const card = document.createElement('div');
-    card.className = 'q-card' + (running ? ' is-running' : '');
-    const attempts = item.attempts > 1 ? ` · Versuch ${item.attempts}/3` : '';
-    card.innerHTML = `
-      ${running ? '<span class="spin"></span>' : ''}
-      <div class="q-name">${esc(item.topic)}</div>
-      <div class="q-meta">${item.target_words ? 'Ziel ' + item.target_words + attempts : (attempts ? attempts.slice(3) : '')}</div>
-      <span class="pill ${running ? 'p-run' : 'p-wait'}">${running ? 'Läuft' : 'Wartet'}</span>
-    `;
-    if (!running) {
-      const btn = document.createElement('button');
-      btn.className = 'q-start'; btn.type = 'button';
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Jetzt starten`;
-      btn.onclick = () => startNow(item.topic, btn);
-      card.appendChild(btn);
-    }
-    stack.appendChild(card);
-  });
-}
-
-function renderShelf() {
-  const shelf = document.getElementById('shelf');
-  const topics = (overview?.topics || []).filter(t => t.words > 0 || t.queue_status);
-  document.getElementById('shelfCount').textContent = topics.length || '';
-  shelf.innerHTML = '';
-  if (!topics.length) {
-    shelf.innerHTML = `<div class="empty" style="grid-column:1/-1"><p>Noch keine Themen in der Sammlung.</p></div>`;
-    return;
-  }
-  topics.forEach(t => {
-    const target = t.target_words || overview?.settings?.target_words || 60;
-    const pct = Math.min(100, Math.round(100 * t.words / target));
-    const full = t.words >= target;
-    const tile = document.createElement('div');
-    tile.className = 'tile' + (full ? ' t-full' : '');
-    tile.style.setProperty('--wash', `url('${PIPELINE_WASHES[hashIdx(t.topic, PIPELINE_WASHES.length)]}')`);
-    tile.innerHTML = `
-      <div class="tile-top">
-        <div class="tile-name" title="${esc(t.topic)}">${esc(t.topic)}</div>
-        ${tilePill(t, full)}
-      </div>
-      <div class="tile-frac"><b>${t.words}</b><span class="of">/ ${target} Wörter</span></div>
-      <div class="tile-track"><div class="tile-fill" style="width:${pct}%"></div></div>
-      <div class="tile-meta">
-        <span>${t.phrases} Redemittel</span>
-        ${t.failures_open ? `<span class="dot-sep"></span><span class="warn">${t.failures_open} offene Fehler</span>` : ''}
-      </div>
-    `;
-    shelf.appendChild(tile);
-  });
-}
-
-function tilePill(t, full) {
-  if (t.queue_status === 'running') return `<span class="pill p-run">In Arbeit</span>`;
-  if (t.queue_status === 'pending') return `<span class="pill p-wait">Wartet</span>`;
-  if (t.queue_status === 'failed')  return `<span class="pill p-err">Fehler</span>`;
-  if (full)                         return `<span class="pill p-ok">Vollständig</span>`;
-  if (t.queue_status === 'done')    return `<span class="pill p-part">Teilweise</span>`;
-  return '';
-}
-
-function renderLog() {
-  const stack = document.getElementById('logStack');
-  const list = runs.slice(0, 20);
-  document.getElementById('logCount').textContent = runs.length || '';
-  stack.innerHTML = '';
-  if (!list.length) {
-    stack.innerHTML = `<div class="empty"><p>Noch keine abgeschlossenen Läufe.</p></div>`;
-    return;
-  }
-  list.forEach(r => stack.appendChild(buildRun(r)));
-}
-
-function buildRun(r) {
-  const cls = r.status === 'completed' ? 'r-ok' : r.status === 'failed' ? 'r-err' : 'r-run';
-  const glyph = r.status === 'completed' ? '✓' : r.status === 'failed' ? '✗' : `<span class="spin"></span>`;
-  const open = openRuns.has(r.run_id);
-  const el = document.createElement('div');
-  el.className = `run ${cls}` + (open ? ' is-open' : '');
-
-  const bits = [];
-  bits.push(`<b>${r.words_added}</b>&nbsp;neu`);
-  if (r.words_linked) bits.push(`<b>${r.words_linked}</b>&nbsp;verknüpft`);
-  if (r.phrases_added) bits.push(`<b>${r.phrases_added}</b>&nbsp;Redemittel`);
-  if (r.errors_count) bits.push(`${r.errors_count}&nbsp;Hinweise`);
-  const stats = bits.join('<span style="color:var(--muted-2)">&nbsp;·&nbsp;</span>');
-
-  el.innerHTML = `
-    <div class="run-head">
-      <div class="run-glyph">${glyph}</div>
-      <div class="run-name" title="${esc(r.topic)}">${esc(r.topic)}</div>
-      <div class="run-stats">${stats}</div>
-      <div class="run-when">${fmtWhen(r)}</div>
-      <svg class="run-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-    </div>
-  `;
-  el.querySelector('.run-head').onclick = () => toggleRun(r, el);
-  if (open) loadRunBody(r, el);
-  return el;
-}
-
-async function toggleRun(r, el) {
-  if (openRuns.has(r.run_id)) {
-    openRuns.delete(r.run_id);
-    el.classList.remove('is-open');
-    el.querySelector('.run-body')?.remove();
-  } else {
-    openRuns.add(r.run_id);
-    el.classList.add('is-open');
-    loadRunBody(r, el);
-  }
-}
-
-async function loadRunBody(r, el) {
-  el.querySelector('.run-body')?.remove();
-  const body = document.createElement('div');
-  body.className = 'run-body';
-  const dur = fmtDur(r);
-  body.innerHTML = `
-    <div class="run-strip">
-      <div class="rs-cell"><div class="rs-v">${r.words_added}</div><div class="rs-l">Neu</div></div>
-      <div class="rs-cell"><div class="rs-v">${r.words_linked}</div><div class="rs-l">Verknüpft</div></div>
-      <div class="rs-cell"><div class="rs-v">${r.phrases_added ?? 0}</div><div class="rs-l">Redemittel</div></div>
-      <div class="rs-cell"><div class="rs-v">${dur}</div><div class="rs-l">Dauer</div></div>
-    </div>`;
-  el.appendChild(body);
-
-  if (r.errors_count) {
-    try {
-      const detail = await api('/api/pipeline/run/' + r.run_id);
-      const errs = (detail.errors || []).filter(e => e.error);
-      if (errs.length && openRuns.has(r.run_id)) {
-        const host = document.createElement('div');
-        host.className = 'run-errs';
-        errs.slice(0, 12).forEach(e => {
-          const n = document.createElement('div');
-          n.className = 'err-note';
-          n.innerHTML = `<span class="e-stage">${esc(e.stage || '')}</span>${esc(trim(e.item, 38))} — ${esc(trim(e.error, 130))}`;
-          host.appendChild(n);
-        });
-        if (errs.length > 12) {
-          const more = document.createElement('div');
-          more.className = 'err-more';
-          more.textContent = `… und ${errs.length - 12} weitere`;
-          host.appendChild(more);
-        }
-        body.appendChild(host);
-      }
-    } catch (_) {}
-  }
-}
-
-function renderRail() {
-  if (!overview) return;
-  const topics = overview.topics || [];
-  const sum = k => topics.reduce((a, t) => a + (t[k] || 0), 0);
-  document.getElementById('railWords').textContent = sum('words');
-  document.getElementById('railTopics').textContent = topics.filter(t => t.words > 0).length;
-  document.getElementById('railPhrases').textContent = sum('phrases');
-  document.getElementById('railFails').textContent = sum('failures_open');
-  document.getElementById('railTarget').textContent = overview.settings?.target_words ?? '–';
-  const auto = document.getElementById('railAuto');
-  const s = overview.settings || {};
-  auto.classList.toggle('off', !s.autorun);
-  document.getElementById('railAutoText').textContent = s.autorun
-    ? `prüft alle ${s.interval_minutes} Min${s.auto_topics ? ' · ergänzt Themen' : ''}`
-    : 'pausiert';
-}
-
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-function trim(s, n) { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
-function hashIdx(s, mod) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h % mod;
-}
-function fmtWhen(r) {
-  if (!r.started_at) return '';
-  const d = new Date(r.started_at);
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' · ' +
-         d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-}
-function fmtDur(r) {
-  if (!r.started_at) return '—';
-  const end = r.finished_at ? new Date(r.finished_at) : new Date();
-  const s = Math.max(0, Math.round((end - new Date(r.started_at)) / 1000));
-  if (s < 60) return s + 's';
-  return Math.floor(s / 60) + 'm';
-}
-let toastTimer = null;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('queueBtn').addEventListener('click', queueTopic);
-  document.getElementById('topicInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') queueTopic();
-  });
-  refresh();
+document.querySelectorAll("#presets .preset").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#presets .preset").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); minZipf = parseFloat(b.dataset.z);
 });
+document.querySelectorAll("#lvls button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#lvls button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); curLevel = b.dataset.l; searchWords();
+});
+$("runBtn").onclick = startBuild;
+$("q").oninput = () => { clearTimeout(deb); deb = setTimeout(searchWords, 220); };
+
+async function startBuild(){
+  const btn = $("runBtn");
+  if (btn.classList.contains("stop")) return;
+  btn.disabled = true;
+  const r = await fetch(`/api/vocab/build?min_zipf=${minZipf}`, {method:"POST"});
+  if (r.status === 409){ btn.disabled = false; toast("Обработка уже идёт"); return; }
+  $("srcs").innerHTML = "";
+  poll(); polling = setInterval(poll, 1000);
+}
+
+const STAGE_TXT = {
+  start: () => "Читаю источники…",
+  source: e => `Прочитан ${SRC_LABEL[e.source]||e.source}: ${fmt(e.entries)} записей · агрегат ${fmt(e.agg)}`,
+  source_error: e => `⚠ ошибка в ${e.source}: ${e.error}`,
+  aggregate_done: e => `Агрегация готова — ${fmt(e.agg)} записей`,
+  coverage: e => `Покрытие (реальные леммы): ${fmt(e.count)}`,
+  cap: e => `Порог zipf ≥ ${e.min_zipf} → оставлено ${fmt(e.kept)}`,
+  writing: e => e.written ? `Запись в БД… ${fmt(e.written)}/${fmt(e.total)}` : `Запись в БД… (${fmt(e.total)})`,
+  done: e => `Готово · ${fmt(e.summary.total)} слов за ${e.summary.secs}s`,
+};
+const STAGE_PCT = {start:5, source:35, aggregate_done:55, coverage:65, cap:72, writing:90, done:100};
+
+async function poll(){
+  let j;
+  try { j = await (await fetch("/api/vocab/status")).json(); }
+  catch { return; }
+  const cur = j.current;
+  if (cur){
+    $("stage").textContent = (STAGE_TXT[cur.stage] || (() => cur.stage))(cur);
+    $("barFill").style.width = (STAGE_PCT[cur.stage] || 10) + "%";
+    $("elapsed").textContent = cur.t != null ? cur.t + " s" : "";
+  }
+  const done = {};
+  j.events.filter(e => e.stage === "source").forEach(e => done[e.source] = e.entries);
+  $("srcs").innerHTML = Object.keys(SRC_LABEL).map(k =>
+    done[k] != null ? `<span class="chip done">${SRC_LABEL[k]} <b>${fmt(done[k])}</b></span>`
+                    : `<span class="chip">${SRC_LABEL[k]}</span>`).join("");
+  $("log").innerHTML = j.events.slice(-12).map(e =>
+    `<div>${(STAGE_TXT[e.stage] || (() => e.stage))(e)}</div>`).join("");
+  const btn = $("runBtn");
+  if (j.running){ btn.classList.add("stop"); btn.textContent = "Идёт обработка…"; btn.disabled = true; }
+  else {
+    clearInterval(polling); polling = null;
+    btn.classList.remove("stop"); btn.textContent = "Запустить обработку"; btn.disabled = false;
+    if (j.error) $("stage").textContent = "Ошибка: " + j.error;
+    else if (j.summary) toast(`Готово · ${fmt(j.summary.total)} слов`);
+    loadStats(); searchWords();
+  }
+}
+
+async function loadStats(){
+  let s;
+  try { s = await (await fetch("/api/vocab/stats")).json(); }
+  catch { return; }
+  if (!s.exists){ $("statsSub").textContent = "База ещё не собрана — запусти обработку."; return; }
+  $("statsSub").textContent = `Всего ${fmt(s.total)} лемм · обязательных (B1+B2) ${fmt(s.obligatory)}`;
+  $("kpis").innerHTML =
+    `<div class="kpi"><b>${fmt(s.total)}</b><span>слов в базе</span></div>
+     <div class="kpi"><b>${fmt(s.obligatory)}</b><span>обязательных (B1+B2)</span></div>
+     <div class="kpi"><b>${fmt(s.fields.synonyms)}</b><span>с синонимами</span></div>
+     <div class="kpi"><b>${fmt(s.fields.examples)}</b><span>с примерами</span></div>`;
+  const tot = s.total || 1;
+  $("levelbar").innerHTML = Object.keys(LVL).map(k => {
+    const n = s.levels[k] || 0, w = 100 * n / tot;
+    return `<div style="width:${w}%;background:var(${LVL[k].v})" title="${LVL[k].n}: ${n}">${w>7?LVL[k].n:""}</div>`;
+  }).join("");
+  $("legend").innerHTML = Object.keys(LVL).map(k =>
+    `<span><i style="background:var(${LVL[k].v})"></i>${LVL[k].n} · ${fmt(s.levels[k]||0)}</span>`).join("");
+  $("fields").innerHTML = Object.entries(s.sources).map(([k,v]) =>
+    `<div>${SRC_LABEL[k]||k}: <b>${fmt(v)}</b></div>`).join("");
+}
+
+async function searchWords(){
+  const q = $("q").value.trim();
+  let r;
+  try { r = await (await fetch(`/api/vocab/words?q=${encodeURIComponent(q)}&level=${curLevel}&limit=40`)).json(); }
+  catch { return; }
+  const el = $("results");
+  if (!r.items.length){ el.innerHTML = `<div class="empty">Ничего не найдено.</div>`; return; }
+  el.innerHTML = r.items.map(w => {
+    const art = w.article ? `<span class="art">${w.article}</span> ` : "";
+    const L = LVL[w.level] || {n:w.level, v:"--muted"};
+    const tr = (w.translations||[]).slice(0,3).join("; ");
+    return `<div class="word">
+      <div class="row" data-lemma="${esc(w.lemma)}">
+        <span class="lemma">${art}${esc(w.lemma)}</span>
+        <span class="tag" style="background:var(${L.v})">${L.n}</span>
+        <span class="tr">${esc(tr)}</span>
+        <span class="rank">#${w.freq_rank}</span>
+      </div><div class="detail"></div></div>`;
+  }).join("");
+  el.querySelectorAll(".row").forEach(row =>
+    row.onclick = () => toggleCard(row, row.dataset.lemma));
+}
+
+async function toggleCard(row, lemma){
+  const d = row.nextElementSibling;
+  if (d.classList.contains("open")){ d.classList.remove("open"); return; }
+  let w;
+  try { w = await (await fetch(`/api/vocab/word/${encodeURIComponent(lemma)}`)).json(); }
+  catch { return; }
+  let h = "";
+  if ((w.forms&&w.forms.length) || (w.pos&&w.pos.length))
+    h += `<div class="k">грамматика</div><div>${esc([(w.pos||[]).join(", "),(w.forms||[]).join(", ")].filter(Boolean).join(" · ")) || "—"}</div>`;
+  h += `<div class="k">переводы</div><div>${esc((w.translations||[]).slice(0,8).join("; ")) || "—"}</div>`;
+  if (w.synonyms&&w.synonyms.length) h += `<div class="k">синонимы (de)</div><div>${esc(w.synonyms.slice(0,5).join(" | "))}</div>`;
+  if (w.idioms&&w.idioms.length) h += `<div class="k">идиомы</div><div>${esc(w.idioms.slice(0,4).join(" | "))}</div>`;
+  if (w.collocations&&w.collocations.length) h += `<div class="k">коллокации</div><div>${esc(w.collocations.slice(0,3).join(" | "))}</div>`;
+  h += `<div class="k">вклад по источникам</div>`;
+  for (const [s, bs] of Object.entries(w.by_source||{})){
+    const bits = [];
+    if (bs.translations) bits.push("перев: " + bs.translations.slice(0,3).join("; "));
+    if (bs.synonyms) bits.push("син: " + bs.synonyms.slice(0,2).join("; "));
+    if (bs.examples) bits.push("прим: " + bs.examples[0]);
+    if (bs.idioms) bits.push("идиом: " + bs.idioms.slice(0,2).join("; "));
+    if (bs.collocations) bits.push("коллок: " + bs.collocations[0]);
+    h += `<div class="bysrc"><span class="s">${SRC_LABEL[s]||s}</span>${esc(bits.join("  ·  ") || "грамматика/формы")}</div>`;
+  }
+  d.innerHTML = h; d.classList.add("open");
+}
+
+let toastT = null;
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+loadStats();
+searchWords();
