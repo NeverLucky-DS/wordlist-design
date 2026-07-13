@@ -53,6 +53,12 @@ svg{display:block}
 button{font-family:inherit;cursor:pointer}
 
 /* the painted background carries its own light and mountains — no overlays */
+body .topbar{
+  background:linear-gradient(to bottom,
+    rgba(247,242,239,.22) 0%,
+    rgba(247,242,239,.08) 50%,
+    rgba(247,242,239,0) 100%)
+}
 
 /* =====================================================================
    Essay-only header utility
@@ -277,6 +283,7 @@ button{font-family:inherit;cursor:pointer}
   color:var(--accent-ink)}
 .sheet-thema .nlv{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 9px;
   border-radius:999px;background:var(--accent-soft);color:var(--accent-ink)}
+.sheet-thema .meta{font-size:10.5px;color:var(--ink-mute);font-variant-numeric:tabular-nums}
 .sheet-thema .auf{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15.5px;
   color:var(--ink-soft)}
 
@@ -541,6 +548,8 @@ button{font-family:inherit;cursor:pointer}
 .ana-swaplink{margin-left:auto;border:1px solid var(--accent-ln);background:var(--card);
   color:var(--accent-ink);font:600 11px/1 'Inter',sans-serif;padding:7px 11px;border-radius:8px;cursor:pointer}
 .ana-swaplink:hover{background:var(--accent-soft)}
+.ana-swaplink.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.ana-legend{margin:0 0 10px;font-size:11px;line-height:1.45;color:var(--ink-mute)}
 
 /* =====================================================================
    Inline annotation review — swap button, underlines, correction card
@@ -651,6 +660,9 @@ button{font-family:inherit;cursor:pointer}
   background:var(--accent-soft);color:var(--accent-ink);font-size:10px;letter-spacing:0}
 .rev-text{font-size:16.5px;line-height:1.85;color:var(--ink)}
 .rev-empty{color:var(--muted);font-style:italic;font-size:14px}
+.rev-stale-banner{margin:0 0 16px;padding:10px 12px;border-radius:10px;
+  background:rgba(199,157,85,.12);border:1px solid rgba(199,157,85,.28);
+  font-size:12px;line-height:1.45;color:var(--accent-ink)}
 
 /* sentence-in-context inside the correction card */
 .ann-sentence{margin:0 0 8px;padding:10px 12px;border-radius:9px;

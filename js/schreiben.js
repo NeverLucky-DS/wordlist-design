@@ -233,6 +233,43 @@ function buildEssayText() {
   return STAGES.map(s => `${s.title}:\n${(drafts[s.id] || '').trim()}`).join('\n\n');
 }
 
+/** Parse persisted essay text (same format as buildEssayText) into per-stage drafts. */
+function parseEssaySnapshot(snapshot) {
+  const text = String(snapshot || '');
+  if (!text.trim()) return null;
+  const result = Object.fromEntries(STAGES.map(s => [s.id, '']));
+  for (let i = 0; i < STAGES.length; i += 1) {
+    const stage = STAGES[i];
+    const label = `${stage.title}:`;
+    const start = text.indexOf(label);
+    if (start < 0) continue;
+    let bodyStart = start + label.length;
+    if (text[bodyStart] === '\n') bodyStart += 1;
+    let bodyEnd = text.length;
+    for (let j = i + 1; j < STAGES.length; j += 1) {
+      const next = `${STAGES[j].title}:`;
+      const nextIdx = text.indexOf(next, bodyStart);
+      if (nextIdx >= 0) { bodyEnd = nextIdx; break; }
+    }
+    result[stage.id] = text.slice(bodyStart, bodyEnd).replace(/\s+$/, '');
+  }
+  return Object.values(result).some(v => v.trim()) ? result : null;
+}
+
+function draftsForReview(es = currentEssay()) {
+  const snap = parseEssaySnapshot(es?.analysis?.text_snapshot);
+  if (snap) return snap;
+  return { ...drafts };
+}
+
+function reviewTextSource() {
+  return reviewMode ? (reviewDrafts || draftsForReview()) : drafts;
+}
+
+function swapLinkText() {
+  return reviewMode ? '← Zurück zum Schreiben' : '⇄ Im Text ansehen';
+}
+
 let apiReady = false;
 let apiSaveTimer = null;
 let analyzing = false;
@@ -632,6 +669,11 @@ function updateCounters(){
   $('#wordCount').textContent = cur + ' Wörter';
   $('#progTotal').textContent = total;
   $('#progFill').style.width = Math.min(100, total / WORD_TARGET * 100) + '%';
+  const meta = $('#themaMeta');
+  const es = currentEssay();
+  if (meta && es) {
+    meta.textContent = `Erstellt ${fmtDate(es.created)} · ${total} Wörter`;
+  }
   stageTip.classList.toggle('hidden', editable.innerText.trim().length > 0);
   $$('.rm-node').forEach((n, i) => {
     const w = n.querySelector('.rm-words');
@@ -839,6 +881,25 @@ async function loadAnalysisHistory(e = currentEssay()) {
   }
 }
 
+function selectAnalysis(run, openInText = true) {
+  const e = currentEssay();
+  if (!e || !run || !['completed', 'completed_with_warnings'].includes(run.status)) return;
+  e.analysis = analysisFromRun(run);
+  saveStore();
+  renderAnalysen();
+  updateSwapBtn();
+  if (openInText) enterReview();
+}
+
+function bindAnalysisTimeline(body, history) {
+  body.querySelectorAll('[data-analysis-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      const run = history.find(item => item.id === Number(button.dataset.analysisId));
+      selectAnalysis(run, true);
+    });
+  });
+}
+
 function renderAnalysen(){
   const body = $('#anaBody');
   const e = currentEssay();
@@ -849,6 +910,9 @@ function renderAnalysen(){
     return;
   }
 
+  const legend = history.length
+    ? '<p class="ana-legend">Alle Analysen gehören zu diesem Essay.</p>'
+    : '';
   const timeline = history.length ? `<div class="ana-timeline">${history.map(run => {
     const label = run.scope === 'part' ? (run.part || 'Teil') : 'Gesamtes Essay';
     const score = run.overall_score == null ? '' : ` · ${run.overall_score}/100`;
@@ -858,22 +922,13 @@ function renderAnalysen(){
     </button>`;
   }).join('')}</div>` : '';
   if (!a) {
-    body.innerHTML = timeline;
-    body.querySelectorAll('[data-analysis-id]').forEach(button => {
-      button.addEventListener('click', () => {
-        const run = history.find(item => item.id === Number(button.dataset.analysisId));
-        if (!run || !['completed', 'completed_with_warnings'].includes(run.status)) return;
-        e.analysis = analysisFromRun(run);
-        renderAnalysen();
-        updateSwapBtn();
-        saveStore();
-      });
-    });
+    body.innerHTML = legend + timeline;
+    bindAnalysisTimeline(body, history);
     return;
   }
   const totalErrors = STAGES.reduce((n, s) => n + ((a.errorsByStage?.[s.id] || []).length), 0);
   const notices = [
-    a.is_stale ? '<p class="ana-warning">Diese Analyse gehört zu einer früheren Textversion.</p>' : '',
+    a.is_stale ? '<p class="ana-warning">Analysierte Textversion — der aktuelle Text wurde seitdem bearbeitet. Die Korrekturen beziehen sich auf den Stand zum Analysezeitpunkt.</p>' : '',
     a.warnings?.length ? `<div class="ana-warning">Teilweise abgeschlossen · ${a.warnings.length} Hinweis(e)
       ${a.warnings.filter(w => w.part).map(w => `<button type="button" data-retry-part="${esc(w.part)}">${esc(w.part)} erneut prüfen</button>`).join('')}
     </div>` : '',
@@ -882,7 +937,7 @@ function renderAnalysen(){
     <div class="ana-head">
       <span class="ana-grade">${esc(a.grade || '—')}</span>
       <span class="ana-score-val">${a.overall_score ?? '—'} / 100</span>
-      <button type="button" class="ana-swaplink" id="anaSwapLink">⇄ Im Text ansehen</button>
+      <button type="button" class="ana-swaplink${reviewMode ? ' active' : ''}" id="anaSwapLink">${swapLinkText()}</button>
     </div>
     <p class="ana-meta">${totalErrors} Hinweise · ${fmtDate(a.created)}</p>`;
 
@@ -907,20 +962,10 @@ function renderAnalysen(){
     ? `<details class="ana-fold"><summary>Analysierte Textversion</summary><div class="ana-snapshot">${mlEsc(a.text_snapshot)}</div></details>`
     : '';
 
-  body.innerHTML = `${timeline}<div class="ana-detail">${notices}${head}${parts}${summary}${snapshot}</div>`;
+  body.innerHTML = `${legend}${timeline}<div class="ana-detail">${notices}${head}${parts}${summary}${snapshot}</div>`;
   const link = $('#anaSwapLink');
-  if (link) link.addEventListener('click', enterReview);
-  body.querySelectorAll('[data-analysis-id]').forEach(button => {
-    button.addEventListener('click', () => {
-      const run = history.find(item => item.id === Number(button.dataset.analysisId));
-      if (!run || !['completed', 'completed_with_warnings'].includes(run.status)) return;
-      e.analysis = analysisFromRun(run);
-      reviewMode = false;
-      renderAnalysen();
-      updateSwapBtn();
-      saveStore();
-    });
-  });
+  if (link) link.addEventListener('click', toggleReview);
+  bindAnalysisTimeline(body, history);
   body.querySelectorAll('[data-retry-part]').forEach(button => {
     button.addEventListener('click', () => runAnalysis(apiToStage(button.dataset.retryPart)));
   });
@@ -1193,7 +1238,7 @@ function renderEssays(){
     row.innerHTML = `
       <button class="essay-open" type="button">
         <span class="er-main"><b>${esc(e.thema)}</b>${e.aufgabe ? `<i>${esc(e.aufgabe)}</i>` : ''}</span>
-        <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · ${fmtDate(e.updated)}</span>
+        <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · erstellt ${fmtDate(e.created)} · bearbeitet ${fmtDate(e.updated)}</span>
       </button>
       <button class="essay-delete" type="button" aria-label="Essay löschen">×</button>`;
     row.querySelector('.essay-open').addEventListener('click', () => {
@@ -1247,11 +1292,17 @@ function bindEssay(e){
   drafts = e.drafts;
   activeStage = STAGES[0].id;
   reviewMode = false;
+  reviewDrafts = null;
   closeAnnotationPopover();
   $('#sheetThema').hidden = false;
   $('#themaName').textContent = e.thema;
   $('#themaNiveau').textContent = e.niveau;
   $('#themaAufgabe').textContent = e.aufgabe || '';
+  const meta = $('#themaMeta');
+  if (meta) {
+    const words = STAGES.reduce((n, st) => n + countOf(e.drafts[st.id]), 0);
+    meta.textContent = `Erstellt ${fmtDate(e.created)} · ${words} Wörter`;
+  }
   refreshAll();
   updateSwapBtn();
   setSaveState(e.dirty ? (apiReady ? 'dirty' : 'offline') : 'saved',
@@ -1295,6 +1346,7 @@ document.querySelector('.new-essay-row .btn-icon').addEventListener('click', () 
      marks, swap back to keep writing. (Ported/simplified from the old editor.)
    ===================================================================== */
 let reviewMode = false;
+let reviewDrafts = null;
 let selectedAnnotation = null;   /* {stageId, error_id} */
 let annSpanEl = null;            /* the marked word the open card belongs to */
 
@@ -1578,8 +1630,13 @@ window.addEventListener('resize', () => { if (reviewMode) drawMoveArrows(); });
 
 /* the whole essay, every non-empty part with its heading, annotated */
 function renderReviewFull(){
+  const es = currentEssay();
+  const source = reviewDrafts || drafts;
+  const staleBanner = es?.analysis?.is_stale
+    ? '<div class="rev-stale-banner">Analysierte Textversion — dein aktueller Text wurde seitdem bearbeitet.</div>'
+    : '';
   const blocks = STAGES.map(s => {
-    const text = drafts[s.id] || '';
+    const text = source[s.id] || '';
     if (!text.trim()) return '';
     const anchored = anchorErrors(text, stageErrors(s.id));
     const n = anchored.length;
@@ -1588,9 +1645,10 @@ function renderReviewFull(){
       <div class="rev-text">${renderAnnotatedHTML(text, anchored, s.id)}</div>
     </div>`;
   }).filter(Boolean);
-  return blocks.length
+  const inner = blocks.length
     ? blocks.join('')
-    : `<div class="rev-empty">Noch kein Text geschrieben.</div>`;
+    : `<div class="rev-empty">Kein Text in dieser Analyseversion.</div>`;
+  return staleBanner + inner;
 }
 
 /* decide plain-editable (write) vs full annotated read-only (review) */
@@ -1614,23 +1672,35 @@ function hasAnyErrors(es){
 
 function updateSwapBtn(){
   const btn = $('#btnSwap');
-  if (!btn) return;
+  const lbl = btn?.querySelector('.btn-swap-lbl');
   const es = currentEssay();
-  const on = !!(es && es.analysis && !es.analysis.is_stale);
-  btn.disabled = !on;
-  btn.classList.toggle('active', reviewMode);
-  btn.title = !on
-    ? (es?.analysis?.is_stale ? 'Diese Korrekturen gehören zu einer früheren Version' : 'Erst analysieren, dann die Korrekturen im Text ansehen')
-    : (reviewMode ? 'Zurück zum Schreiben' : 'Korrekturen im Text ansehen');
+  const on = !!(es && es.analysis);
+  if (btn) {
+    btn.disabled = !on;
+    btn.classList.toggle('active', reviewMode);
+    btn.title = !on
+      ? 'Erst analysieren, dann die Korrekturen im Text ansehen'
+      : (reviewMode ? 'Zurück zum Schreiben' : 'Korrekturen im Text ansehen');
+  }
+  if (lbl) lbl.textContent = reviewMode ? 'Schreiben' : 'Korrekturen';
+  const link = $('#anaSwapLink');
+  if (link) {
+    link.disabled = !on;
+    link.textContent = swapLinkText();
+    link.classList.toggle('active', reviewMode);
+    link.title = reviewMode ? 'Zurück zum Schreiben' : 'Korrekturen der analysierten Textversion ansehen';
+  }
 }
 
 function enterReview(){
   const es = currentEssay();
-  if (!es || !es.analysis || es.analysis.is_stale) return;
-  syncActiveDraft();
+  if (!es || !es.analysis) return;
+  if (!reviewMode) syncActiveDraft();
+  reviewDrafts = draftsForReview(es);
   reviewMode = true;
   renderStageEditable();
   updateSwapBtn();
+  if (openedTool === 'analysen') renderAnalysen();
 }
 
 function toggleReview(){
@@ -1641,8 +1711,10 @@ function toggleReview(){
     enterReview();
   } else {
     reviewMode = false;
+    reviewDrafts = null;
     renderStageEditable();
     updateSwapBtn();
+    if (openedTool === 'analysen') renderAnalysen();
     editable.focus();
   }
 }
@@ -1799,6 +1871,7 @@ function openAnnotationPopover(err, spanEl){
 function onAnnotationAction(action, text){
   if (action === 'insert'){
     reviewMode = false;
+    reviewDrafts = null;
     renderStageEditable();
     insertText(text);
     closeAnnotationPopover();
@@ -1811,9 +1884,10 @@ function bindAnnotationEvents(){
     const span = e.target.closest('span[data-error-id]');
     if (!span) return;
     const stageId = span.getAttribute('data-stage') || activeStage;
-    const err = anchorErrors(drafts[stageId] || '', stageErrors(stageId))
+    const src = reviewTextSource();
+    const err = anchorErrors(src[stageId] || '', stageErrors(stageId))
       .find(x => x.error_id === span.getAttribute('data-error-id'));
-    if (err){ err.__text = drafts[stageId] || ''; openAnnotationPopover(err, span); }
+    if (err){ err.__text = src[stageId] || ''; openAnnotationPopover(err, span); }
   });
   const bd = $('#annBackdrop');
   if (bd) bd.addEventListener('click', closeAnnotationPopover);
