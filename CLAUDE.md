@@ -25,6 +25,6 @@ FastAPI + PostgreSQL (`backend/`) · vanilla HTML/JS/CSS без сборки (ф
 ## Опасные места (сверяться, а не гадать)
 
 - `js/words-data.js` — единственный источник `WASH`/`brushOf`/`PIPELINE_WASHES`, используется в `index.html`, `schreiben.html`, `pipeline.html`. Не дублировать данные по страницам — правь только здесь.
-- Pipeline: `backend/app/pipeline/runner.py` — канонический путь обогащения слов (v2, в проде). `content_llm.py` / `verify.py` — экспериментальный/устаревший путь (v3, см. `info/known-debt.md`). Не путать при правках enrichment-логики.
+- Pipeline: `backend/app/vocab/` — словарная ingestion + будущее LLM-обогащение из `vocab.db`. Legacy topic-pipeline (`runner.py`, `/api/pipeline/*`) удалён.
 - `backend/data/*.db`, `backend/scripts/*`, `backend/audit_db.py` — локальные БД и ручные maintenance-CLI, не трогать и не запускать автоматически без явной просьбы.
 - Перед удалением или переименованием любого файла — сверься с `info/CRITICAL-LINKS.md` (карта зависимостей).

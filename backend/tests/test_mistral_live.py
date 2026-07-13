@@ -83,7 +83,7 @@ def _assert_final_summary(data: dict) -> None:
 
 
 def test_post_mistral_json_minimal_contract(mistral_credentials):
-    from app.pipeline.mistral_http import post_mistral_json
+    from app.services.mistral_http import post_mistral_json
 
     key, model = mistral_credentials
     out = post_mistral_json(
@@ -170,64 +170,3 @@ async def test_iter_analyze_single_part_live(mistral_credentials):
     assert isinstance(done["overall_score"], int)
     assert done.get("final_summary") is None
     assert not any(w.get("code") == "ai_not_configured" for w in done.get("warnings", []))
-
-
-def test_extraction_prompt_live(mistral_credentials):
-    from app.pipeline.extraction import _mistral_extract_sync
-
-    key, model = mistral_credentials
-    article = (
-        "Der Klimawandel ist eine der größten Herausforderungen unserer Zeit. "
-        "Wissenschaftler warnen, dass die globalen Temperaturen steigen und "
-        "Extremwetterereignisse häufiger werden. Deshalb müssen wir den Ausstoß "
-        "von Treibhausgasen reduzieren und erneuerbare Energien ausbauen. "
-        "Politik und Wirtschaft sind gefordert, nachhaltige Lösungen zu finden."
-    )
-    words, phrases = _mistral_extract_sync(
-        article, "Klimawandel", "http://test.local/article", key, model
-    )
-    assert len(words) >= 3, "expected at least a few B2-C1 words from the article"
-    assert all(w.word.strip() for w in words)
-    # Redemittel are optional but usually returned
-    if phrases:
-        assert phrases[0].text_de.strip()
-
-
-def test_enrichment_batch_live(mistral_credentials):
-    from app.pipeline.enrichment import _mistral_batch_sync
-
-    key, model = mistral_credentials
-    words_block = (
-        "Wort: Klimawandel\n"
-        "pos: Noun\n"
-        "article: der\n"
-        "examples_needed: 1\n"
-        "Rohdaten: (keine)\n"
-    )
-    parsed = _mistral_batch_sync(words_block, count=1, mistral_api_key=key, mistral_model=model)
-    items = parsed.get("words")
-    assert isinstance(items, list) and len(items) >= 1
-    item = items[0]
-    assert item.get("word")
-    assert item.get("ru", "").strip()
-    assert item.get("pos") in {"Noun", "Verb", "Adjective", "Other"}
-
-
-async def test_supplement_generate_words_live(mistral_credentials):
-    import asyncio
-
-    from app.pipeline.supplement import generate_words
-
-    key, model = mistral_credentials
-    sem = asyncio.Semaphore(1)
-    words, errors = await generate_words(
-        "Energiewende",
-        n=3,
-        exclude=["Solarstrom"],
-        mistral_api_key=key,
-        mistral_model=model,
-        mistral_semaphore=sem,
-    )
-    assert not errors
-    assert len(words) >= 1
-    assert all(w.word.strip() for w in words)

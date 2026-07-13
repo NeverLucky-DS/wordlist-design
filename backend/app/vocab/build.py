@@ -24,21 +24,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # backend/ on path
 
 import wordfreq
 
-from app.vocab import readers
+from app.vocab import goethe, readers
 from app.vocab.sources import SOURCES
 
 DB_PATH = Path(os.environ.get("VOCAB_DB") or Path(__file__).with_name("vocab.db"))
 IS_WORD = re.compile(r"[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\-]+\Z")
-
-# level bands by frequency rank (heuristic until Goethe lists are wired in)
-BANDS = [("b1_core", 2500), ("b2_core", 6000), ("c1_core", 12000)]
-
-
-def level_for(rank: int) -> str:
-    for name, upper in BANDS:
-        if rank <= upper:
-            return name
-    return "extended"
 
 
 def merge(agg: dict, key: str, src_key: str, can_create: bool, contrib: dict) -> None:
@@ -129,24 +119,40 @@ def run_build(min_zipf: float = 0.0, db_path: Path = DB_PATH, progress=None) -> 
         forms TEXT, translations TEXT, examples TEXT, synonyms TEXT,
         collocations TEXT, idioms TEXT, sources TEXT, by_source TEXT,
         zipf REAL, freq_rank INTEGER, level TEXT)""")
-    emit({"stage": "writing", "total": len(rows)})
+    emit({"stage": "writing", "total": len(rows),
+          "goethe": len(goethe.load()), "extra": len(goethe.load_extra())})
+    tagged = 0
     for rank, (lemma, z, m, by_source) in enumerate(rows, 1):
+        # CEFR level from the wordlists (Goethe wins; else supplemental; else unlisted).
+        g = goethe.resolve(lemma)
+        level = g["level"]
+        # fold in the list's article / plural / example when the dicts missed them
+        article = m["article"] or (g["article"] or None)
+        forms = list(m["forms"])
+        examples = list(m["examples"])
+        if level != goethe.UNLISTED:
+            tagged += 1
+            if g["plural"] and g["plural"] not in forms:
+                forms.insert(0, g["plural"])
+            if g["example"] and g["example"] not in examples:
+                examples.insert(0, g["example"])
         con.execute(
             "INSERT INTO words(lemma,article,pos,forms,translations,examples,"
             "synonyms,collocations,idioms,sources,by_source,zipf,freq_rank,level)"
             " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (lemma, m["article"], json.dumps(m["pos"], ensure_ascii=False),
-             json.dumps(m["forms"], ensure_ascii=False),
+            (lemma, article, json.dumps(m["pos"], ensure_ascii=False),
+             json.dumps(forms, ensure_ascii=False),
              json.dumps(m["translations"], ensure_ascii=False),
-             json.dumps(m["examples"], ensure_ascii=False),
+             json.dumps(examples, ensure_ascii=False),
              json.dumps(m["synonyms"], ensure_ascii=False),
              json.dumps(m["collocations"], ensure_ascii=False),
              json.dumps(m["idioms"], ensure_ascii=False),
              json.dumps(sorted(by_source), ensure_ascii=False),
              json.dumps(by_source, ensure_ascii=False),
-             z, rank, level_for(rank)))
+             z, rank, level))
         if rank % 5000 == 0:
             emit({"stage": "writing", "total": len(rows), "written": rank})
+    emit({"stage": "leveled", "goethe_tagged": tagged})
     con.execute("CREATE INDEX ix_level ON words(level)")
     con.execute("CREATE INDEX ix_lemma ON words(lemma)")
     con.commit()
@@ -155,9 +161,9 @@ def run_build(min_zipf: float = 0.0, db_path: Path = DB_PATH, progress=None) -> 
         return con.execute("SELECT COUNT(*) FROM words " + where).fetchone()[0]
     summary = {
         "total": c(), "secs": round(time.time() - t0, 1),
-        "levels": {lvl: c("WHERE level='%s'" % lvl)
-                   for lvl in ("b1_core", "b2_core", "c1_core", "extended")},
-        "obligatory": c("WHERE level IN ('b1_core','b2_core')"),
+        "levels": {lvl: c("WHERE level='%s'" % lvl) for lvl in goethe.ALL_LEVELS},
+        "obligatory": c("WHERE level IN (%s)"
+                        % ",".join("'%s'" % l for l in goethe.OBLIGATORY)),
         "with_article": c("WHERE article IS NOT NULL"),
         "with_examples": c("WHERE examples!='[]'"),
         "with_synonyms": c("WHERE synonyms!='[]'"),

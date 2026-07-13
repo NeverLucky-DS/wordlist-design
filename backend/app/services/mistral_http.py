@@ -2,8 +2,7 @@ from __future__ import annotations
 
 """Shared Mistral HTTP helper — one place for retries, 429 handling, JSON parsing.
 
-Used by extraction, enrichment and supplement instead of three diverging
-copies of the same requests-code. Stability features:
+Used by essay analysis and future vocab enrichment. Stability features:
 
 - Honours the `Retry-After` header on 429 (capped at 60s), falls back to
   exponential backoff.
@@ -30,7 +29,7 @@ MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
 _DEFAULT_DELAYS = [5, 15, 30]
 _MAX_RETRY_AFTER = 60.0
 
-# Module-wide cooldown shared across threads (extraction/enrichment/supplement)
+# Module-wide cooldown shared across threads
 _cooldown_lock = threading.Lock()
 _cooldown_until = 0.0
 

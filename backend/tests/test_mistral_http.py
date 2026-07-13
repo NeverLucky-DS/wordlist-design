@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.pipeline import mistral_http
+from app.services import mistral_http
 
 
 def _resp(status: int, content: dict | None = None, retry_after: str | None = None):
@@ -64,3 +64,17 @@ def test_rejects_non_object_json():
             mistral_http.post_mistral_json(
                 [{"role": "user", "content": "hi"}], "key", "model",
             )
+
+
+def test_always_requests_json_object():
+    captured = {}
+
+    def fake_post(url, headers, json, timeout):
+        captured["payload"] = json
+        return _resp(200, {"ok": True})
+
+    with patch.object(mistral_http._requests, "post", side_effect=fake_post):
+        mistral_http._cooldown_until = 0.0
+        mistral_http.post_mistral_json([{"role": "user", "content": "hi"}], "key", "model")
+
+    assert captured["payload"]["response_format"] == {"type": "json_object"}

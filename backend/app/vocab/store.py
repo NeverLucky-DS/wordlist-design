@@ -6,6 +6,8 @@ import os
 import sqlite3
 from pathlib import Path
 
+from app.vocab import goethe
+
 DB_PATH = Path(os.environ.get("VOCAB_DB") or Path(__file__).with_name("vocab.db"))
 
 _JSON_FIELDS = ("pos", "forms", "translations", "examples",
@@ -42,9 +44,9 @@ def stats(db_path: Path = DB_PATH) -> dict:
     out = {
         "exists": True,
         "total": c(),
-        "levels": {lvl: c("WHERE level='%s'" % lvl)
-                   for lvl in ("b1_core", "b2_core", "c1_core", "extended")},
-        "obligatory": c("WHERE level IN ('b1_core','b2_core')"),
+        "levels": {lvl: c("WHERE level='%s'" % lvl) for lvl in goethe.ALL_LEVELS},
+        "obligatory": c("WHERE level IN (%s)"
+                        % ",".join("'%s'" % l for l in goethe.OBLIGATORY)),
         "fields": {
             "article": c("WHERE article IS NOT NULL"),
             "examples": c("WHERE examples!='[]'"),

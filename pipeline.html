@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site-header.css?v=9">
-<link rel="stylesheet" href="css/pipeline.css?v=2">
+<link rel="stylesheet" href="css/pipeline.css?v=4">
 </head>
 <body>
 
@@ -41,8 +41,8 @@
     <div class="eyebrow">Pipeline · Wortschatz</div>
     <h1 class="title serif">Обработка словаря</h1>
     <p class="lede">Читаем словари, собираем по каждому слову подтверждённую информацию из всех
-      источников, ранжируем по частоте и раскладываем по уровням. Всё прозрачно — видно каждую
-      стадию и что дал каждый словарь.</p>
+      источников, ранжируем по частоте и размечаем уровни по спискам Goethe A1–B1 (приоритет)
+      и дополнительному до C2. Всё прозрачно — видно каждую стадию и что дал каждый словарь.</p>
 
     <div class="pg-grid">
       <!-- ── control ── -->
@@ -88,10 +88,13 @@
         <input id="q" placeholder="Начни вводить лемму, напр. Umwelt, gehen, Freiheit…" autocomplete="off">
         <div class="lvls" id="lvls">
           <button class="on" data-l="">все</button>
-          <button data-l="b1_core">B1</button>
-          <button data-l="b2_core">B2</button>
-          <button data-l="c1_core">C1</button>
-          <button data-l="extended">ext</button>
+          <button data-l="a1">A1</button>
+          <button data-l="a2">A2</button>
+          <button data-l="b1">B1</button>
+          <button data-l="b2">B2</button>
+          <button data-l="c1">C1</button>
+          <button data-l="c2">C2</button>
+          <button data-l="unlisted">?</button>
         </div>
       </div>
       <div id="results"><div class="empty">Загрузка…</div></div>
@@ -101,6 +104,6 @@
   <div class="toast" id="toast"></div>
 
 <script src="js/site-header.js?v=8"></script>
-<script src="js/pipeline.js?v=2"></script>
+<script src="js/pipeline.js?v=4"></script>
 </body>
 </html>

@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    # Secrets (MISTRAL_API_KEY, GROK_API_KEY, MISTRAL_MODEL) live in ONE place:
+    # Secrets (MISTRAL_API_KEY, MISTRAL_MODEL) live in ONE place:
     # backend/.env. `required: false` keeps a fresh clone bootable before setup.
     env_file:
       - path: ./backend/.env
@@ -39,7 +39,6 @@ services:
       # vocab dashboard (dictionary ingestion) — mounted DB + read-only dictionaries
       VOCAB_DB: /app/vocab_data/vocab.db
       DICT_ROOT: /app/dictionaries
-      PIPELINE_AUTORUN: "false"   # old web-discovery autopilot disabled
     volumes:
       - ./backend/app/vocab/vocab_data:/app/vocab_data
       - ./dictionaries:/app/dictionaries:ro

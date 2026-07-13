@@ -8,8 +8,9 @@
 const SRC_LABEL = {universal:"Universal", langenscheidt:"Langenscheidt", lein:"Lein",
   allgemein:"Общелексический", advanced:"Advanced", duden_syn:"Duden синонимы",
   collocations:"Коллокации", idioms:"Идиомы"};
-const LVL = {b1_core:{n:"B1",v:"--b1"}, b2_core:{n:"B2",v:"--b2"},
-  c1_core:{n:"C1",v:"--c1"}, extended:{n:"ext",v:"--ext"}};
+const LVL = {a1:{n:"A1",v:"--a1"}, a2:{n:"A2",v:"--a2"}, b1:{n:"B1",v:"--b1"},
+  b2:{n:"B2",v:"--b2"}, c1:{n:"C1",v:"--c1"}, c2:{n:"C2",v:"--c2"},
+  unlisted:{n:"?",v:"--ext"}};
 
 let minZipf = 2.3, polling = null, curLevel = "", deb = null;
 const $ = id => document.getElementById(id);
@@ -82,10 +83,10 @@ async function loadStats(){
   try { s = await (await fetch("/api/vocab/stats")).json(); }
   catch { return; }
   if (!s.exists){ $("statsSub").textContent = "База ещё не собрана — запусти обработку."; return; }
-  $("statsSub").textContent = `Всего ${fmt(s.total)} лемм · обязательных (B1+B2) ${fmt(s.obligatory)}`;
+  $("statsSub").textContent = `Всего ${fmt(s.total)} лемм · Goethe A1–B1 ${fmt(s.obligatory)}`;
   $("kpis").innerHTML =
     `<div class="kpi"><b>${fmt(s.total)}</b><span>слов в базе</span></div>
-     <div class="kpi"><b>${fmt(s.obligatory)}</b><span>обязательных (B1+B2)</span></div>
+     <div class="kpi"><b>${fmt(s.obligatory)}</b><span>Goethe A1–B1</span></div>
      <div class="kpi"><b>${fmt(s.fields.synonyms)}</b><span>с синонимами</span></div>
      <div class="kpi"><b>${fmt(s.fields.examples)}</b><span>с примерами</span></div>`;
   const tot = s.total || 1;

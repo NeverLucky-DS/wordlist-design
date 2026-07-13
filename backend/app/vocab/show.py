@@ -26,10 +26,10 @@ def stats(con) -> None:
     print("╭─ vocab.db — %d lemmas ─────────────────────────" % total)
     levels = " ".join(
         "%s=%d" % (lvl, _c(con, "WHERE level='%s'" % lvl))
-        for lvl in ("b1_core", "b2_core", "c1_core", "extended"))
+        for lvl in ("a1", "a2", "b1", "b2", "c1", "c2", "unlisted"))
     print("│ levels:  " + levels)
-    print("│ obligatory (b1+b2 core): %d"
-          % _c(con, "WHERE level IN ('b1_core','b2_core')"))
+    print("│ obligatory (Goethe A1–B1): %d"
+          % _c(con, "WHERE level IN ('a1','a2','b1')"))
     print("│ fields:  article=%d  examples=%d  synonyms=%d  idioms=%d  collocations=%d" % (
         _c(con, "WHERE article IS NOT NULL"), _c(con, "WHERE examples!='[]'"),
         _c(con, "WHERE synonyms!='[]'"), _c(con, "WHERE idioms!='[]'"),

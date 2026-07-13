@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import auth, essays, health, phrases, topics, words
-from app.api.routes import pipeline
 from app.auth import cleanup_expired_sessions
 from app.vocab.api import router as vocab_router
 from app.config import settings
@@ -50,7 +49,6 @@ app.include_router(essays.router)
 app.include_router(words.router)
 app.include_router(phrases.router)
 app.include_router(topics.router)
-app.include_router(pipeline.router)
 app.include_router(vocab_router)  # /api/vocab/* — dictionary-ingestion dashboard
 
 
@@ -84,17 +82,9 @@ async def on_startup() -> None:
 
     await mark_interrupted_analyses()
 
-    # Autonomous mode: background scheduler over the topic queue
-    if settings.pipeline_autorun:
-        from app.pipeline.scheduler import start_scheduler
-
-        start_scheduler(SessionLocal)
-
 
 @app.on_event("shutdown")
 async def stop_background() -> None:
-    from app.pipeline.scheduler import stop_scheduler
     from app.services.analysis_jobs import stop_analysis_jobs
 
-    stop_scheduler()
     await stop_analysis_jobs()

@@ -1,10 +1,7 @@
-"""Health, topics, pipeline queue — useful public endpoints."""
+"""Health, topics, words — useful public endpoints."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
-
-from app.db.models import TopicQueueItem
 from tests.helpers import seed_words_and_phrases
 
 
@@ -28,51 +25,6 @@ async def test_unknown_topic_returns_404(client):
 async def test_import_unknown_topic_returns_404(client):
     res = await client.post("/api/topics/nonexistent-slug-xyz/import")
     assert res.status_code == 404
-
-
-async def test_pipeline_queue_add_and_list(client):
-    queued = await client.post(
-        "/api/pipeline/queue",
-        json={"topics": ["Klimawandel", "Energiewende"], "target_words": 12},
-    )
-    assert queued.status_code == 200
-    body = queued.json()
-    assert "Klimawandel" in body["queued"]
-    assert "Energiewende" in body["queued"]
-
-    listing = await client.get("/api/pipeline/queue")
-    assert listing.status_code == 200
-    topics = {item["topic"] for item in listing.json()}
-    assert {"Klimawandel", "Energiewende"}.issubset(topics)
-
-
-async def test_pipeline_queue_skips_active_duplicate(client, db_session):
-    db_session.add(TopicQueueItem(topic="Migration", status="pending"))
-    await db_session.commit()
-
-    res = await client.post("/api/pipeline/queue", json={"topics": ["Migration"]})
-    assert res.status_code == 200
-    assert "Migration" in res.json()["skipped"]
-
-
-async def test_pipeline_queue_reopens_done_topic(client, db_session):
-    db_session.add(
-        TopicQueueItem(topic="Digitalisierung", status="done", attempts=2, target_words=8)
-    )
-    await db_session.commit()
-
-    res = await client.post(
-        "/api/pipeline/queue",
-        json={"topics": ["Digitalisierung"], "target_words": 15},
-    )
-    assert res.status_code == 200
-    assert "Digitalisierung" in res.json()["queued"]
-
-
-async def test_pipeline_failures_empty_by_default(client):
-    res = await client.get("/api/pipeline/failures")
-    assert res.status_code == 200
-    assert res.json() == []
 
 
 async def test_words_get_by_id(client, db_session):

@@ -78,14 +78,6 @@ async def test_logout_clears_session(guest_client):
     assert me["authenticated"] is False
 
 
-async def test_non_admin_cannot_access_pipeline(non_admin_client):
-    res = await non_admin_client.post(
-        "/api/pipeline/run",
-        json={"topic": "Test", "article_urls": []},
-    )
-    assert res.status_code == 403
-
-
 async def test_phrase_known_requires_auth(guest_client, db_session):
     await seed_words_and_phrases(db_session)
     phrases = (await guest_client.get("/api/phrases?topic=technologie")).json()

@@ -1,0 +1,270 @@
+# Manually CEFR-classified B1–C2 lemmas that neither wordlist covered.
+# Lowest priority in resolve() — Goethe and the supplemental A1–C2 list both win.
+# Seeded by hand from clean, cross-verified (>=2 general dicts) unlisted words;
+# noise (proper nouns, inflected forms, OCR junk) rejected during classification.
+# The full ~17k clean B2+ tail needs a batch pass. Extend by appending rows.
+# lemma	level	article	plural
+Arbeiter	b1	der
+Frühjahr	b1	das
+Königin	b1	die
+Million	b1	die
+Liter	b1	das
+Chemie	b1	die
+Drittel	b1	das
+Prinz	b1	der
+Stärke	b1	die
+anschauen	b1
+Abendessen	b1	das
+Dutzend	b1	das
+Soldat	b1	der
+Pilot	b1	der
+Trick	b1	der
+Maske	b1	die
+Gramm	b1	das
+Eisen	b1	das
+Pfund	b1	das
+Rate	b1	die
+Kammer	b1	die
+Winkel	b1	der
+Schreibtisch	b1	der
+Geruch	b1	der
+Warnung	b1	die
+Helfer	b1	der
+Lob	b1	das
+Einblick	b1	der
+Zelle	b1	die
+Brunnen	b1	der
+Coach	b1	der
+blicken	b1
+wundern	b1
+abwarten	b1
+ausprobieren	b1
+durchführen	b1
+bewerten	b1
+proben	b1
+trauen	b1
+Besitzer	b2	der
+Infrastruktur	b2	die
+Nachfolger	b2	der
+Pfarrer	b2	der
+Profil	b2	das
+Umfeld	b2	das
+Verstand	b2	der
+anhand	b2
+Gelände	b2	das
+generell	b2
+Initiative	b2	die
+Marketing	b2	das
+scheinbar	b2
+Stellung	b2	die
+Variante	b2	die
+Brauch	b2	der
+genügend	b2
+Graf	b2	der
+Kombination	b2	die
+Niederlage	b2	die
+ermöglichen	b2
+Vorstand	b2	der
+Bezeichnung	b2	die
+Management	b2	das
+Menschheit	b2	die
+Trend	b2	der
+Bezirk	b2	der
+Brand	b2	der
+Engagement	b2	das
+Verband	b2	der
+zunehmend	b2
+Betrug	b2	der
+Gestaltung	b2	die
+Herstellung	b2	die
+Motto	b2	das
+Strategie	b2	die
+Struktur	b2	die
+Anfrage	b2	die
+Gegenwart	b2	die
+Gehirn	b2	das
+Großteil	b2	der
+Handlung	b2	die
+Schlag	b2	der
+Turnier	b2	das
+Vorbild	b2	das
+Archiv	b2	das
+Effekt	b2	der
+Kerl	b2	der
+Schönheit	b2	die
+spenden	b2
+Überblick	b2	der
+Anerkennung	b2	die
+Ausbau	b2	der
+beziehen	b2
+töten	b2
+Gründung	b2	die
+Vorgehen	b2	das
+Angelegenheit	b2	die
+Auffassung	b2	die
+bewahren	b2
+enorm	b2
+ermitteln	b2
+ertragen	b2
+Faust	b2	die
+Fonds	b2	der
+Gutachten	b2	das
+Güte	b2	die
+Hinblick	b2	der
+kurzfristig	b2
+Luxus	b2	der
+mächtig	b2
+Reichweite	b2	die
+Rücktritt	b2	der
+Zugriff	b2	der
+zweitens	b2
+Aspekt	b2	der
+Außenminister	b2	der
+Bearbeitung	b2	die
+Bündnis	b2	das
+Dom	b2	der
+Konzentration	b2	die
+Mitteilung	b2	die
+Rettung	b2	die
+stabil	b2
+Strich	b2	der
+Übergang	b2	der
+Umbau	b2	der
+vereinen	b2
+Verpflichtung	b2	die
+Ablehnung	b2	die
+Behauptung	b2	die
+bekämpfen	b2
+Element	b2	das
+erheben	b2
+erreichbar	b2
+Gemälde	b2	das
+global	b2
+ignorieren	b2
+Konstruktion	b2	die
+Moderator	b2	der
+Notwendigkeit	b2	die
+Rauch	b2	der
+Schicht	b2	die
+Sprung	b2	der
+unendlich	b2
+unnötig	b2
+Ursprung	b2	der
+vorliegen	b2
+zugeben	b2
+Akt	b2	der
+Aufregung	b2	die
+Aufstellung	b2	die
+Bedrohung	b2	die
+Beute	b2	die
+Eintrag	b2	der
+Funk	b2	der
+Gestalt	b2	die
+Handwerk	b2	das
+herrlich	b2
+Klub	b2	der
+Mithilfe	b2	die
+Pleite	b2	die
+Schande	b2	die
+Theologie	b2	die
+Asyl	b2	das
+ausführlich	b2
+Ausrüstung	b2	die
+Bestimmung	b2	die
+beurteilen	b2
+gemein	b2
+genial	b2
+Höhle	b2	die
+Image	b2	das
+Kanzler	b2	der
+Konzern	b2	der
+Leiche	b2	die
+Medium	b2	das
+monatlich	b2
+Rechtsanwalt	b2	der
+schlau	b2
+Schock	b2	der
+Spektrum	b2	das
+Vereinbarung	b2	die
+Begleitung	b2	die
+Einzelfall	b2	der
+Episode	b2	die
+Genuss	b2	der
+Marine	b2	die
+Missbrauch	b2	der
+Panzer	b2	der
+Pool	b2	der
+Reife	b2	die
+Treue	b2	die
+untereinander	b2
+Vision	b2	die
+wissenschaftlich	b2
+attraktiv	b2
+Aufruf	b2	der
+denkbar	b2
+geradezu	b2
+gesetzlich	b2
+hervorragend	b2
+Inhaber	b2	der
+inhaltlich	b2
+Komplex	b2	der
+Norm	b2	die
+problemlos	b2
+Solidarität	b2	die
+Sozialismus	b2	der
+südlich	b2
+Toleranz	b2	die
+Trauer	b2	die
+Universum	b2	das
+Wüste	b2	die
+Zusammenfassung	b2	die
+Begeisterung	b2	die
+Designer	b2	der
+Einzug	b2	der
+Erhalt	b2	der
+friedlich	b2
+Handwerker	b2	der
+Jury	b2	die
+lebendig	b2
+nördlich	b2
+Orientierung	b2	die
+Protokoll	b2	das
+Sicherung	b2	die
+Stellungnahme	b2	die
+Zwang	b2	der
+Anblick	b2	der
+Ausmaß	b2	das
+Bargeld	b2	das
+Einstieg	b2	der
+erwachsen	b2
+Graben	b2	der
+Gutschein	b2	der
+konstant	b2
+Leib	b2	der
+Mitleid	b2	das
+Spielzeit	b2	die
+quasi	c1
+Umsetzung	c1	die
+weitgehend	c1
+Vermögen	c1	das
+ausdrücklich	c1
+überwiegend	c1
+Wesen	c1	das
+keinerlei	c1
+wodurch	c1
+mitunter	c1
+nunmehr	c1
+binnen	c1
+wider	c1
+vorwiegend	c1
+anstelle	c1
+Erhebung	c1	die
+preisen	c1
+Gedenken	c1	das
+Empfinden	c1	das
+Errichtung	c1	die
+Berücksichtigung	c1	die
+zeitweise	c1
+vergleichsweise	c1
+Vorfeld	c1	das
+Berichterstattung	c1	die

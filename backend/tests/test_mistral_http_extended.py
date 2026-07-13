@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.pipeline import mistral_http
+from app.services import mistral_http
 
 
 def _ok(content: dict):
