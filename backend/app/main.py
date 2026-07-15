@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import FastAPI
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import auth, essays, health, phrases, topics, words
 from app.auth import cleanup_expired_sessions
 from app.vocab.api import router as vocab_router
+from app.vocab.dict_api import router as woerterbuch_router
 from app.config import settings
 from app.db.init_data import ensure_seed_data
 from app.db.session import SessionLocal
@@ -35,9 +37,19 @@ _configure_app_logging()
 app = FastAPI(title="Deutsch Essay Trainer")
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+# Also accept any private-LAN origin (http://<host>:<port>) so the dashboard works
+# when opened from another device on the local network — phones/tablets hit the
+# nginx host by its 10./172.16-31./192.168. address, not localhost. Same-origin
+# requests through nginx don't need this, but it future-proofs cross-origin calls.
+LAN_ORIGIN_RE = (
+    r"http://(localhost|127\.0\.0\.1|"
+    r"(10|192\.168|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){2})"
+    r"(:\d+)?"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=LAN_ORIGIN_RE,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +62,11 @@ app.include_router(words.router)
 app.include_router(phrases.router)
 app.include_router(topics.router)
 app.include_router(vocab_router)  # /api/vocab/* — dictionary-ingestion dashboard
+app.include_router(woerterbuch_router)  # /api/vocab/* — Wörterbuch lookup + word list
+
+# Background replica sync (see app.vocab.mirror). Held in a module global so the
+# task isn't garbage-collected mid-flight, and cancelled on shutdown.
+_mirror_task: asyncio.Task | None = None
 
 
 @app.on_event("startup")
@@ -82,9 +99,20 @@ async def on_startup() -> None:
 
     await mark_interrupted_analyses()
 
+    # Pull enriched cards into the searchable Postgres replica, now and then on a
+    # timer — the enrichment worker keeps adding to SQLite while we serve.
+    global _mirror_task
+    from app.vocab import mirror
+
+    _mirror_task = asyncio.create_task(mirror.periodic_sync())
+
 
 @app.on_event("shutdown")
 async def stop_background() -> None:
     from app.services.analysis_jobs import stop_analysis_jobs
+    from app.vocab import enrich_worker
 
+    if _mirror_task is not None:
+        _mirror_task.cancel()
     await stop_analysis_jobs()
+    enrich_worker.stop_all()

@@ -8,15 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site-header.css?v=11">
-<link rel="stylesheet" href="css/styles.css?v=21">
+<link rel="stylesheet" href="css/styles.css?v=24">
 </head>
 <body>
 
   <!-- left decorative watercolor column (images/abstract-watercolor-column.png) -->
   <div class="bg-column" aria-hidden="true"></div>
-
-  <!-- left edge: vertical Niveau gradient -->
-  <aside class="level-rail"><div class="lr-cap"><b id="lrLevel">B1</b><span>Niveau</span></div></aside>
   <div class="side-label">WÖRTERBUCH</div>
 
   <!-- ===================== Shared top bar ===================== -->
@@ -40,54 +37,54 @@
   </header>
 
   <main id="mainGrid">
-    <section class="col-list">
-      <div class="eyebrow">Lernen</div>
+
+    <!-- ================= left: the lookup ================= -->
+    <section class="col-search" id="colSearch">
+      <div class="eyebrow">Nachschlagen</div>
       <h1 class="title">Wörterbuch</h1>
-      <p class="lede">Ihr thematischer Wortschatz für präzises Deutsch. Wählen Sie ein Wort,
-        um Bedeutung, Grammatik und Beispiele zu sehen.</p>
+      <p class="lede">Deutsch oder Russisch — die Sprache wird automatisch erkannt.
+        Ein Wort wählen, um Bedeutung, Grammatik und Beispiele zu sehen.</p>
 
       <div class="search-row">
         <label class="search">
           <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-          <input id="search" type="text" placeholder="Suche nach Begriff oder Übersetzung (z. B. „Fortschritt“)">
+          <input id="search" type="text" autocomplete="off" spellcheck="false"
+                 aria-label="Wort suchen" placeholder="z. B. „Fortschritt“ oder „прогресс“">
+          <span class="search-lang" id="searchLang" hidden></span>
         </label>
       </div>
 
-      <div class="chips" id="chips"></div>
-      <div class="word-list" id="wordList"></div>
+      <div class="word-list is-single" id="results"></div>
+    </section>
+
+    <!-- ================= right: the personal list ================= -->
+    <section class="col-mine" id="colMine">
+      <div class="mine-head">
+        <div class="donut-wrap">
+          <div id="donut"></div>
+          <div class="donut-center"><b id="donutTotal">0</b></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="word-list is-single" id="myList"></div>
       <div class="pager" id="pager" hidden></div>
     </section>
 
-    <!-- detail card: takes the right column when a word is opened; closeable -->
-    <section class="col-detail" id="colDetail"><div class="detail" id="detail"></div></section>
+    <!-- Detail card. Opens over the column OPPOSITE the word it belongs to, so
+         the word itself stays visible and the connector can be drawn to it. -->
+    <div class="card-layer" id="cardLayer" hidden><div class="detail" id="detail"></div></div>
   </main>
 
-  <!-- live orange connector, drawn over the page from the card's word to the list word -->
+  <!-- live orange connector, drawn over the page from the card's word to its row -->
   <svg class="link-line" id="linkLine" aria-hidden="true" hidden>
     <path id="linkPath" d=""/>
     <circle id="linkAnchor" class="ll-anchor" r="4.5"/>
     <circle id="linkDot" class="ll-dot" r="4"/>
   </svg>
 
-  <!-- right rail: level distribution -->
-  <aside class="rail">
-    <div>
-      <div class="rail-label">Verteilung nach Niveau</div>
-      <div class="donut-wrap"><div id="donut"></div>
-        <div class="donut-center"><b id="donutTotal">214</b><span>Wörter</span></div>
-      </div>
-      <div class="legend" id="legend"></div>
-    </div>
-    <div class="rail-hr"></div>
-    <div class="rail-tot"><b id="totDone">214</b><span>Wörter gelernt</span></div>
-    <div class="rail-hr"></div>
-    <div class="rail-quote">Die Grenzen meiner Sprache bedeuten die Grenzen meiner Welt.
-      <span class="au">Wittgenstein</span></div>
-  </aside>
-
   <script src="js/site-header.js?v=8"></script>
-  <script src="js/words-data.js?v=1"></script>
-  <script src="js/app.js?v=27"></script>
+  <script src="js/words-data.js?v=2"></script>
+  <script src="js/app.js?v=29"></script>
   <script src="js/animations.js?v=18"></script>
 </body>
 </html>

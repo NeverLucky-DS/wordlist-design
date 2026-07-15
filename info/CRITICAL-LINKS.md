@@ -10,14 +10,24 @@
 ## 1. Страницы → ассеты → API
 
 ```
-index.html
+index.html   — переводчик-поиск (слева) + личный список слов (справа)
 ├── css/site-header.css, css/styles.css
 ├── js/site-header.js, js/words-data.js, js/app.js, js/animations.js
 ├── images/abstract-watercolor-column.png   (styles.css .bg-column)
 ├── images/decor-head.png                   (styles.css mask)
 ├── images/Verwendung.png, Deklination.png  (styles.css CSS vars)
-└── worte/*.png                             (words-data.js brushOf → word list)
-    └── GET /api/words?limit=500            (app.js loadApiWords — merge в WORDS)
+├── worte/*.png                             (words-data.js brushOfCard → строки)
+└── API (все — /api/vocab/*, см. §6b):
+    ├── GET    /api/vocab/search?q=          (поиск, публичный)
+    ├── GET    /api/vocab/entry/{lemma}      (полная карточка, публичный)
+    ├── GET    /api/vocab/list               (свои слова — ТРЕБУЕТ аккаунт)
+    ├── GET    /api/vocab/list/stats         (донат)
+    ├── POST   /api/vocab/list               (добавить)
+    └── DELETE /api/vocab/list/{lemma}       (убрать)
+
+`GET /api/words` (Postgres-таблица `words`, 17 seed-слов) страницей БОЛЬШЕ НЕ
+используется — канон это обогащённые карточки. Роут жив, его зовёт только
+`editor.js`, которого тоже нет. Кандидат на удаление отдельным заходом.
 
 schreiben.html
 ├── css/site-header.css, css/schreiben.css
@@ -62,15 +72,37 @@ Pomodoro отображается только на Essay.
 
 ## 2. Shared data — WASH (единый источник)
 
-**КРИТИЧНО:** `js/words-data.js` — единственное место для `WASH`, `brushOf`, `PIPELINE_WASHES`. Любое переименование `worte/*.png` → обновить только этот файл.
+**КРИТИЧНО:** `js/words-data.js` — единственное место для `WASH`. Любое переименование `worte/*.png` → обновить только этот файл.
 
 | Файл | Роль |
 |------|------|
-| `js/words-data.js` | WASH, typeKey, brushOf, PIPELINE_WASHES |
-| `js/app.js` | WORDS + API merge (index) |
-| `js/schreiben.js` | demo WORDS + server-hydrated essay store/local offline copy |
+| `js/words-data.js` | WASH, typeKey, brushOf, **brushOfCard**, ~~PIPELINE_WASHES~~ |
+| `js/app.js` | Wörterbuch: поиск + личный список (кисти через `brushOfCard`) |
+| `js/schreiben.js` | demo WORDS + server-hydrated essay store (кисти через `brushOf`) |
 
-**Маппинг WASH:** ключ = `{level}|{type}` где type = `der`|`die`|`das`|`verb`|`adj`.
+**Маппинг WASH:** ключ = `{level}|{type}`, где level = `B1`|`B2`|`C1`, а type = `der`|`die`|`das`|`verb`|`adj`. Всего 15 кистей — новых не рисуем.
+
+**Две функции, не путать (проверено 2026-07-15):**
+
+- `brushOf(w)` — старая, для локальных объектов вида `{level:'B1', art:'die', pos:'noun'}`.
+  Живой вызов ровно один: `js/schreiben.js:773`.
+- `brushOfCard(card)` — для карточек из `/api/vocab/*`. Они приходят с уже
+  готовыми `band` и `type`, потому что маппинг живёт на бэке
+  (`backend/app/vocab/norm.py`) и общий для поиска, списка и доната — если
+  посчитать его ещё и на фронте, две копии разъедутся.
+
+**Клампинг уровней (backend `norm.LEVEL_BAND`):** в базе уровни `a1…c2` + `unlisted`,
+а кистей только B1/B2/C1. Поэтому `a1,a2,b1 → B1`, `b2 → B2`, `c1,c2,unlisted → C1`.
+`unlisted` — это ~70% базы (реальные слова вне списков Goethe), решение показывать
+их как C1 принято владельцем. Части речи: `adv`/`other` → кисть `adj`;
+существительное без артикля → тоже `adj` (это субстантивированные прилагательные,
+der/die Jugendliche — у них артикль и правда не фиксирован).
+
+**Устарело / мёртвое:**
+
+- `PIPELINE_WASHES` — **не используется никем**. `pipeline.html` больше не грузит
+  `words-data.js` (только `site-header.js`, `pipeline.js`, `enrich.js`).
+  Раньше документ утверждал обратное.
 
 ---
 
@@ -255,8 +287,9 @@ POST /api/pipeline/queue
    не возвращать туда отдельную копию `.topbar` / `.nav`.
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
-   (`site-header.css` сейчас `?v=9`, `site-header.js` — `?v=8`,
-   `schreiben.css` — `?v=28`).
+   (`site-header.css` сейчас `?v=11`, `site-header.js` — `?v=8`,
+   `schreiben.css` — `?v=28`, `styles.css` — `?v=24`, `app.js` — `?v=29`,
+   `words-data.js` — `?v=2`).
 
 3. **Frontend mounts** — при добавлении нового публичного корневого файла/каталога
    явно добавить его в `docker-compose.yml`; весь репозиторий намеренно не монтируется.
@@ -274,6 +307,114 @@ POST /api/pipeline/queue
 
 9. **Lossy WebP на ALPHA-ассетах** — все `worte/*.png`, watercolor, decor-head (mask), washes, leaves, tool-icons. Даёт видимые артефакты на полупрозрачных фонах. Только lossless PNG-opt или lossless WebP со сравнением.
 
+10. **Docker Desktop macOS: устаревший bind-mount** — nginx может отдавать
+    ОБРЕЗАННУЮ версию правленого файла (напр. `pipeline.html` без `<script>`), т.к.
+    VirtioFS-кэш не инвалидируется после in-place правок. Симптом: браузер грузит
+    страницу без JS, `document.scripts` пуст. Фикс: `docker compose up -d --force-recreate frontend`.
+    Сверять: `docker compose exec frontend wc -l /usr/share/nginx/html/pipeline.html` vs host.
+
+---
+
+## 6a. Vocab-обогащение (`/api/vocab/enrich/*`) — актуальный контур
+
+Серверные воркеры (один на аккаунт) обогащают `vocab.db` через Mistral и пишут
+карточки в `enrichment.db`. Реальные БД — `backend/app/vocab/vocab_data/` (docker-mount
+`VOCAB_DB=/app/vocab_data/vocab.db`), НЕ корневые `vocab.db`/`enrichment.db` (устаревшие пустышки).
+
+| Endpoint | Auth | Кто вызывает |
+|----------|------|--------------|
+| `GET  /api/vocab/enrich/progress` | нет | `js/enrich.js` (poll 2.5s) |
+| `GET  /api/vocab/enrich/cards`    | нет | `js/enrich.js` — браузер обогащённых карточек |
+| `GET  /api/vocab/enrich/card/{lemma}` | нет | `js/enrich.js` — деталь карточки |
+| `POST /api/vocab/enrich/requeue`  | **да** | `js/enrich.js` — переобогатить low-confidence |
+| `POST /api/vocab/enrich/{start,stop}` | **да** | привязанный ключ аккаунта |
+
+- **Мусор-фильтр**: `enrich.JUNK_SQL`/`is_junk()` — леммы с дефисом (`mit-`, `a-`),
+  all-caps (`DER`, `ER`), 1 символ НИКОГДА не отдаются воркеру (считаются `junk` в progress).
+- **LLM-skip**: модель может вернуть `skip:true` для не-слов (Eigennamen, аббревиатуры,
+  капс-дубли) → терминальный статус `skipped`, не карточка. Бампать `PROMPT_VERSION` при правке промпта.
+- **ru_all** — массив переводов (основное первым); карточка = `enrichment.db.cards.data` (JSON).
+- **Мульти-устройство (LAN)**: работает по http из коробки — cookie `secure=False`+`SameSite=lax`,
+  запросы same-origin через nginx, воркеры по `user_id` не конфликтуют (атомарный `claim`).
+  CORS расширен regex'ом на приватные подсети (`main.py` `LAN_ORIGIN_RE`). `secure_cookies`
+  держать `False` для http-LAN; каждое устройство — свой аккаунт + свой ключ Mistral.
+
+---
+
+## 6b. Wörterbuch — поиск + личный список (2026-07-15)
+
+Страница `index.html` переписана: слева переводчик-поиск по базе, справа личный
+список слов на заучивание. Канон — **обогащённые карточки**, не Postgres `words`.
+
+### Зеркало: зачем оно есть
+
+Воркер обогащения владеет `enrichment.db` (SQLite) и пишет туда круглосуточно —
+трогать его нельзя. Но нечёткий поиск (`pg_trgm`) и личный список должны
+джойниться, то есть жить в одной БД. Поэтому готовые карточки **копируются** в
+Postgres. Обратно не пишем никогда, SQLite открывается read-only.
+
+```
+enrichment.db (SQLite, WAL)  --read-only-->  app/vocab/mirror.py
+                                                   |
+                                                   v
+                             Postgres: vocab_cards + vocab_card_translations
+                                                   |
+                          app/vocab/search.py (pg_trgm)  <--  /api/vocab/search
+                                                   |
+                             Postgres: user_word_list  <--  /api/vocab/list
+```
+
+- Курсор синхронизации — пара `(created_at, lemma)`. `save_cards` пишет через
+  `INSERT OR REPLACE` со свежим `created_at`, поэтому переобогащённая карточка
+  сама всплывает в конце курсора: апдейты едут тем же путём, что и вставки.
+- Синхронизация запускается на старте контейнера и раз в 5 мин
+  (`mirror.periodic_sync`, поднимается в `main.py` on_startup). Ручной пинок —
+  `POST /api/vocab/mirror/sync`.
+- Зеркало **производное**: его можно дропнуть и пересобрать за ~15 сек.
+  `user_word_list` — НЕТ, это данные пользователя.
+
+### Поиск
+
+- Раскладка решает язык: латиница → немецкая лемма, кириллица → `ru_all`.
+- **Две нормализованные колонки** на немецкой стороне: `lemma_norm` (grün→gruen)
+  и `lemma_ascii` (grün→grun). Обе индексируются GIN/trigram и обе всегда
+  участвуют в запросе. Одной мало: у запроса «grun» умляутов нет, обе его свёртки
+  совпадают — но само слово хранится по-разному, и без `lemma_ascii` «grün»
+  не находится вовсе (проверено: выше него встают Grund и Grunzen).
+- Русская морфология вытягивается триграммами без стеммера
+  (`зависимостью`→`зависимость` = 0.79 при пороге 0.3).
+- Ничего не нашли → так и говорим. База ещё обогащается, выдавать вместо ответа
+  случайные близкие слова — хуже честного «нет».
+
+### Ключ личного списка
+
+`user_word_list` адресует слово **строкой `lemma`**, без FK на `vocab_cards`:
+промпт обогащения уже разводит омографы регистром (Morgen/morgen, Essen/essen),
+а будущее расширение будет слать слова с произвольных страниц, которых в базе
+может не быть. Колонки-снимок (`ru`, `band`, `pos`, …) нужны, чтобы список
+рисовался одним запросом.
+
+> ⚠️ Снимок — это только то, что нужно СТРОКЕ. В нём нет `definition_de`,
+> `grammar`, `examples`. Карточку из списка открывать **только** через
+> `GET /api/vocab/entry/{lemma}`, иначе отрисуется пустышка.
+
+### Аккаунт
+
+Список требует аккаунт: `require_user`, гостевого режима нет (в отличие от эссе).
+Вход переиспользует готовый диалог из `js/site-header.js` (`window.SiteAuth`,
+событие `site-auth-change`) — своей формы на странице нет.
+
+### Карточка-оверлей
+
+Открывается поверх колонки, **противоположной** слову: слово в поиске (слева) →
+карточка накрывает список справа, и наоборот. Так слово остаётся на экране и к
+нему можно тянуть оранжевый коннектор (`#linkLine`). `.card-layer::before` гасит
+накрытую колонку — без него из-под карточки торчит кисть строки (она вылезает
+за свою строку на 10px) и это читается как баг.
+
+Линия рисуется **синхронно** в `showCard`, не через `requestAnimationFrame`:
+в фоновой вкладке rAF не вызывается вообще, и карточка осталась бы без связи.
+
 ---
 
 ## 8. Порядок работ (рекомендуемый)
@@ -286,6 +427,7 @@ POST /api/pipeline/queue
 Фаза 4  ✅ editor.* + autumn.png + screenshots/ удалены
 Фаза 5  ✅ Alembic (backend/alembic/) + uv/pyproject + Makefile + единый backend/.env (2026-07-10)
 Фаза 6  Backend: pipeline v2/v3 unify, normalize on write
+Фаза 7  ✅ Wörterbuch: переводчик-поиск (pg_trgm) + личный список (2026-07-15), см. §6b
 ```
 
 ---
