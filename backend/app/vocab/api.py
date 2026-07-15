@@ -11,9 +11,13 @@ from __future__ import annotations
 import threading
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import Principal, require_user
+from app.db.session import get_db
 from app.vocab import store
 
 router = APIRouter(prefix="/api/vocab", tags=["vocab"])
@@ -78,3 +82,103 @@ def word(lemma: str):
     if not w:
         raise HTTPException(404, "not found")
     return w
+
+
+# ── server-side LLM enrichment (server calls Mistral with the account's key) ──
+# Auth-gated: only a logged-in user who has attached a key can drive a worker,
+# and every request goes strictly through THAT account's decrypted key.
+class EnrichStartIn(BaseModel):
+    batch: int | None = None    # words per Mistral call (default: DEFAULT_BATCH)
+
+
+@router.post("/enrich/start")
+async def enrich_start(
+    body: EnrichStartIn,
+    principal: Principal = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Start this account's enrichment worker using its own stored Mistral key."""
+    from app.services import crypto
+    from app.config import settings
+    from app.db.models import User
+    from app.vocab import enrich, enrich_worker
+
+    if not crypto.is_enabled():
+        raise HTTPException(503, "key storage disabled (MISTRAL_KEY_SECRET unset)")
+    user = await db.get(User, principal.user_id)
+    api_key = crypto.decrypt(user.mistral_key_enc) if user and user.mistral_key_enc else None
+    if not api_key:
+        raise HTTPException(400, "no Mistral key attached to this account")
+
+    batch = enrich.DEFAULT_BATCH if body.batch is None else max(1, min(body.batch, enrich.MAX_BATCH))
+    state = enrich_worker.start_worker(principal.user_id, api_key, settings.mistral_model, batch)
+    return {"ok": True, **state}
+
+
+@router.post("/enrich/stop")
+async def enrich_stop(principal: Principal = Depends(require_user)):
+    from app.vocab import enrich_worker
+
+    return {"ok": True, **enrich_worker.stop_worker(principal.user_id)}
+
+
+@router.get("/enrich/progress")
+def enrich_progress():
+    """Global enrichment progress (DB) + active worker summaries."""
+    from app.vocab import enrich, enrich_worker
+
+    out = enrich.progress()
+    out["workers"] = enrich_worker.active_workers()
+    return out
+
+
+@router.get("/enrich/cards")
+def enrich_cards(q: str = "", confidence: str = "", topic: str = "",
+                 level: str = "", limit: int = 40, offset: int = 0):
+    """Browse the enriched cards (the OUTPUT the app shows). Public read —
+    inspecting the vocabulary base needs no auth, same as /words."""
+    from app.vocab import enrich
+
+    return enrich.list_cards(q=q.strip(), confidence=confidence, topic=topic,
+                             level=level, limit=limit, offset=offset)
+
+
+@router.get("/enrich/card/{lemma}")
+def enrich_card(lemma: str):
+    from app.vocab import enrich
+
+    card = enrich.get_card(lemma)
+    if not card:
+        raise HTTPException(404, "not found")
+    return card
+
+
+class RequeueIn(BaseModel):
+    scope: str | None = None       # "low_confidence" — requeue all low-conf cards
+    lemmas: list[str] | None = None  # or an explicit list
+
+
+@router.post("/enrich/requeue")
+async def enrich_requeue(
+    body: RequeueIn,
+    principal: Principal = Depends(require_user),
+):
+    """Reset words back to 'raw' so the next run re-enriches them with the current
+    prompt. Auth-gated: it mutates the shared enrichment state."""
+    from app.vocab import enrich
+
+    if body.lemmas:
+        n = enrich.requeue([s.strip() for s in body.lemmas if s.strip()])
+    elif body.scope == "low_confidence":
+        n = enrich.requeue_low_confidence()
+    else:
+        raise HTTPException(422, "pass scope='low_confidence' or a lemmas list")
+    return {"ok": True, "requeued": n}
+
+
+@router.get("/enrich/status")
+async def enrich_status(principal: Principal = Depends(require_user)):
+    """This account's worker state (running?, done, last_error)."""
+    from app.vocab import enrich_worker
+
+    return enrich_worker.worker_status(principal.user_id) or {"running": False}

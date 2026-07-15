@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
     mistral_api_key: str = ""
     mistral_model: str = "mistral-large-latest"
+    # Server secret used to encrypt per-user Mistral keys at rest (any string).
+    # Empty → per-user key storage / server-side enrichment is disabled.
+    mistral_key_secret: str = ""
     secure_cookies: bool = False
     admin_emails: str = ""
     cors_origins: str = "http://127.0.0.1:8753,http://localhost:8753,http://127.0.0.1:5173"

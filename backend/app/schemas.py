@@ -132,6 +132,12 @@ class AuthStateOut(BaseModel):
     authenticated: bool
     user: UserOut | None = None
     guest_expires_at: datetime | None = None
+    has_mistral_key: bool = False
+    key_storage_enabled: bool = False
+
+
+class MistralKeyIn(BaseModel):
+    key: str = Field(min_length=8, max_length=200)
 
 
 class EssayVersionCreate(BaseModel):
