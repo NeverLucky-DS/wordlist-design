@@ -8,6 +8,8 @@ deps aren't installed yet.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
 import threading
 import time
 
@@ -21,6 +23,11 @@ from app.db.session import get_db
 from app.vocab import store
 
 router = APIRouter(prefix="/api/vocab", tags=["vocab"])
+
+logger = logging.getLogger(__name__)
+
+# The one-shot replica replay kicked off by the first Start (see _schedule_resync).
+_resync_task: asyncio.Task | None = None
 
 _LOCK = threading.Lock()
 JOB: dict = {"running": False, "kind": None, "started": None,
@@ -111,8 +118,37 @@ async def enrich_start(
         raise HTTPException(400, "no Mistral key attached to this account")
 
     batch = enrich.DEFAULT_BATCH if body.batch is None else max(1, min(body.batch, enrich.MAX_BATCH))
-    state = enrich_worker.start_worker(principal.user_id, api_key, settings.mistral_model, batch)
+    # Blocking on purpose: repair planning is a few seconds of SQLite work, and it
+    # must be finished before the worker claims its first batch — otherwise the
+    # first batches come from the backfill and the phase order means nothing.
+    state = await asyncio.to_thread(
+        enrich_worker.start_worker, principal.user_id, api_key,
+        settings.mistral_model, batch)
+    if (state.get("plan") or {}).get("zipf_filled"):
+        _schedule_resync()
     return {"ok": True, **state}
+
+
+def _schedule_resync() -> None:
+    """Replay the replica after `plan_repairs` backfilled `zipf` in place.
+
+    Detached from the request: it is ~64k upserts and the button should not wait
+    for it. Guarded by a module flag so ten accounts starting at once queue one
+    resync, not ten concurrent full replays over the same rows.
+    """
+    global _resync_task
+    if _resync_task and not _resync_task.done():
+        return
+
+    async def _run() -> None:
+        from app.vocab import mirror
+        try:
+            result = await mirror.full_resync()
+            logger.info("vocab mirror resync after repair planning: %s", result)
+        except Exception:  # noqa: BLE001 — a stale mirror must not kill enrichment
+            logger.exception("vocab mirror resync failed")
+
+    _resync_task = asyncio.create_task(_run())
 
 
 @router.post("/enrich/stop")
