@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site-header.css?v=9">
-<link rel="stylesheet" href="css/pipeline.css?v=7">
+<link rel="stylesheet" href="css/pipeline.css?v=8">
 </head>
 <body>
 
@@ -95,6 +95,24 @@
       <div class="enr-feed" id="enrFeed"></div>
     </section>
 
+    <!-- ── admin: every account from one place (hidden unless ADMIN_EMAILS lists you) ── -->
+    <section class="pg-card admin" id="adminCard" hidden>
+      <div class="card-head">
+        <h2 class="serif">Флот аккаунтов</h2>
+        <span class="elapsed" id="fleetSum"></span>
+      </div>
+      <p class="sub">Запуск обогащения на всех аккаунтах с привязанным ключом сразу —
+        каждый работает <b>своим</b> ключом, десять вкладок не нужны. Расход токенов
+        считается по каждому аккаунту отдельно и ничего не останавливает.</p>
+
+      <div class="fleet-run">
+        <button class="run" id="fleetStart">Запустить все аккаунты</button>
+        <button class="kbtn ghost" id="fleetStop">Остановить все</button>
+      </div>
+      <div class="stage" id="fleetStage"></div>
+      <div id="fleetTable"></div>
+    </section>
+
     <!-- ── enriched-card browser (the OUTPUT the app will show) ── -->
     <section class="pg-card">
       <div class="card-head">
@@ -156,6 +174,6 @@
 
 <script src="js/site-header.js?v=8"></script>
 <script src="js/pipeline.js?v=4"></script>
-<script src="js/enrich.js?v=4"></script>
+<script src="js/enrich.js?v=5"></script>
 </body>
 </html>

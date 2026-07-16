@@ -13,7 +13,7 @@
   const esc = s => (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   const toast = window.toast || (m => { const t = $("toast"); if (!t) return; t.textContent = m; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 2600); });
 
-  let auth = { authenticated: false, has_mistral_key: false, key_storage_enabled: false };
+  let auth = { authenticated: false, has_mistral_key: false, key_storage_enabled: false, is_admin: false };
   let running = false, pollT = null;
 
   const jget = async p => (await fetch(p, { credentials: "same-origin" })).json();
@@ -30,6 +30,7 @@
   async function loadAuth() {
     try { auth = await jget("/api/auth/me"); } catch { auth = {}; }
     paint();
+    refreshFleet();   // the panel exists only once we know whether you're an admin
   }
 
   function paint() {
@@ -177,8 +178,86 @@
     $("enrFeed").innerHTML = feed || `<div class="empty">Пока ничего не обогащено — нажми «Запустить».</div>`;
     paintRequeue(p.low_confidence || 0);
     await refreshMine();
+    await refreshFleet();
   }
   function startPoll() { if (!pollT) pollT = setInterval(refreshProgress, 2500); }
+
+  // ── admin: the whole fleet from one account ──
+  // Ten accounts with ten keys used to mean ten browser tabs. The panel only
+  // appears for an admin, and the server re-checks that on every call — this
+  // flag decides what to draw, not what is allowed.
+  function fleetRow(a) {
+    if (!a.has_key) {
+      return `<tr class="nokey"><td class="who">${esc(a.email)}</td>
+        <td colspan="5">ключ не привязан</td></tr>`;
+    }
+    // A stopped worker's own reason ("done — nothing left") is more useful than
+    // a bare "остановлен"; an error outranks both.
+    let state = `<span class="fleet-dot">остановлен</span>`;
+    if (a.running) state = `<span class="fleet-dot on">работает${a.rate ? ` · ${a.rate}/с` : ""}</span>`;
+    else if (a.last_error) state = `<span class="fleet-dot err">${esc(a.last_error)}</span>`;
+    else if (a.reason) state = `<span class="fleet-dot">${esc(a.reason)}</span>`;
+    return `<tr>
+      <td class="who">${esc(a.email)}</td>
+      <td>${state}</td>
+      <td class="num">${fmt(a.done)}</td>
+      <td class="num">${fmt(a.calls_total)}</td>
+      <td class="num">${fmt(a.tokens_today)}</td>
+      <td class="num">${fmt(a.tokens_total)}</td>
+    </tr>`;
+  }
+
+  async function refreshFleet() {
+    const card = $("adminCard");
+    if (!card) return;
+    if (!auth.is_admin) { card.hidden = true; return; }
+    card.hidden = false;
+    let f;
+    try { f = await jget("/api/vocab/enrich/fleet"); } catch { return; }
+    if (!f || !f.accounts) return;
+    $("fleetSum").textContent =
+      `${fmt(f.running)} из ${fmt(f.with_key)} работают · ${fmt(f.tokens_total)} токенов всего`;
+    $("fleetTable").innerHTML = `<div class="fleet-wrap"><table class="fleet">
+      <thead><tr><th>Аккаунт</th><th>Состояние</th><th>Обогащено</th>
+        <th>Вызовов</th><th>Токенов сегодня</th><th>Токенов всего</th></tr></thead>
+      <tbody>${f.accounts.map(fleetRow).join("")}</tbody></table></div>`;
+    if (f.running) {
+      const p = f.progress || {};
+      setFleetStage(`${fmt(f.running)} аккаунтов обогащают · ${p.phase_title || ""}`);
+      startPoll();
+    }
+  }
+  function setFleetStage(t) { const el = $("fleetStage"); if (el) el.textContent = t; }
+
+  const fleetStartBtn = $("fleetStart");
+  if (fleetStartBtn) fleetStartBtn.onclick = async () => {
+    fleetStartBtn.disabled = true;
+    setFleetStage("Планирую починку и поднимаю воркеры…");
+    const r = await jsend("POST", "/api/vocab/enrich/fleet/start", {});
+    fleetStartBtn.disabled = false;
+    if (r.status === 403) { toast("Нужен админский аккаунт"); return; }
+    if (r.status === 400) { toast("Ни у одного аккаунта нет ключа Mistral"); return; }
+    if (!r.ok) { toast("Не удалось запустить флот"); return; }
+    const j = await r.json();
+    const parts = [];
+    if (j.started.length) parts.push(`запущено ${j.started.length}`);
+    if (j.already_running.length) parts.push(`уже работали ${j.already_running.length}`);
+    if (j.failed.length) parts.push(`не смогли ${j.failed.length}`);
+    toast(parts.join(" · ") || "Нечего запускать");
+    // Name the broken accounts — "не смогли 3" is not actionable on its own.
+    if (j.failed.length) {
+      setFleetStage("Не запустились: " + j.failed.map(f => `${f.email} (${f.error})`).join("; "));
+    }
+    startPoll(); refreshFleet(); refreshProgress();
+  };
+  const fleetStopBtn = $("fleetStop");
+  if (fleetStopBtn) fleetStopBtn.onclick = async () => {
+    const r = await jsend("POST", "/api/vocab/enrich/fleet/stop", {});
+    if (!r.ok) { toast("Не удалось остановить"); return; }
+    const j = await r.json();
+    setFleetStage(`Остановлено: ${fmt(j.stopped)} (сервер завершит текущие батчи).`);
+    refreshFleet();
+  };
 
   // ── requeue low-confidence ──
   function paintRequeue(lowCount) {
