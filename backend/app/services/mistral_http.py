@@ -24,6 +24,7 @@ import json
 import logging
 import threading
 import time
+from typing import Callable
 
 import requests as _requests
 
@@ -80,12 +81,22 @@ def post_mistral_json(
     temperature: float = 0.1,
     timeout: int = 120,
     delays: list[int] | None = None,
+    on_usage: Callable[[dict], None] | None = None,
 ) -> dict:
     """POST a chat request, return the parsed JSON object from the response.
 
     Retries 429 / 5xx / connection drops with backoff. Raises
     requests.HTTPError / requests.ConnectionError / json.JSONDecodeError on
     unrecoverable failure.
+
+    `on_usage` receives Mistral's `usage` block ({prompt_tokens, completion_tokens,
+    total_tokens}) when the reply carries one. A callback rather than a second
+    return value: every caller wants the parsed content and only the enrichment
+    fleet wants the token count, and changing the return shape would touch each
+    call site for the benefit of one. It fires only on a reply we accepted, so a
+    retried request is counted once — for the attempt that actually produced text.
+    Never let a bookkeeping failure lose a good response: the callback is called
+    inside a try/except by the caller's own contract if it can raise.
     """
     payload = {
         "model": model,
@@ -144,9 +155,14 @@ def post_mistral_json(
         break
 
     try:
-        content = resp.json()["choices"][0]["message"]["content"]
+        envelope = resp.json()
+        content = envelope["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise ValueError(f"Unexpected Mistral response shape: {exc}") from exc
+    if on_usage is not None:
+        usage = envelope.get("usage")
+        if isinstance(usage, dict):
+            on_usage(usage)
     if not isinstance(content, str) or not content.strip():
         raise ValueError("Mistral returned empty content (likely truncated / filtered)")
     parsed = json.loads(content)  # JSONDecodeError bubbles up (e.g. truncated output)
