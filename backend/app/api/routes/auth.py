@@ -12,6 +12,7 @@ from app.auth import (
     create_auth_session,
     get_principal,
     hash_password,
+    is_admin_email,
     require_user,
     revoke_cookie_session,
     verify_password,
@@ -51,6 +52,7 @@ async def me(
             "user": user,
             "has_mistral_key": bool(user and user.mistral_key_enc),
             "key_storage_enabled": crypto.is_enabled(),
+            "is_admin": is_admin_email(principal.email),
         }
     return {
         "authenticated": False,
