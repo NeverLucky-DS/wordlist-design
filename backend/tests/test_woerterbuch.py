@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+from pathlib import Path
 
 import pytest
 
@@ -69,7 +70,7 @@ def test_type_maps_onto_the_five_brushes(pos, article, expected):
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 async def _add_card(session, lemma, ru, *, ru_all=None, level="b1", pos="noun",
-                    article="die", topic="allgemein", created=1.0):
+                    article="die", topic="allgemein", created=1.0, zipf=None):
     meanings = ru_all or [ru]
     session.add(VocabCard(
         lemma=lemma,
@@ -78,7 +79,7 @@ async def _add_card(session, lemma, ru, *, ru_all=None, level="b1", pos="noun",
         level=level, band=norm.band_of(level), topic=topic, pos=pos,
         article=article, ru=ru, confidence="high", register="neutral",
         data={"ru_all": meanings, "definition_de": f"{lemma} …", "examples": []},
-        source_created_at=created,
+        zipf=zipf, source_created_at=created,
     ))
     for i, m in enumerate(meanings):
         session.add(VocabCardTranslation(
@@ -164,6 +165,34 @@ async def test_search_ignores_a_blank_query(pg_session):
     assert (await search_mod.search(pg_session, "   "))["items"] == []
 
 
+# ── ranking: how common the word is ─────────────────────────────────────────
+async def test_search_ru_ranks_the_common_word_first(pg_session):
+    """Measured on the live base: "быстрый" answered fix, rasch, prompt, rapide,
+    zügig and then schnell — the 354th most common word in German — LAST. Every
+    exact hit ties at 2.0, so the order fell to lemma length and the shortest,
+    rarest word won."""
+    for lemma, zipf in (("fix", 4.02), ("rasch", 4.31), ("prompt", 3.67),
+                        ("rapide", 3.45), ("zügig", 3.72), ("schnell", 5.51)):
+        await _add_card(pg_session, lemma, "быстрый", pos="adj", article=None,
+                        zipf=zipf)
+    assert _lemmas(await search_mod.search(pg_session, "быстрый"))[0] == "schnell"
+
+
+async def test_search_de_ranks_the_common_word_first(pg_session):
+    await _add_card(pg_session, "Bank", "банк", article="die", zipf=5.0)
+    await _add_card(pg_session, "Bankrott", "банкротство", article="der", zipf=3.0)
+    await _add_card(pg_session, "Bankett", "банкет", article="das", zipf=2.5)
+    assert _lemmas(await search_mod.search(pg_session, "Bank"))[0] == "Bank"
+
+
+async def test_search_ranks_cards_without_frequency_last(pg_session):
+    await _add_card(pg_session, "Schluss", "конец", article="der", zipf=None)
+    await _add_card(pg_session, "Schlusspunkt", "точка", article="der", zipf=3.0)
+    # Both are prefix hits; the one with a known frequency must not lose to NULL.
+    assert _lemmas(await search_mod.search(pg_session, "Schluss")) == [
+        "Schluss", "Schlusspunkt"]   # exact still beats prefix regardless
+
+
 async def test_search_does_not_let_wildcards_leak_into_like(pg_session):
     await _add_card(pg_session, "Fortschritt", "прогресс", article="der")
     assert (await search_mod.search(pg_session, "%"))["items"] == []
@@ -171,22 +200,22 @@ async def test_search_does_not_let_wildcards_leak_into_like(pg_session):
 
 # ── replica sync ─────────────────────────────────────────────────────────────
 def _make_enrichment_db(path, rows):
+    # Build the source through `ensure_schema` rather than a hand-copied CREATE:
+    # the copy silently drifted when `cards.zipf` was added and every mirror test
+    # failed on a column the real schema had all along.
+    from app.vocab import enrich
+
+    enrich.ensure_schema()
     con = sqlite3.connect(path)
-    con.execute(
-        "CREATE TABLE IF NOT EXISTS cards(lemma TEXT PRIMARY KEY, level TEXT, "
-        "topic TEXT, pos TEXT, article TEXT, ru TEXT, confidence TEXT, "
-        "register TEXT, data TEXT, model TEXT, prompt_version TEXT, "
-        "schema_version INTEGER, enriched_by INTEGER, created_at REAL)"
-    )
     for r in rows:
         con.execute(
             "INSERT OR REPLACE INTO cards(lemma,level,topic,pos,article,ru,"
             "confidence,register,data,model,prompt_version,schema_version,"
-            "enriched_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "enriched_by,created_at,zipf) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (r["lemma"], r.get("level", "b1"), r.get("topic", "allgemein"),
              r.get("pos", "noun"), r.get("article", "die"), r["ru"], "high",
              "neutral", json.dumps({"ru_all": r.get("ru_all", [r["ru"]])}),
-             "m", "p", 1, 1, r["created_at"]),
+             "m", "p", 1, 1, r["created_at"], r.get("zipf")),
         )
     con.commit()
     con.close()
@@ -197,8 +226,8 @@ def enrichment_db(tmp_path, monkeypatch):
     path = tmp_path / "enrichment.db"
 
     def _use(rows):
-        _make_enrichment_db(path, rows)
         monkeypatch.setattr("app.vocab.enrich.ENRICH_DB", path)
+        _make_enrichment_db(path, rows)   # after the patch: ensure_schema reads it
         return path
 
     return _use
@@ -211,7 +240,7 @@ async def test_mirror_copies_cards_and_their_meanings(pg_session, enrichment_db)
          "ru_all": ["зелёный", "незрелый"], "created_at": 11.0},
     ])
     result = await mirror.sync_cards(pg_session)
-    assert result == {"ok": True, "synced": 2, "total": 2}
+    assert result == {"ok": True, "synced": 2, "pruned": 0, "total": 2}
 
     card = await pg_session.get(VocabCard, "grün")
     assert (card.lemma_norm, card.lemma_ascii) == ("gruen", "grun")
@@ -264,7 +293,68 @@ async def test_mirror_survives_a_repeat_run(pg_session, enrichment_db):
     enrichment_db([{"lemma": "Fortschritt", "ru": "прогресс", "created_at": 10.0}])
     await mirror.sync_cards(pg_session)
     assert (await mirror.sync_cards(pg_session)) == {"ok": True, "synced": 0,
-                                                     "total": 1}
+                                                     "pruned": 0, "total": 1}
+
+
+async def test_mirror_carries_frequency_across(pg_session, enrichment_db):
+    enrichment_db([{"lemma": "schnell", "ru": "быстрый", "created_at": 10.0,
+                    "zipf": 5.51}])
+    await mirror.sync_cards(pg_session)
+    assert (await pg_session.get(VocabCard, "schnell")).zipf == pytest.approx(5.51)
+
+
+async def test_mirror_prunes_a_card_the_source_dropped(pg_session, enrichment_db):
+    """A repair pass can `skip` a word we already published, which deletes its
+    card. The forward cursor can only add, so without pruning the replica would
+    keep serving the entry we just rejected — forever."""
+    path = enrichment_db([
+        {"lemma": "Nacht", "ru": "ночь", "created_at": 10.0},
+        {"lemma": "nacht", "ru": "ночь", "created_at": 10.0},
+    ])
+    await mirror.sync_cards(pg_session)
+    assert await pg_session.get(VocabCard, "nacht") is not None
+
+    con = sqlite3.connect(path)
+    con.execute("DELETE FROM cards WHERE lemma='nacht'")
+    con.commit()
+    con.close()
+
+    assert (await mirror.sync_cards(pg_session))["pruned"] == 1
+    assert await pg_session.get(VocabCard, "nacht") is None
+    assert await pg_session.get(VocabCard, "Nacht") is not None   # only the artifact
+
+
+async def test_mirror_refuses_to_prune_against_an_unreadable_source(
+        pg_session, enrichment_db, monkeypatch):
+    """If enrichment.db vanishes, "delete everything not in an empty set" would
+    wipe the dictionary. A stale replica is recoverable; an empty one is an outage."""
+    enrichment_db([{"lemma": "Fortschritt", "ru": "прогресс", "created_at": 10.0}])
+    await mirror.sync_cards(pg_session)
+    monkeypatch.setattr("app.vocab.enrich.ENRICH_DB", tmp_missing := Path("/nonexistent.db"))
+    assert not tmp_missing.exists()
+    assert await mirror.prune_orphans(pg_session) == 0
+    assert await pg_session.get(VocabCard, "Fortschritt") is not None
+
+
+async def test_full_replay_picks_up_a_column_backfilled_in_place(
+        pg_session, enrichment_db):
+    """`plan_repairs` fills `cards.zipf` with an UPDATE, which does not move
+    `created_at` — so the incremental cursor can never see it and ranking would
+    stay broken until each card happened to be re-enriched."""
+    path = enrichment_db([{"lemma": "schnell", "ru": "быстрый", "created_at": 10.0}])
+    await mirror.sync_cards(pg_session)
+    assert (await pg_session.get(VocabCard, "schnell")).zipf is None
+
+    con = sqlite3.connect(path)
+    con.execute("UPDATE cards SET zipf=5.51 WHERE lemma='schnell'")
+    con.commit()
+    con.close()
+
+    assert (await mirror.sync_cards(pg_session))["synced"] == 0     # cursor is blind
+    result = await mirror.sync_cards(pg_session, since=(0.0, ""))   # replay sees it
+    assert result["synced"] == 1
+    await pg_session.refresh(await pg_session.get(VocabCard, "schnell"))
+    assert (await pg_session.get(VocabCard, "schnell")).zipf == pytest.approx(5.51)
 
 
 # ── personal word list ───────────────────────────────────────────────────────

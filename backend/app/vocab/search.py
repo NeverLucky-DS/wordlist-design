@@ -38,6 +38,23 @@ _PREFIX = 1.0   # entry starts with the query; + similarity to order within
 _PRIMARY_BONUS = 0.05  # tie-break toward a card's main meaning
 
 
+def _by_relevance(score):
+    """Order hits: match quality, then how common the word is, then length.
+
+    Frequency has to sit above length. Every exact hit for "быстрый" scores the
+    same 2.0, so the tie used to fall straight to `length(lemma_norm)` — which
+    answered fix, rasch, prompt, rapide, zügig and put `schnell`, the 354th most
+    common word in German, LAST. Someone looking up "быстрый" wants schnell.
+    NULLS LAST keeps the few cards with no source frequency out of the top.
+    """
+    return (
+        score.desc(),
+        VocabCard.zipf.desc().nullslast(),
+        func.length(VocabCard.lemma_norm),
+        VocabCard.lemma,
+    )
+
+
 def _like_prefix(folded: str) -> str:
     """LIKE pattern for `folded*`, with the wildcards in user input defused."""
     escaped = folded.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -135,9 +152,7 @@ async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
         stmt = (
             select(VocabCard, ranked.c.score)
             .join(ranked, VocabCard.lemma == ranked.c.lemma)
-            .order_by(ranked.c.score.desc(),
-                      func.length(VocabCard.lemma_norm),
-                      VocabCard.lemma)
+            .order_by(*_by_relevance(ranked.c.score))
             .limit(limit)
         )
     else:
@@ -148,7 +163,7 @@ async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
         stmt = (
             select(VocabCard, score.label("score"))
             .where(or_(*matches))
-            .order_by(score.desc(), func.length(VocabCard.lemma_norm), VocabCard.lemma)
+            .order_by(*_by_relevance(score))
             .limit(limit)
         )
 

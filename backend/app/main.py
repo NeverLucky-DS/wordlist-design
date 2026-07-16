@@ -99,11 +99,17 @@ async def on_startup() -> None:
 
     await mark_interrupted_analyses()
 
+    # Migrate enrichment.db here, for the same reason alembic runs before the app
+    # serves: it is the mirror's source, and the mirror starts reading on boot. A
+    # worker would eventually call this itself, but only once someone presses
+    # Start — until then every sync pass would fail on a column that is missing.
+    global _mirror_task
+    from app.vocab import enrich, mirror
+
+    await asyncio.to_thread(enrich.ensure_schema)
+
     # Pull enriched cards into the searchable Postgres replica, now and then on a
     # timer — the enrichment worker keeps adding to SQLite while we serve.
-    global _mirror_task
-    from app.vocab import mirror
-
     _mirror_task = asyncio.create_task(mirror.periodic_sync())
 
 

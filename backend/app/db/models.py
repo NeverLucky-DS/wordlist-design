@@ -277,6 +277,12 @@ class VocabCard(Base):
     confidence: Mapped[str] = mapped_column(String(8), default="high")
     register: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     data: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
+    # Zipf frequency (wordfreq, ~1–7) carried over from vocab.db. Search needs a
+    # tie-break: every exact hit for "быстрый" scores identically, so the order
+    # fell to lemma length and put `schnell` — the 354th most common word in
+    # German — BELOW fix, rasch, prompt, rapide and zügig. NULL sorts last, which
+    # is what we want for the few cards with no source row (renamed spellings).
+    zipf: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     # `cards.created_at` from SQLite — the incremental sync watermark.
     source_created_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
     synced_at: Mapped[datetime] = mapped_column(server_default=func.now())

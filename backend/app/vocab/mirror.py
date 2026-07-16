@@ -49,7 +49,7 @@ def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
     try:
         rows = con.execute(
             "SELECT lemma, level, topic, pos, article, ru, confidence, register, "
-            "       data, created_at "
+            "       data, zipf, created_at "
             "FROM cards WHERE (created_at, lemma) > (?, ?) "
             "ORDER BY created_at, lemma LIMIT ?",
             (after_ts, after_lemma, limit),
@@ -57,6 +57,20 @@ def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
     finally:
         con.close()
     return [dict(r) for r in rows]
+
+
+def _read_lemmas() -> set[str]:
+    """Every lemma that currently has a card. Used to find rows the replica kept
+    after the source dropped them."""
+    from app.vocab.enrich import ENRICH_DB
+
+    if not ENRICH_DB.exists():
+        return set()
+    con = sqlite3.connect(f"file:{ENRICH_DB}?mode=ro", uri=True)
+    try:
+        return {r[0] for r in con.execute("SELECT lemma FROM cards")}
+    finally:
+        con.close()
 
 
 def _ru_meanings(row: dict) -> list[str]:
@@ -95,6 +109,7 @@ def _card_values(row: dict) -> dict:
         "confidence": row.get("confidence") or "high",
         "register": row.get("register"),
         "data": json.loads(row["data"]) if row.get("data") else {},
+        "zipf": row.get("zipf"),
         "source_created_at": float(row.get("created_at") or 0.0),
     }
 
@@ -129,7 +144,7 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
                 c: stmt.excluded[c]
                 for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
                           "pos", "article", "ru", "confidence", "register", "data",
-                          "source_created_at")
+                          "zipf", "source_created_at")
             }
             | {"synced_at": func.now()},
         )
@@ -150,14 +165,52 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
         await db.execute(pg_insert(VocabCardTranslation).values(translations))
 
 
+async def prune_orphans(db: AsyncSession) -> int:
+    """Drop replica rows whose card no longer exists in the source.
+
+    The sync is a forward cursor, so it can only ever add. Deletions do happen:
+    a repair pass that the model answers with `skip` removes the card (the noun
+    wrongly filed under "nacht"), and a pre-1996 lemma is re-filed under its
+    modern spelling. Without this the replica would keep serving exactly the
+    entries we just decided were wrong — permanently, since nothing would ever
+    touch them again.
+
+    Bails out if the source reads back empty: that means enrichment.db is missing
+    or unreadable, and deleting "everything not in an empty set" would wipe the
+    dictionary. A stale replica is recoverable; an empty one is an outage.
+    """
+    live = await asyncio.to_thread(_read_lemmas)
+    if not live:
+        return 0
+    mirrored = {r[0] for r in (await db.execute(select(VocabCard.lemma))).all()}
+    gone = sorted(mirrored - live)
+    if not gone:
+        return 0
+    for i in range(0, len(gone), SYNC_BATCH):
+        await db.execute(
+            delete(VocabCard).where(VocabCard.lemma.in_(gone[i:i + SYNC_BATCH]))
+        )
+        await db.commit()
+    logger.info("vocab mirror: pruned %d orphaned cards", len(gone))
+    return len(gone)
+
+
 async def sync_cards(db: AsyncSession, *, batch: int = SYNC_BATCH,
-                     max_rows: int | None = None) -> dict:
+                     max_rows: int | None = None,
+                     since: tuple[float, str] | None = None,
+                     prune: bool = True) -> dict:
     """Copy new/updated cards across. Idempotent; safe to run concurrently
-    with the enrichment worker (SQLite is read-only here)."""
+    with the enrichment worker (SQLite is read-only here).
+
+    `since=(0.0, "")` replays every card instead of resuming from the watermark.
+    Needed when a column is added or backfilled on the SQLite side: that does not
+    move `created_at`, so the cursor would never revisit those rows. Upserts make
+    the replay harmless, and search keeps serving throughout — no drop-and-rebuild.
+    """
     if not is_supported(db):
         return {"ok": False, "reason": "mirror requires postgresql", "synced": 0}
 
-    ts, lemma = await _cursor(db)
+    ts, lemma = since if since is not None else await _cursor(db)
     synced = 0
     while True:
         take = batch if max_rows is None else min(batch, max_rows - synced)
@@ -173,8 +226,22 @@ async def sync_cards(db: AsyncSession, *, batch: int = SYNC_BATCH,
         if len(rows) < take:
             break
 
+    pruned = await prune_orphans(db) if prune else 0
     total = (await db.execute(select(func.count()).select_from(VocabCard))).scalar_one()
-    return {"ok": True, "synced": synced, "total": total}
+    return {"ok": True, "synced": synced, "pruned": pruned, "total": total}
+
+
+async def full_resync() -> dict:
+    """Replay every card into the replica on a session of our own.
+
+    Used by the enrichment start-up once `plan_repairs` has backfilled `zipf` on
+    cards that were written before the column existed — the cursor cannot see
+    those, so ranking would stay broken until each card happened to be re-enriched.
+    """
+    from app.db.session import SessionLocal
+
+    async with SessionLocal() as db:
+        return await sync_cards(db, since=(0.0, ""))
 
 
 async def periodic_sync(interval: float = SYNC_INTERVAL) -> None:
@@ -193,9 +260,9 @@ async def periodic_sync(interval: float = SYNC_INTERVAL) -> None:
                 if not is_supported(db):
                     return  # nothing to mirror onto — e.g. the SQLite test setup
                 result = await sync_cards(db)
-            if result.get("synced"):
-                logger.info("vocab mirror: +%d cards (total %d)",
-                            result["synced"], result["total"])
+            if result.get("synced") or result.get("pruned"):
+                logger.info("vocab mirror: +%d −%d cards (total %d)",
+                            result["synced"], result["pruned"], result["total"])
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001
