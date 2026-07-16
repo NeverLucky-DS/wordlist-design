@@ -29,6 +29,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from app.vocab import norm
 from app.vocab.topics import GENERAL_TOPIC, TOPICS, TOPIC_SLUGS
 
 # ── config ───────────────────────────────────────────────────────────────────
@@ -37,7 +38,9 @@ ENRICH_DB = Path(os.environ.get("ENRICH_DB") or VOCAB_DB.with_name("enrichment.d
 
 # Bump when the prompt/schema changes so re-enrichment can target stale cards.
 # 2026-07-14: added model-side skip (reject non-words) + stronger ru_all.
-PROMPT_VERSION = "enrich-2026-07-14"
+# 2026-07-17: skip inflected forms (hast/Stunden/gemacht got invented rare
+#             readings); allow "word" to carry the post-1996 spelling.
+PROMPT_VERSION = "enrich-2026-07-17"
 CARD_SCHEMA = 1
 
 DEFAULT_BATCH = 10          # bench sweet spot (throughput flat, latency bounded)
@@ -90,6 +93,23 @@ def is_junk(lemma: str) -> bool:
     return False
 
 
+# ── phases ───────────────────────────────────────────────────────────────────
+# One button, several kinds of work. A phase is NOT a coordinator: it is a tag on
+# word_status, and `claim` simply serves the highest-priority phase that still has
+# work. So N accounts need no leader election — they converge on the same phase
+# because they read the same table, and a crash loses nothing.
+#
+# Repairs run before the backfill on purpose: they are ~1.7k words against ~17k,
+# and they exercise the response matcher on a small, known-answer set first. If
+# something is wrong with it, it shows up in minutes instead of at 4am.
+BACKFILL = "backfill"
+PHASES: tuple[tuple[str, str], ...] = (
+    ("repair_case", "Починка омографов"),
+    ("repair_ortho", "Починка орфографии"),
+    (BACKFILL, "Обогащение новых слов"),
+)
+PHASE_PRIO = {name: i for i, (name, _) in enumerate(PHASES)}
+
 # enrich order: obligatory Goethe core first, then upper levels, then the tail
 _LEVEL_PRIO = {"a1": 0, "a2": 1, "b1": 2, "b2": 3, "c1": 4, "c2": 5, "unlisted": 6}
 _JSON_FIELDS = ("pos", "forms", "translations", "examples", "synonyms",
@@ -139,6 +159,15 @@ AUSSORTIEREN (das Wichtigste zuerst):
   · Eigenname (Personen, Orte, Marken, Institutionen — Oder, Man, DER als Firma);
   · Abkürzung / Akronym (EU, SPD, usw.);
   · Wortbildungs-Fragment oder Affix (mit-, ab-, -heit, Tag-);
+  · FLEKTIERTE WORTFORM statt Grundform: "hast"/"hat" (→ haben), "stand" (→ stehen),
+    "galt" (→ gelten), "Stunden" (→ Stunde), "gemacht"/"gegeben" (→ machen/geben),
+    "einen" (Akk. von "ein"), "jungen" (→ jung). Das Lemma ist die Grundform;
+    eine Form davon ist KEIN eigener Eintrag → skip. Rette sie NIEMALS mit einer
+    seltenen Nebenbedeutung, die es zufällig auch gibt: kein "einen"=vereinen,
+    kein "stunden"=aufschieben für "Stunden", kein "Hast"=Eile für "hast".
+    ABER: ist die Schreibung selbst ein übliches eigenes Lemma, behalte sie —
+    "Macht", "Würde", "Art", "Recht", "Halt" (Substantive) und substantivierte
+    Adjektive ("das Ganze", "der Alte") sind echte Einträge.
   · Groß-/Kleinschreibungs-Artefakt: Substantive schreibt man IMMER groß, also ist
     eine kleingeschriebene Nomen-Form ("nacht", "zeit", "platz") ein Artefakt → skip,
     behalte nur "Nacht"/"Zeit". Umgekehrt ist ein großgeschriebenes Funktions-/Nicht-
@@ -155,7 +184,13 @@ AUSSORTIEREN (das Wichtigste zuerst):
   sicher weißt. Ist es kein echtes Wort → "skip", nicht "low".
 
 REGELN für behaltene Wörter (skip=false):
-- "word" MUSS exakt dem lemma entsprechen (Zuordnung).
+- "word" MUSS exakt dem lemma entsprechen (Zuordnung) — Groß-/Kleinschreibung
+  inklusive. EINZIGE Ausnahme: das lemma steht in der VERALTETEN Rechtschreibung
+  von vor 1996 (Schluß, Prozeß, Einfluß, bißchen, muß, Bewußtsein). Dann gib in
+  "word" die HEUTIGE amtliche Schreibung zurück (Schluss, Prozess, Einfluss,
+  bisschen, muss, Bewusstsein) — wir speichern die Karte unter dieser.
+  ß nach langem Vokal oder Diphthong ist KORREKT und bleibt (Straße, groß, weiß,
+  heißen, Maß, Fuß) — ändere diese Wörter NICHT.
 - "ru_all": ALLE gängigen Bedeutungen als getrennte Einträge, wichtigste zuerst;
   bei echter Polysemie mindestens 2. "ru" = das erste/häufigste davon.
 - "grammar": NUR die zur Wortart passenden Schlüssel; Rest weglassen.
@@ -274,39 +309,84 @@ def _is_skip(item: Any) -> bool:
 
 def parse_response(
     sent_lemmas: list[str], parsed: dict
-) -> tuple[dict[str, dict], list[str], list[str]]:
+) -> tuple[dict[str, dict], list[str], list[str], dict[str, str]]:
     """Map a Mistral response back to sent words.
 
-    Returns (cards_by_lemma, skipped, unmatched):
-      • cards    — validated cards to persist and mark 'done';
+    Returns (cards_by_lemma, skipped, unmatched, renamed):
+      • cards    — validated cards to persist and mark 'done', keyed by the SENT
+                   lemma (the work-state key);
       • skipped  — words the MODEL rejected as non-headwords (terminal 'skipped',
                    no card, never retried);
       • unmatched — words dropped or returned invalid; a failed attempt so the
-                    word is retried until MAX_ATTEMPTS.
+                    word is retried until MAX_ATTEMPTS;
+      • renamed  — sent lemma → the lemma the card should be STORED under, for
+                   the pre-1996 spellings the model modernizes (Schluß→Schluss).
     Never lose a word to a partial batch — every sent lemma lands in exactly one
     bucket.
+
+    Matching is exact-first and deliberately refuses to guess. It used to fold
+    case (`by_word[word.lower()]`), which silently merged the two halves of every
+    homograph pair sent together: the model answered Morgen=утро AND morgen=завтра
+    correctly, the index kept one, and BOTH lemmas were saved with it. 635 pairs
+    in the base were byte-identical duplicates because of it — `morgen`=завтра did
+    not exist at all. Case is the ONLY thing separating those two words, so it can
+    never be folded away during lookup.
+
+    The folded fallback exists for a different failure: the model is told to
+    correct pre-1996 spellings, so "Schluß" comes back as "Schluss" and never
+    matched by name (348 words dead in `failed`, incl. Bewusstsein, Einfluss,
+    Prozess). It only fires when the fold is UNAMBIGUOUS on both sides — one sent
+    lemma and one returned item — so a Morgen/morgen batch can never reach it.
     """
     items = parsed.get("words") if isinstance(parsed, dict) else None
-    by_word: dict[str, dict] = {}
+    exact: dict[str, dict] = {}
+    by_fold: dict[str, list[dict]] = {}
     if isinstance(items, list):
         for it in items:
-            if isinstance(it, dict) and isinstance(it.get("word"), str):
-                by_word.setdefault(it["word"].strip().lower(), it)
+            if not (isinstance(it, dict) and isinstance(it.get("word"), str)):
+                continue
+            word = it["word"].strip()
+            if not word:
+                continue
+            exact.setdefault(word, it)
+            by_fold.setdefault(norm.fold_de(word), []).append(it)
+
+    # How many SENT lemmas share a folded key. >1 means the fold cannot identify
+    # a word (Morgen/morgen) and only an exact hit may be trusted.
+    sent_folds: dict[str, int] = {}
+    for lemma in sent_lemmas:
+        key = norm.fold_de(lemma)
+        sent_folds[key] = sent_folds.get(key, 0) + 1
 
     cards: dict[str, dict] = {}
     skipped: list[str] = []
     unmatched: list[str] = []
+    renamed: dict[str, str] = {}
     for lemma in sent_lemmas:
-        item = by_word.get(lemma.lower())
+        item = exact.get(lemma)
+        store_as = lemma
+        if item is None:
+            key = norm.fold_de(lemma)
+            candidates = by_fold.get(key, [])
+            if sent_folds[key] == 1 and len(candidates) == 1:
+                item = candidates[0]
+                word = item["word"].strip()
+                # A pure case difference means the model just re-cased our lemma;
+                # keep OUR spelling, it is the homograph key. A deeper difference
+                # is the orthography correction we asked for — store under theirs.
+                if word.lower() != lemma.lower():
+                    store_as = word
         if _is_skip(item):
             skipped.append(lemma)
             continue
         card = normalize_card(item) if item else None
         if card:
             cards[lemma] = card
+            if store_as != lemma:
+                renamed[lemma] = store_as
         else:
             unmatched.append(lemma)
-    return cards, skipped, unmatched
+    return cards, skipped, unmatched, renamed
 
 
 # ── storage (enrichment.db; vocab.db attached read-only) ─────────────────────
@@ -318,6 +398,14 @@ def _conn() -> sqlite3.Connection:
     if VOCAB_DB.exists():
         con.execute("ATTACH DATABASE ? AS v", (str(VOCAB_DB),))
     return con
+
+
+def _add_column(con: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    """Idempotent ALTER — the live enrichment.db is 100 MB and predates these
+    columns, so the schema has to grow in place rather than be recreated."""
+    have = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+    if column not in have:
+        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
 
 def ensure_schema() -> None:
@@ -341,6 +429,12 @@ def ensure_schema() -> None:
             enriched_by INTEGER,                  -- user_id
             created_at REAL)""")
         con.execute("CREATE INDEX IF NOT EXISTS ix_cards_topic ON cards(topic)")
+        # Which kind of work a word is queued for; NULL reads as the backfill.
+        _add_column(con, "word_status", "phase", "TEXT")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_ws_phase ON word_status(phase)")
+        # Frequency, carried over from vocab.db so search can rank by it without
+        # joining across databases (the mirror only ever reads `cards`).
+        _add_column(con, "cards", "zipf", "REAL")
         con.commit()
     finally:
         con.close()
@@ -357,9 +451,63 @@ def _raw_word(row: sqlite3.Row) -> dict:
     return {k: d.get(k) for k in _RAW_FIELDS}
 
 
+# A word is up for grabs: no terminal status, attempts left, no live lease.
+_CLAIMABLE = ("COALESCE(ws.status,'raw')='raw' "
+              "AND COALESCE(ws.attempts,0) < ? "
+              "AND (ws.lease_at IS NULL OR ws.lease_at < ?)")
+
+
 def _order_clause() -> str:
-    cases = " ".join(f"WHEN '{lvl}' THEN {p}" for lvl, p in _LEVEL_PRIO.items())
-    return f"ORDER BY CASE w.level {cases} ELSE 9 END, w.freq_rank"
+    levels = " ".join(f"WHEN '{lvl}' THEN {p}" for lvl, p in _LEVEL_PRIO.items())
+    phases = " ".join(f"WHEN '{n}' THEN {p}" for n, p in PHASE_PRIO.items())
+    return (f"ORDER BY CASE COALESCE(ws.phase,'{BACKFILL}') {phases} ELSE 9 END, "
+            f"CASE w.level {levels} ELSE 9 END, w.freq_rank")
+
+
+def case_partners(lemma: str) -> set[str]:
+    """The spellings of `lemma` that differ from it only in case.
+
+    Python's `.lower()`/`.upper()` and not SQL's: SQLite folds ASCII only, so
+    `lower('Über')` is still 'Über' and an Über/über pair would slip through.
+    """
+    out = {lemma.lower(), lemma[:1].upper() + lemma[1:]} if lemma else set()
+    out.discard(lemma)
+    return out
+
+
+def _with_case_partners(con: sqlite3.Connection, rows: list, stale_before: float,
+                        cap: int) -> list:
+    """Pull a claimed word's case twin into the SAME batch.
+
+    The prompt can only resolve a homograph pair (keep "Morgen"=утро, "morgen"=
+    завтра; skip the artifact in "nacht"/"Nacht") when it sees both spellings at
+    once. Ordering by freq_rank puts them next to each other but a batch boundary
+    can still split them — then each is judged alone and the artifact survives as
+    a second card. So co-claiming is explicit rather than left to luck.
+
+    `cap` holds the grown batch to MAX_BATCH — partners must not silently turn a
+    tested prompt size into double one. At DEFAULT_BATCH (10) that still leaves
+    room for a partner to every word, which is what the repair phase actually
+    hits: measured on the live base, its batches come out 100% pairs.
+    """
+    if cap <= 0:
+        return list(rows)
+    have = {r["lemma"] for r in rows}
+    wanted = set()
+    for r in rows:
+        wanted |= case_partners(r["lemma"])
+    wanted -= have
+    if not wanted:
+        return list(rows)
+    wanted = sorted(wanted)[:cap]
+    qs = ",".join("?" * len(wanted))
+    extra = con.execute(
+        f"""SELECT w.* FROM v.words w
+            LEFT JOIN word_status ws ON ws.lemma = w.lemma
+            WHERE w.lemma IN ({qs}) AND {_CLAIMABLE} AND NOT {JUNK_SQL}""",
+        [*wanted, MAX_ATTEMPTS, stale_before],
+    ).fetchall()
+    return list(rows) + list(extra)
 
 
 def claim(user_id: int, n: int = DEFAULT_BATCH) -> list[dict]:
@@ -381,14 +529,13 @@ def claim(user_id: int, n: int = DEFAULT_BATCH) -> list[dict]:
         rows = con.execute(
             f"""SELECT w.* FROM v.words w
                 LEFT JOIN word_status ws ON ws.lemma = w.lemma
-                WHERE COALESCE(ws.status,'raw')='raw'
-                  AND COALESCE(ws.attempts,0) < ?
-                  AND (ws.lease_at IS NULL OR ws.lease_at < ?)
-                  AND NOT {JUNK_SQL}
+                WHERE {_CLAIMABLE} AND NOT {JUNK_SQL}
                 {_order_clause()}
                 LIMIT ?""",
             (MAX_ATTEMPTS, stale_before, n),
         ).fetchall()
+        rows = _with_case_partners(con, rows, stale_before,
+                                   cap=MAX_BATCH - len(rows))
         for r in rows:
             con.execute(
                 """INSERT INTO word_status(lemma,status,attempts,lease_owner,lease_at,updated_at)
@@ -407,10 +554,24 @@ def claim(user_id: int, n: int = DEFAULT_BATCH) -> list[dict]:
 
 
 def save_cards(user_id: int, cards: dict[str, dict], levels: dict[str, str],
-               model: str) -> int:
-    """Persist validated cards and flip their status to 'done'. Idempotent."""
+               model: str, renamed: dict[str, str] | None = None,
+               zipfs: dict[str, float] | None = None) -> int:
+    """Persist validated cards and flip their status to 'done'. Idempotent.
+
+    `cards` is keyed by the SENT lemma and so is `word_status` — that key is the
+    work state and must stay pinned to vocab.db, or a word whose card is filed
+    elsewhere would look unenriched and be served again forever.
+
+    `renamed` files the CARD under a different lemma: the model returns the
+    post-1996 spelling for a pre-reform entry (Schluß→Schluss), and the card is
+    what the user reads, so it carries the modern word. The base has no separate
+    'Schluss' row to collide with — checked: of 3371 ß-lemmas only 16 have an
+    ss-twin — so this adds the modern spelling rather than shadowing one.
+    """
     if not cards:
         return 0
+    renamed = renamed or {}
+    zipfs = zipfs or {}
     now = time.time()
     con = _conn()
     try:
@@ -418,12 +579,16 @@ def save_cards(user_id: int, cards: dict[str, dict], levels: dict[str, str],
             con.execute(
                 """INSERT OR REPLACE INTO cards(lemma,level,topic,pos,article,ru,
                      confidence,register,data,model,prompt_version,schema_version,
-                     enriched_by,created_at)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (lemma, levels.get(lemma), c["topic"], c["pos"], c["article"],
-                 c["ru"], c["confidence"], c["register"],
+                     enriched_by,created_at,zipf)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (renamed.get(lemma, lemma), levels.get(lemma), c["topic"],
+                 c["pos"], c["article"], c["ru"], c["confidence"], c["register"],
                  json.dumps(c, ensure_ascii=False), model, PROMPT_VERSION,
-                 CARD_SCHEMA, user_id, now))
+                 CARD_SCHEMA, user_id, now, zipfs.get(lemma)))
+            if lemma in renamed:
+                # The old spelling keeps no card of its own; drop any stale one so
+                # search cannot serve both "Schluß" and "Schluss".
+                con.execute("DELETE FROM cards WHERE lemma=?", (lemma,))
             con.execute(
                 """INSERT INTO word_status(lemma,status,attempts,lease_owner,lease_at,updated_at)
                    VALUES(?, 'done', 0, NULL, NULL, ?)
@@ -461,13 +626,21 @@ def fail_words(lemmas: list[str]) -> None:
 
 def skip_words(lemmas: list[str]) -> None:
     """Terminal 'skipped' — the model judged these not real learnable headwords.
-    No card, never re-served, does NOT count as a failure."""
+    No card, never re-served, does NOT count as a failure.
+
+    Drops any card the word already had: on a repair pass the model is re-judging
+    a word we ALREADY published (the artifact half of a homograph pair, e.g. the
+    noun card wrongly filed under "nacht"), and leaving it would keep the thing
+    we just decided is not a word in the search index. Nothing is lost for good —
+    vocab.db is immutable and a requeue re-enriches the lemma from scratch.
+    """
     if not lemmas:
         return
     now = time.time()
     con = _conn()
     try:
         for lemma in lemmas:
+            con.execute("DELETE FROM cards WHERE lemma=?", (lemma,))
             con.execute(
                 """INSERT INTO word_status(lemma,status,attempts,lease_owner,lease_at,updated_at)
                    VALUES(?, 'skipped', 0, NULL, NULL, ?)
@@ -479,10 +652,16 @@ def skip_words(lemmas: list[str]) -> None:
         con.close()
 
 
-def requeue(lemmas: list[str], *, drop_card: bool = True) -> int:
+def requeue(lemmas: list[str], *, drop_card: bool = True,
+            phase: str | None = None) -> int:
     """Reset words back to 'raw' so a fresh run re-enriches them (with the current
     prompt). Clears attempts/lease and, by default, deletes the stale card so the
-    old low-quality output can't linger. Returns how many were reset."""
+    old low-quality output can't linger. Returns how many were reset.
+
+    `drop_card=False` keeps the old card visible until a better one replaces it —
+    what the repair phases want, since they re-enrich words that are already live
+    and a gap in search would be worse than a stale entry for a few minutes.
+    """
     if not lemmas:
         return 0
     now = time.time()
@@ -493,16 +672,90 @@ def requeue(lemmas: list[str], *, drop_card: bool = True) -> int:
             if drop_card:
                 con.execute("DELETE FROM cards WHERE lemma=?", (lemma,))
             cur = con.execute(
-                """INSERT INTO word_status(lemma,status,attempts,lease_owner,lease_at,updated_at)
-                   VALUES(?, 'raw', 0, NULL, NULL, ?)
+                """INSERT INTO word_status(lemma,status,attempts,lease_owner,lease_at,updated_at,phase)
+                   VALUES(?, 'raw', 0, NULL, NULL, ?, ?)
                    ON CONFLICT(lemma) DO UPDATE SET status='raw', attempts=0,
-                     lease_owner=NULL, lease_at=NULL, updated_at=excluded.updated_at""",
-                (lemma, now))
+                     lease_owner=NULL, lease_at=NULL, updated_at=excluded.updated_at,
+                     phase=excluded.phase""",
+                (lemma, now, phase))
             n += cur.rowcount or 1
         con.commit()
         return n
     finally:
         con.close()
+
+
+# ── repair planning (the deterministic half of the run — no LLM) ─────────────
+def _case_collision_victims(con: sqlite3.Connection) -> list[str]:
+    """Lemmas whose card is a byte-identical copy of another spelling's card.
+
+    That is the fingerprint of the folded-lookup bug: the model answered both
+    halves of the pair, one answer was dropped, and both lemmas were saved with
+    the survivor. Verified against the live base — of 1081 case pairs, all 635
+    with identical cards were sent in ONE batch and all 446 split across batches
+    were correct — so identical data is a precise marker, not a heuristic.
+    """
+    groups: dict[str, list[str]] = {}
+    for (lemma,) in con.execute("SELECT lemma FROM cards"):
+        groups.setdefault(lemma.lower(), []).append(lemma)
+    victims: list[str] = []
+    for spellings in groups.values():
+        if len(spellings) < 2:
+            continue
+        qs = ",".join("?" * len(spellings))
+        rows = con.execute(
+            f"SELECT lemma, data FROM cards WHERE lemma IN ({qs})", spellings
+        ).fetchall()
+        if len({r["data"] for r in rows}) == 1:
+            victims.extend(r["lemma"] for r in rows)
+    return victims
+
+
+def plan_repairs() -> dict:
+    """Queue the known-bad cards for re-enrichment and backfill `cards.zipf`.
+
+    Runs on every start and must be idempotent, which here means *self-limiting*:
+    a word is only ever tagged into a repair phase while it is still untagged
+    (`phase` NULL/backfill). Once tagged it keeps that tag whatever the outcome,
+    so a repair that the model refuses, or that legitimately produces identical
+    cards again, is attempted once and never loops. Cheap, deterministic, no LLM.
+    """
+    ensure_schema()
+    con = _conn()
+    try:
+        # Frequency for cards enriched before the column existed.
+        #
+        # The EXISTS guard is what makes this terminate. A renamed card (Schluss)
+        # has no vocab.db row, so the subquery yields NULL and its zipf stays
+        # NULL — without the guard the UPDATE would "fill" it on every single run,
+        # keep reporting rows filled, and trigger a full 64k mirror replay at
+        # every start, forever. Those cards sort last, which is right: an
+        # obsolete-spelling entry is not a high-frequency headword.
+        zipf_filled = 0
+        if VOCAB_DB.exists():
+            zipf_filled = con.execute(
+                """UPDATE cards SET zipf =
+                     (SELECT w.zipf FROM v.words w WHERE w.lemma = cards.lemma)
+                   WHERE zipf IS NULL
+                     AND EXISTS (SELECT 1 FROM v.words w
+                                 WHERE w.lemma = cards.lemma
+                                   AND w.zipf IS NOT NULL)""").rowcount
+        untagged = f"COALESCE(phase,'{BACKFILL}') = '{BACKFILL}'"
+        victims = [
+            l for l in _case_collision_victims(con)
+            if con.execute(
+                f"SELECT 1 FROM word_status WHERE lemma=? AND {untagged}", (l,)
+            ).fetchone()
+        ]
+        broken = [r[0] for r in con.execute(
+            f"SELECT lemma FROM word_status WHERE status='failed' AND {untagged}")]
+        con.commit()
+    finally:
+        con.close()
+    # Keep the old cards live while they wait — a stale entry beats a hole.
+    n_case = requeue(victims, drop_card=False, phase="repair_case")
+    n_ortho = requeue(broken, drop_card=False, phase="repair_ortho")
+    return {"repair_case": n_case, "repair_ortho": n_ortho, "zipf_filled": zipf_filled}
 
 
 def requeue_low_confidence() -> int:
@@ -648,14 +901,48 @@ def progress() -> dict:
         ]
         low_conf = con.execute(
             "SELECT COUNT(*) FROM cards WHERE confidence='low'").fetchone()[0]
+        # Work still outstanding per phase, and how big each phase was planned to
+        # be. `claim` serves the highest-priority phase that still has any, so the
+        # first row with remaining>0 IS what every worker is currently doing.
+        left = {
+            r["ph"]: r["n"]
+            for r in con.execute(
+                f"""SELECT COALESCE(ws.phase,'{BACKFILL}') ph, COUNT(*) n
+                    FROM v.words w LEFT JOIN word_status ws ON ws.lemma=w.lemma
+                    WHERE NOT {JUNK_SQL}
+                      AND COALESCE(ws.status,'raw') NOT IN ('done','failed','skipped')
+                    GROUP BY ph""")
+        }
+        planned = {
+            r["phase"]: r["n"]
+            for r in con.execute(
+                "SELECT phase, COUNT(*) n FROM word_status "
+                "WHERE phase IS NOT NULL GROUP BY phase")
+        }
     finally:
         con.close()
     # `enrichable` excludes junk we never send; progress is measured against it.
     enrichable = max(0, total - junk)
+    # A repair phase is a fixed planned set, so it can show "3 of 1274 left". The
+    # backfill has no planned size of its own (its words are simply untagged), and
+    # its progress is the global bar — so it reports no total.
+    phases = [
+        {
+            "name": name,
+            "title": title,
+            "remaining": left.get(name, 0),
+            "total": planned.get(name) if name != BACKFILL else None,
+        }
+        for name, title in PHASES
+    ]
+    current = next((p for p in phases if p["remaining"] > 0), None)
     return {
         "exists": True, "total": total, "enrichable": enrichable, "junk": junk,
         "enriched": done, "failed": failed, "skipped": skipped,
         "remaining": remaining, "in_flight": in_flight,
         "pct": round(100 * done / enrichable, 2) if enrichable else 0,
         "by_level": by_level, "recent": recent, "low_confidence": low_conf,
+        "phases": phases,
+        "phase": current["name"] if current else None,
+        "phase_title": current["title"] if current else None,
     }

@@ -31,6 +31,31 @@ _MAX_FAIL_BACKOFF = 90.0        # grow the pause between failing batches, capped
 _workers: dict[int, "Worker"] = {}
 _registry_lock = threading.Lock()
 
+_plan_lock = threading.Lock()
+_plan_result: dict | None = None
+
+
+def ensure_planned() -> dict:
+    """Run the deterministic repair planning once per process, before any worker.
+
+    Ten accounts press Start within seconds of each other, so this has to be
+    serialised and done once: `plan_repairs` is idempotent, but scanning 64k cards
+    ten times over is waste, and ten writers on one SQLite file is contention for
+    no reason. A failure here leaves the flag unset (so the next Start retries)
+    and must never block enrichment — a missing repair plan only means the backfill
+    runs first, which is the old behaviour, not a broken one.
+    """
+    global _plan_result
+    with _plan_lock:
+        if _plan_result is None:
+            try:
+                _plan_result = enrich.plan_repairs()
+                logger.info("enrich repair plan: %s", _plan_result)
+            except Exception:  # noqa: BLE001
+                logger.exception("enrich repair planning failed; continuing")
+                return {}
+        return dict(_plan_result)
+
 
 class Worker:
     def __init__(self, user_id: int, api_key: str, model: str,
@@ -43,8 +68,8 @@ class Worker:
         self._lock = threading.Lock()
         self.stats = {
             "running": True, "started_at": time.time(), "stopped_at": None,
-            "done": 0, "failed": 0, "skipped": 0, "calls": 0, "last_error": None,
-            "last_lemmas": [], "reason": None,
+            "done": 0, "failed": 0, "skipped": 0, "renamed": 0, "calls": 0,
+            "last_error": None, "last_lemmas": [], "reason": None,
         }
         self._thread = threading.Thread(
             target=self._run, name=f"enrich-{user_id}", daemon=True)
@@ -103,6 +128,7 @@ class Worker:
 
                 lemmas = [w["lemma"] for w in batch]
                 levels = {w["lemma"]: w["level"] for w in batch}
+                zipfs = {w["lemma"]: w["zipf"] for w in batch}
                 self._set(last_lemmas=lemmas)
 
                 try:
@@ -133,8 +159,10 @@ class Worker:
                     self._wait(self._fail_backoff(consecutive))
                     continue
 
-                cards, skipped, unmatched = enrich.parse_response(lemmas, parsed)
-                enrich.save_cards(self.user_id, cards, levels, self.model)
+                cards, skipped, unmatched, renamed = enrich.parse_response(
+                    lemmas, parsed)
+                enrich.save_cards(self.user_id, cards, levels, self.model,
+                                  renamed=renamed, zipfs=zipfs)
                 if skipped:
                     enrich.skip_words(skipped)
                 if unmatched:
@@ -143,6 +171,7 @@ class Worker:
                     self.stats["done"] += len(cards)
                     self.stats["skipped"] += len(skipped)
                     self.stats["failed"] += len(unmatched)
+                    self.stats["renamed"] += len(renamed)
                     self.stats["calls"] += 1
         finally:
             # free any still-held lease so a stop doesn't strand words
@@ -169,10 +198,12 @@ def start_worker(user_id: int, api_key: str, model: str,
         existing = _workers.get(user_id)
         if existing and existing.running:
             return {"already_running": True, **existing.snapshot()}
+    plan = ensure_planned()
+    with _registry_lock:
         w = Worker(user_id, api_key, model, batch)
         _workers[user_id] = w
     w.start()
-    return {"already_running": False, **w.snapshot()}
+    return {"already_running": False, "plan": plan, **w.snapshot()}
 
 
 def stop_worker(user_id: int) -> dict:

@@ -134,10 +134,11 @@ def test_parse_response_tracks_unmatched():
          "definition_de": "Gebäude.", "topic": "wohnen_zuhause",
          "examples": [{"de": "**Haus**", "ru": "дом"}]},
     ]}
-    cards, skipped, unmatched = enrich.parse_response(["Haus", "Baum"], parsed)
+    cards, skipped, unmatched, renamed = enrich.parse_response(["Haus", "Baum"], parsed)
     assert "Haus" in cards
     assert skipped == []
     assert unmatched == ["Baum"]     # dropped word tracked, never silently lost
+    assert renamed == {}
 
 
 def test_parse_response_routes_model_skip():
@@ -147,10 +148,104 @@ def test_parse_response_routes_model_skip():
          "definition_de": "Gebäude.", "topic": "wohnen_zuhause",
          "examples": [{"de": "**Haus**", "ru": "дом"}]},
     ]}
-    cards, skipped, unmatched = enrich.parse_response(["ER", "Haus"], parsed)
+    cards, skipped, unmatched, _ = enrich.parse_response(["ER", "Haus"], parsed)
     assert list(cards) == ["Haus"]
     assert skipped == ["ER"]         # model-rejected word → skipped, not a card
     assert unmatched == []
+
+
+def _item(word, ru, pos="noun", **kw):
+    """A minimal valid model item for `word`."""
+    return {"word": word, "pos": pos, "ru": ru, "definition_de": f"{word}.",
+            "topic": "zeit_zeitangaben",
+            "examples": [{"de": f"**{word}**", "ru": ru}], **kw}
+
+
+# ── the homograph bug: case must never be folded during lookup ───────────────
+def test_homograph_pair_keeps_both_distinct_answers():
+    """The regression that cost 635 pairs: Morgen and morgen were sent in one
+    batch, the model answered both, and the folded index handed the SAME card to
+    both lemmas — so `morgen`=завтра did not exist in the base at all."""
+    parsed = {"words": [_item("Morgen", "утро", article="der"),
+                        _item("morgen", "завтра", pos="adv")]}
+    cards, skipped, unmatched, renamed = enrich.parse_response(
+        ["Morgen", "morgen"], parsed)
+    assert cards["Morgen"]["ru"] == "утро"
+    assert cards["morgen"]["ru"] == "завтра"
+    assert cards["Morgen"] != cards["morgen"]     # never the same card twice
+    assert (skipped, unmatched, renamed) == ([], [], {})
+
+
+def test_homograph_half_missing_is_unmatched_not_copied():
+    """If the model answers only one spelling, the other must be retried — NOT
+    quietly given its twin's card, which is exactly how the duplicates appeared."""
+    parsed = {"words": [_item("Morgen", "утро", article="der")]}
+    cards, _, unmatched, _ = enrich.parse_response(["Morgen", "morgen"], parsed)
+    assert list(cards) == ["Morgen"]
+    assert unmatched == ["morgen"]
+
+
+def test_model_skip_of_case_artifact_is_not_swallowed():
+    """`nacht` is a case artifact and the model says so; the fold used to drop the
+    skip and file Nacht's card under it too."""
+    parsed = {"words": [_item("Nacht", "ночь", article="die"),
+                        {"word": "nacht", "skip": True, "skip_reason": "Artefakt"}]}
+    cards, skipped, unmatched, _ = enrich.parse_response(["Nacht", "nacht"], parsed)
+    assert list(cards) == ["Nacht"]
+    assert skipped == ["nacht"]
+    assert unmatched == []
+
+
+def test_recased_reply_matches_when_unambiguous_and_keeps_our_spelling():
+    """Only "morgen" was sent, the model replied "Morgen". The fold may resolve
+    that — but our lemma is the homograph key, so it wins."""
+    parsed = {"words": [_item("Morgen", "завтра", pos="adv")]}
+    cards, _, unmatched, renamed = enrich.parse_response(["morgen"], parsed)
+    assert list(cards) == ["morgen"]
+    assert renamed == {}          # a pure case change is not an orthography fix
+    assert unmatched == []
+
+
+# ── pre-1996 spellings: the model corrects them, we file under the new one ───
+def test_pre_reform_spelling_is_renamed_to_the_modern_one():
+    """348 words (Bewusstsein, Einfluss, Prozess…) died in `failed` because the
+    model returns the post-1996 spelling and the name no longer matched."""
+    parsed = {"words": [_item("Schluss", "конец", article="der")]}
+    cards, _, unmatched, renamed = enrich.parse_response(["Schluß"], parsed)
+    assert list(cards) == ["Schluß"]          # work state stays on the sent lemma
+    assert renamed == {"Schluß": "Schluss"}   # the card is filed under the modern one
+    assert unmatched == []
+
+
+def test_rename_is_refused_when_the_fold_is_ambiguous():
+    """Two sent lemmas folding together can only be matched by name — never let
+    the ß/ss fallback re-open the door the case fix just closed."""
+    parsed = {"words": [_item("Masse", "масса", article="die")]}
+    cards, _, unmatched, renamed = enrich.parse_response(["Maße", "Masse"], parsed)
+    assert list(cards) == ["Masse"]      # exact hit only
+    assert unmatched == ["Maße"]
+    assert renamed == {}
+
+
+def test_unrelated_word_is_never_renamed_onto():
+    parsed = {"words": [_item("Haus", "дом", article="das")]}
+    cards, _, unmatched, renamed = enrich.parse_response(["Baum"], parsed)
+    assert cards == {} and renamed == {} and unmatched == ["Baum"]
+
+
+def test_save_cards_rename_files_card_new_but_status_old(db):
+    """The card moves to the modern spelling; the work state must NOT, or the old
+    lemma looks unenriched and gets served again forever."""
+    card = enrich.normalize_card(_item("Schluss", "конец", article="der"))
+    enrich.save_cards(1, {"Schluß": card}, {"Schluß": "b1"}, "m",
+                      renamed={"Schluß": "Schluss"})
+    con = sqlite3.connect(db["enrich"])
+    stored = [r[0] for r in con.execute("SELECT lemma FROM cards")]
+    status = con.execute(
+        "SELECT status FROM word_status WHERE lemma='Schluß'").fetchone()
+    con.close()
+    assert stored == ["Schluss"]        # filed under the modern spelling only
+    assert status[0] == "done"          # …and the old lemma is settled
 
 
 def test_is_junk_matches_fragments_and_acronyms():
@@ -180,6 +275,134 @@ def test_claim_never_serves_junk(db):
     assert served.isdisjoint({"mit-", "ER", "a"})
     assert "Haus" in served          # real words still served
     assert enrich.progress()["junk"] >= 3
+
+
+def _add_word(path, lemma, level="a1", rank=50, zipf=3.0):
+    con = sqlite3.connect(path)
+    con.execute(
+        "INSERT INTO words(lemma,article,pos,forms,translations,examples,"
+        "synonyms,collocations,idioms,sources,by_source,zipf,freq_rank,level)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (lemma, None, "[]", "[]", '["x"]', "[]", "[]", "[]", "[]", "[]", "{}",
+         zipf, rank, level))
+    con.commit()
+    con.close()
+
+
+# ── phases ──────────────────────────────────────────────────────────────────
+def test_case_partners_handles_non_ascii():
+    # SQL lower() would leave 'Über' alone; the pairing must be Unicode-aware.
+    assert enrich.case_partners("Über") == {"über"}
+    assert enrich.case_partners("über") == {"Über"}
+    assert enrich.case_partners("Morgen") == {"morgen"}
+
+
+def test_claim_co_batches_case_partners(db):
+    """A homograph pair has to reach the model together — that is the only way
+    the prompt can tell утро from завтра and drop the artifact half."""
+    _add_word(db["vocab"], "Morgen", rank=1)
+    _add_word(db["vocab"], "morgen", rank=900, level="unlisted")   # far apart
+    served = {w["lemma"] for w in enrich.claim(1, 1)}
+    assert served == {"Morgen", "morgen"}   # partner pulled in despite the ordering
+
+
+def test_claim_partner_expansion_does_not_re_serve(db):
+    _add_word(db["vocab"], "Morgen", rank=1)
+    _add_word(db["vocab"], "morgen", rank=900, level="unlisted")
+    first = {w["lemma"] for w in enrich.claim(1, 1)}
+    second = {w["lemma"] for w in enrich.claim(2, 5)}
+    assert first == {"Morgen", "morgen"}
+    assert second.isdisjoint(first)          # leases still disjoint across workers
+
+
+def test_repair_phase_is_claimed_before_backfill(db):
+    card = enrich.normalize_card(_item("Haus", "дом", article="das"))
+    enrich.save_cards(1, {"Haus": card}, {"Haus": "a1"}, "m")
+    enrich.requeue(["Haus"], drop_card=False, phase="repair_case")
+    # Rahmen is b2 and Haus a1, but phase outranks level either way.
+    assert enrich.claim(1, 1)[0]["lemma"] == "Haus"
+    assert enrich.progress()["phase"] == "repair_case"
+
+
+def test_plan_repairs_tags_identical_case_cards_once(db):
+    _add_word(db["vocab"], "Morgen", rank=1)
+    _add_word(db["vocab"], "morgen", rank=2)
+    same = enrich.normalize_card(_item("Morgen", "утро", article="der"))
+    enrich.save_cards(1, {"Morgen": same, "morgen": same},
+                      {"Morgen": "a1", "morgen": "a1"}, "m")
+    first = enrich.plan_repairs()
+    assert first["repair_case"] == 2          # both halves queued
+    assert enrich.progress()["phase"] == "repair_case"
+    # Idempotent: a second pass must not re-queue what it already tagged, or the
+    # run would loop on these words every single start.
+    assert enrich.plan_repairs()["repair_case"] == 0
+
+
+def test_plan_repairs_leaves_distinct_case_cards_alone(db):
+    _add_word(db["vocab"], "Morgen", rank=1)
+    _add_word(db["vocab"], "morgen", rank=2)
+    enrich.save_cards(
+        1,
+        {"Morgen": enrich.normalize_card(_item("Morgen", "утро", article="der")),
+         "morgen": enrich.normalize_card(_item("morgen", "завтра", pos="adv"))},
+        {"Morgen": "a1", "morgen": "a1"}, "m")
+    assert enrich.plan_repairs()["repair_case"] == 0   # already correct → untouched
+
+
+def test_plan_repairs_requeues_failed_words_once(db):
+    for _ in range(enrich.MAX_ATTEMPTS):
+        enrich.fail_words(["Haus"])
+    assert enrich.progress()["failed"] == 1
+    assert enrich.plan_repairs()["repair_ortho"] == 1
+    assert enrich.claim(1, 1)[0]["lemma"] == "Haus"    # gets another chance
+    assert enrich.plan_repairs()["repair_ortho"] == 0  # but only the one
+
+
+def test_plan_repairs_backfills_zipf(db):
+    card = enrich.normalize_card(_item("Haus", "дом", article="das"))
+    enrich.save_cards(1, {"Haus": card}, {"Haus": "a1"}, "m")   # no zipf passed
+    con = sqlite3.connect(db["enrich"])
+    assert con.execute("SELECT zipf FROM cards WHERE lemma='Haus'").fetchone()[0] is None
+    con.close()
+    assert enrich.plan_repairs()["zipf_filled"] == 1
+    con = sqlite3.connect(db["enrich"])
+    assert con.execute("SELECT zipf FROM cards WHERE lemma='Haus'").fetchone()[0] == 3.0
+    con.close()
+
+
+def test_plan_repairs_settles_when_a_card_has_no_source_row(db):
+    """A renamed card (Schluss) has no vocab.db row, so its zipf can never be
+    filled. Without a guard the UPDATE keeps matching it on every run, keeps
+    reporting work done, and fires a full 64k mirror replay at every start."""
+    card = enrich.normalize_card(_item("Schluss", "конец", article="der"))
+    enrich.save_cards(1, {"Haus": card}, {"Haus": "a1"}, "m",
+                      renamed={"Haus": "Schluss"})
+    assert enrich.plan_repairs()["zipf_filled"] == 0   # nothing fillable
+    assert enrich.plan_repairs()["zipf_filled"] == 0   # and it stays that way
+
+
+def test_save_cards_stores_zipf(db):
+    card = enrich.normalize_card(_item("Haus", "дом", article="das"))
+    enrich.save_cards(1, {"Haus": card}, {"Haus": "a1"}, "m", zipfs={"Haus": 5.5})
+    con = sqlite3.connect(db["enrich"])
+    assert con.execute("SELECT zipf FROM cards WHERE lemma='Haus'").fetchone()[0] == 5.5
+    con.close()
+
+
+def test_skip_drops_an_existing_card(db):
+    """A repair pass re-judges a word we already published; if the model now says
+    it is not a word, the card must not stay in the index."""
+    card = enrich.normalize_card(_item("morgen", "утро", article="der"))
+    enrich.save_cards(1, {"morgen": card}, {"morgen": "a1"}, "m")
+    enrich.skip_words(["morgen"])
+    assert enrich.get_card("morgen") is None
+    assert enrich.progress()["skipped"] == 1
+
+
+def test_progress_falls_back_to_backfill_phase(db):
+    p = enrich.progress()
+    assert p["phase"] == "backfill"           # untagged words are the backfill
+    assert [x["name"] for x in p["phases"]] == ["repair_case", "repair_ortho", "backfill"]
 
 
 def test_skip_and_requeue(db):
