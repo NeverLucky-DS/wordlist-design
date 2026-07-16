@@ -86,11 +86,17 @@
 
   // ── start / stop the server worker ──
   async function start() {
+    setStage("Планирую починку…");     // the first Start scans the base first
     const r = await jsend("POST", "/api/vocab/enrich/start", {});
     if (r.status === 400) { toast("Сначала привяжи ключ Mistral"); return; }
     if (r.status === 401) { toast("Сначала войди в аккаунт"); return; }
     if (!r.ok) { toast("Не удалось запустить"); return; }
-    running = true; paintBtn(); setStage("Сервер обогащает словарь…"); startPoll();
+    running = true; paintBtn(); setStage("Сервер обогащает словарь…");
+    // The plan comes back only for whoever started first; the rest just join in.
+    const plan = ((await r.json().catch(() => ({}))) || {}).plan || {};
+    const queued = (plan.repair_case || 0) + (plan.repair_ortho || 0);
+    if (queued) toast(`В починку: ${fmt(queued)} слов.`);
+    startPoll(); refreshProgress();
   }
   async function stop() {
     await jsend("POST", "/api/vocab/enrich/stop", {});
@@ -106,6 +112,35 @@
 
   // ── progress ──
   function setStage(t) { $("enrStage").textContent = t; }
+
+  // One button runs several kinds of work in order (fix the homograph
+  // duplicates, then the pre-1996 spellings, then the backfill). The server
+  // picks the phase from the DB — this only reports what it chose.
+  function paintPhases(p) {
+    const el = $("enrPhases");
+    if (!el) return;
+    const phases = p.phases || [];
+    if (!phases.length) { el.innerHTML = ""; return; }
+    const active = phases.findIndex(x => x.remaining > 0);
+    el.innerHTML = phases.map((ph, i) => {
+      const done = ph.remaining === 0;
+      const on = i === active;
+      // A repair phase has a planned size, so it can show "осталось 12 из 1274".
+      // The backfill has none — its progress is the big bar above.
+      const left = done ? "готово"
+        : ph.total ? `осталось ${fmt(ph.remaining)} из ${fmt(ph.total)}`
+        : `осталось ${fmt(ph.remaining)}`;
+      return `<li class="phase ${done ? "done" : ""} ${on ? "on" : ""}">
+        <b>${esc(ph.title)}</b><span>${left}</span></li>`;
+    }).join("");
+  }
+
+  function stageText(p) {
+    if (!p.phase) return "Всё обогащено — очередь пуста.";
+    const n = (p.phases || []).findIndex(x => x.name === p.phase) + 1;
+    const total = (p.phases || []).length;
+    return `Этап ${n}/${total}: ${p.phase_title}`;
+  }
 
   async function refreshMine() {
     if (!auth.authenticated) { running = false; return; }
@@ -125,6 +160,8 @@
     try { p = await jget("/api/vocab/enrich/progress"); } catch { return; }
     if (!p.exists) { $("enrKpis").innerHTML = `<div class="empty">База ещё не собрана.</div>`; return; }
     $("enrFill").style.width = p.pct + "%";
+    paintPhases(p);
+    if (running) setStage(stageText(p));
     const workers = (p.workers || []).length;
     $("enrKpis").innerHTML =
       `<div class="kpi"><b>${fmt(p.enriched)}</b><span>обогащено · ${p.pct}%</span></div>

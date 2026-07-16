@@ -139,6 +139,27 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .enr-bar{height:10px;border-radius:6px;background:var(--bg-2);overflow:hidden;margin:10px 0 16px;border:1px solid var(--line-soft)}
 .enr-bar>i{display:block;height:100%;width:0;transition:width .5s;
   background:linear-gradient(90deg,var(--a1),var(--b1),var(--b2))}
+/* Run phases — one button, several kinds of work, so say which one is running.
+   Order matches enrich.PHASES; the backend decides which is active. */
+.phases{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:-6px 0 16px;padding:0;
+  counter-reset:phase}
+.phases:empty{display:none}
+.phase{counter-increment:phase;display:flex;align-items:baseline;gap:8px;
+  font-size:12.5px;color:var(--ink-mute);border:1px solid var(--line);
+  background:var(--cream);border-radius:20px;padding:5px 12px 5px 9px}
+.phase::before{content:counter(phase);display:inline-flex;align-items:center;
+  justify-content:center;width:16px;height:16px;border-radius:50%;flex:0 0 auto;
+  background:var(--bg-2);color:var(--ink-mute);font-size:10.5px;font-weight:700;
+  align-self:center}
+.phase b{font-weight:600;color:var(--ink-soft)}
+.phase span{font-size:11.5px;opacity:.85}
+.phase.on{border-color:var(--accent-ln);background:var(--accent-bg)}
+.phase.on::before{background:var(--accent);color:#fff}
+.phase.on b{color:var(--accent-dk)}
+.phase.done{border-color:var(--ok);background:var(--ok-soft)}
+.phase.done::before{content:"✓";background:var(--ok);color:#fff;font-size:9.5px}
+.phase.done b{color:var(--ok)}
+
 .enr-feed{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .ew{font-size:12.5px;border:1px solid var(--line);border-radius:20px;padding:4px 11px;background:var(--cream);color:var(--ink-mute)}
 .ew b{color:var(--ink);font-weight:600}
