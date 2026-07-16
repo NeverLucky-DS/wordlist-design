@@ -717,6 +717,7 @@ def record_usage(user_id: int, usage: dict) -> None:
         except (TypeError, ValueError):
             return 0
 
+    ensure_schema()   # same contract as claim/progress: a public entry stands alone
     now = time.time()
     con = _conn()
     try:

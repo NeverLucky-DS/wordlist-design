@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import Principal, require_user
+from app.auth import Principal, require_admin, require_user
 from app.db.session import get_db
 from app.vocab import store
 
@@ -210,6 +210,130 @@ async def enrich_requeue(
     else:
         raise HTTPException(422, "pass scope='low_confidence' or a lemmas list")
     return {"ok": True, "requeued": n}
+
+
+# ── fleet: drive every account's worker from one place ───────────────────────
+# Ten accounts, ten keys, one operator. Without this the only way to run them all
+# is ten browser tabs, each logged into a different account. Admin-gated because
+# it starts work on OTHER accounts' keys — it spends their money.
+class FleetStartIn(BaseModel):
+    batch: int | None = None
+
+
+def _account_row(user, worker: dict | None, usage: dict) -> dict:
+    """One line of the fleet table: who, whether it can work, what it is doing,
+    what it has spent. `worker` is None for an account that never started."""
+    w = worker or {}
+    return {
+        "user_id": user.id,
+        "email": user.email,
+        "has_key": bool(user.mistral_key_enc),
+        "running": bool(w.get("running")),
+        "done": w.get("done", 0),
+        "skipped": w.get("skipped", 0),
+        "failed": w.get("failed", 0),
+        "calls": w.get("calls", 0),
+        "rate": w.get("rate", 0.0),
+        "last_error": w.get("last_error"),
+        "reason": w.get("reason"),
+        # Session counters die with the process; these are the durable ledger.
+        "tokens_today": usage.get("today_tokens", 0),
+        "tokens_total": usage.get("total_tokens", 0),
+        "calls_total": usage.get("calls", 0),
+    }
+
+
+@router.get("/enrich/fleet")
+async def enrich_fleet(
+    principal: Principal = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Every account, its worker and its token spend, plus global progress."""
+    from sqlalchemy import select
+
+    from app.db.models import User
+    from app.vocab import enrich, enrich_worker
+
+    users = (await db.execute(select(User).order_by(User.id))).scalars().all()
+    usage = await asyncio.to_thread(enrich.usage_by_user)
+    accounts = [
+        _account_row(u, enrich_worker.worker_status(u.id), usage.get(u.id, {}))
+        for u in users
+    ]
+    progress = await asyncio.to_thread(enrich.progress)
+    return {
+        "accounts": accounts,
+        "running": sum(1 for a in accounts if a["running"]),
+        "with_key": sum(1 for a in accounts if a["has_key"]),
+        "tokens_today": sum(a["tokens_today"] for a in accounts),
+        "tokens_total": sum(a["tokens_total"] for a in accounts),
+        "progress": progress,
+    }
+
+
+@router.post("/enrich/fleet/start")
+async def enrich_fleet_start(
+    body: FleetStartIn,
+    principal: Principal = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Start a worker for every account that has a key attached.
+
+    One account's bad key must not stop the other nine: each is decrypted and
+    started independently and its failure is reported as a row, not raised.
+    """
+    from sqlalchemy import select
+
+    from app.config import settings
+    from app.db.models import User
+    from app.services import crypto
+    from app.vocab import enrich, enrich_worker
+
+    if not crypto.is_enabled():
+        raise HTTPException(503, "key storage disabled (MISTRAL_KEY_SECRET unset)")
+    users = (await db.execute(
+        select(User).where(User.mistral_key_enc.isnot(None)).order_by(User.id)
+    )).scalars().all()
+    if not users:
+        raise HTTPException(400, "no account has a Mistral key attached")
+
+    batch = (enrich.DEFAULT_BATCH if body.batch is None
+             else max(1, min(body.batch, enrich.MAX_BATCH)))
+    started, already, failed, plan = [], [], [], {}
+    for user in users:
+        try:
+            key = crypto.decrypt(user.mistral_key_enc)
+        except Exception as exc:  # noqa: BLE001 — e.g. re-keyed server secret
+            failed.append({"email": user.email, "error": f"ключ не читается: {exc}"})
+            continue
+        if not key:
+            failed.append({"email": user.email, "error": "ключ не читается"})
+            continue
+        try:
+            state = await asyncio.to_thread(
+                enrich_worker.start_worker, user.id, key,
+                settings.mistral_model, batch)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("fleet: could not start worker for %s", user.email)
+            failed.append({"email": user.email, "error": str(exc)[:200]})
+            continue
+        plan = plan or (state.get("plan") or {})
+        (already if state.get("already_running") else started).append(user.email)
+
+    if plan.get("zipf_filled"):
+        _schedule_resync()
+    return {"ok": True, "started": started, "already_running": already,
+            "failed": failed, "plan": plan}
+
+
+@router.post("/enrich/fleet/stop")
+async def enrich_fleet_stop(principal: Principal = Depends(require_admin)):
+    """Stop every running worker, whoever started it."""
+    from app.vocab import enrich_worker
+
+    running = [w for w in enrich_worker.active_workers()]
+    enrich_worker.stop_all()
+    return {"ok": True, "stopped": len(running)}
 
 
 @router.get("/enrich/status")
