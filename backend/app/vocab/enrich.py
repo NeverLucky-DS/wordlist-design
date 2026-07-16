@@ -435,6 +435,19 @@ def ensure_schema() -> None:
         # Frequency, carried over from vocab.db so search can rank by it without
         # joining across databases (the mirror only ever reads `cards`).
         _add_column(con, "cards", "zipf", "REAL")
+        # What each account's key has spent. Lives here, next to the rest of the
+        # work state, because the worker is a sync thread that already owns this
+        # file — routing it to Postgres would mean an event loop per worker.
+        # Bucketed by UTC day so the fleet panel can show today apart from ever.
+        con.execute("""CREATE TABLE IF NOT EXISTS token_usage(
+            user_id INTEGER NOT NULL,
+            day TEXT NOT NULL,                    -- UTC, YYYY-MM-DD
+            calls INTEGER NOT NULL DEFAULT 0,
+            prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            total_tokens INTEGER NOT NULL DEFAULT 0,
+            updated_at REAL,
+            PRIMARY KEY(user_id, day))""")
         con.commit()
     finally:
         con.close()
@@ -683,6 +696,75 @@ def requeue(lemmas: list[str], *, drop_card: bool = True,
         return n
     finally:
         con.close()
+
+
+# ── token accounting ────────────────────────────────────────────────────────
+def _utc_day() -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def record_usage(user_id: int, usage: dict) -> None:
+    """Add one Mistral reply's token cost to this account's tally.
+
+    Reads only what Mistral sent: a reply with no `total_tokens` still counts as
+    a call, because the call happened even if we cannot price it. Silently
+    tolerates junk in the numbers — this is bookkeeping, and it must never be the
+    reason a good batch is lost.
+    """
+    def _int(key: str) -> int:
+        try:
+            return max(0, int(usage.get(key) or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    now = time.time()
+    con = _conn()
+    try:
+        con.execute(
+            """INSERT INTO token_usage(user_id,day,calls,prompt_tokens,
+                 completion_tokens,total_tokens,updated_at)
+               VALUES(?,?,1,?,?,?,?)
+               ON CONFLICT(user_id,day) DO UPDATE SET
+                 calls = token_usage.calls + 1,
+                 prompt_tokens = token_usage.prompt_tokens + excluded.prompt_tokens,
+                 completion_tokens = token_usage.completion_tokens + excluded.completion_tokens,
+                 total_tokens = token_usage.total_tokens + excluded.total_tokens,
+                 updated_at = excluded.updated_at""",
+            (user_id, _utc_day(), _int("prompt_tokens"), _int("completion_tokens"),
+             _int("total_tokens"), now))
+        con.commit()
+    finally:
+        con.close()
+
+
+def usage_by_user() -> dict[int, dict]:
+    """Token spend per account: today's bucket and the all-time total."""
+    ensure_schema()
+    today = _utc_day()
+    con = _conn()
+    try:
+        rows = con.execute(
+            """SELECT user_id,
+                      SUM(CASE WHEN day=? THEN total_tokens ELSE 0 END) today_tokens,
+                      SUM(CASE WHEN day=? THEN calls ELSE 0 END) today_calls,
+                      SUM(total_tokens) total_tokens,
+                      SUM(prompt_tokens) prompt_tokens,
+                      SUM(completion_tokens) completion_tokens,
+                      SUM(calls) calls
+               FROM token_usage GROUP BY user_id""", (today, today)).fetchall()
+    finally:
+        con.close()
+    return {
+        r["user_id"]: {
+            "today_tokens": r["today_tokens"] or 0,
+            "today_calls": r["today_calls"] or 0,
+            "total_tokens": r["total_tokens"] or 0,
+            "prompt_tokens": r["prompt_tokens"] or 0,
+            "completion_tokens": r["completion_tokens"] or 0,
+            "calls": r["calls"] or 0,
+        }
+        for r in rows
+    }
 
 
 # ── repair planning (the deterministic half of the run — no LLM) ─────────────

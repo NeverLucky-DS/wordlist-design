@@ -69,7 +69,7 @@ class Worker:
         self.stats = {
             "running": True, "started_at": time.time(), "stopped_at": None,
             "done": 0, "failed": 0, "skipped": 0, "renamed": 0, "calls": 0,
-            "last_error": None, "last_lemmas": [], "reason": None,
+            "tokens": 0, "last_error": None, "last_lemmas": [], "reason": None,
         }
         self._thread = threading.Thread(
             target=self._run, name=f"enrich-{user_id}", daemon=True)
@@ -103,6 +103,21 @@ class Worker:
     def _wait(self, seconds: float) -> None:
         self._stop.wait(seconds)   # interruptible sleep
 
+    def _record_usage(self, usage: dict) -> None:
+        """Bank what the reply cost. Never let bookkeeping cost us the batch:
+        the cards are already paid for, and a write failure here would throw them
+        away and re-spend the tokens on a retry."""
+        try:
+            enrich.record_usage(self.user_id, usage)
+        except Exception:  # noqa: BLE001
+            logger.exception("token accounting failed (user %s)", self.user_id)
+        try:
+            spent = int(usage.get("total_tokens") or 0)
+        except (TypeError, ValueError):
+            spent = 0
+        with self._lock:
+            self.stats["tokens"] += spent
+
     @staticmethod
     def _fail_backoff(consecutive: int) -> float:
         """Grow the pause between failing batches so a network outage parks the
@@ -132,7 +147,8 @@ class Worker:
                 self._set(last_lemmas=lemmas)
 
                 try:
-                    parsed = enrich_call(self._key, self.model, batch)
+                    parsed = enrich_call(self._key, self.model, batch,
+                                         on_usage=self._record_usage)
                     consecutive = 0
                 except _requests.HTTPError as exc:
                     code = getattr(exc.response, "status_code", None)
@@ -183,11 +199,12 @@ class Worker:
             self._key = ""  # drop the plaintext key from memory
 
 
-def enrich_call(api_key: str, model: str, batch: list[dict]) -> dict:
+def enrich_call(api_key: str, model: str, batch: list[dict],
+                on_usage=None) -> dict:
     from app.services.mistral_http import post_mistral_json
     return post_mistral_json(
         [{"role": "user", "content": enrich.build_prompt(batch)}],
-        api_key, model, temperature=0.1, timeout=300,
+        api_key, model, temperature=0.1, timeout=300, on_usage=on_usage,
     )
 
 

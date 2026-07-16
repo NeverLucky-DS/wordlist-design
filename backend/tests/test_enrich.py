@@ -399,6 +399,39 @@ def test_skip_drops_an_existing_card(db):
     assert enrich.progress()["skipped"] == 1
 
 
+# ── token accounting ────────────────────────────────────────────────────────
+def test_usage_accumulates_per_account(db):
+    enrich.record_usage(1, {"prompt_tokens": 900, "completion_tokens": 100,
+                            "total_tokens": 1000})
+    enrich.record_usage(1, {"prompt_tokens": 50, "completion_tokens": 5,
+                            "total_tokens": 55})
+    enrich.record_usage(2, {"total_tokens": 7})
+    usage = enrich.usage_by_user()
+    assert usage[1]["total_tokens"] == 1055
+    assert usage[1]["calls"] == 2
+    assert usage[1]["prompt_tokens"] == 950
+    assert usage[2]["total_tokens"] == 7      # accounts are tallied separately
+    assert usage[1]["today_tokens"] == 1055
+
+
+def test_usage_counts_a_call_even_without_numbers(db):
+    """The call happened and cost real money; only the price tag is missing."""
+    enrich.record_usage(1, {})
+    assert enrich.usage_by_user()[1] == {
+        "today_tokens": 0, "today_calls": 1, "total_tokens": 0,
+        "prompt_tokens": 0, "completion_tokens": 0, "calls": 1}
+
+
+def test_usage_tolerates_junk_numbers(db):
+    enrich.record_usage(1, {"total_tokens": "не число", "prompt_tokens": -5})
+    u = enrich.usage_by_user()[1]
+    assert u["calls"] == 1 and u["total_tokens"] == 0 and u["prompt_tokens"] == 0
+
+
+def test_usage_of_an_account_that_never_ran_is_absent(db):
+    assert enrich.usage_by_user() == {}
+
+
 def test_progress_falls_back_to_backfill_phase(db):
     p = enrich.progress()
     assert p["phase"] == "backfill"           # untagged words are the backfill
