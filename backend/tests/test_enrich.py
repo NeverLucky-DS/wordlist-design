@@ -435,14 +435,14 @@ def test_usage_of_an_account_that_never_ran_is_absent(db):
 def test_progress_falls_back_to_backfill_phase(db):
     p = enrich.progress()
     assert p["phase"] == "backfill"           # untagged words are the backfill
-    assert [x["name"] for x in p["phases"]] == ["repair_case", "repair_ortho", "backfill"]
+    assert [x["name"] for x in p["phases"]] == [
+        "repair_pairs", "repair_case", "repair_ortho", "backfill"]
 
 
 def test_skip_and_requeue(db):
-    enrich.claim(1, 1)               # lease Haus
-    enrich.skip_words(["Haus"])
+    enrich.skip_words(["Xyzzy"])     # unlisted, no twin — the model's call to make
     assert enrich.progress()["skipped"] == 1
-    assert "Haus" not in {w["lemma"] for w in enrich.claim(1, 10)}  # not re-served
+    assert "Xyzzy" not in {w["lemma"] for w in enrich.claim(1, 10)}  # not re-served
 
     card = enrich.normalize_card({
         "word": "gelten", "pos": "verb", "ru": "действовать",
@@ -456,3 +456,62 @@ def test_skip_and_requeue(db):
     # requeued word comes back as raw and its card is gone
     assert enrich.get_card("gelten") is None
     assert "gelten" in {w["lemma"] for w in enrich.claim(1, 10)}
+
+
+@pytest.fixture
+def pair(tmp_path, monkeypatch):
+    """A case pair where BOTH halves are real words — the shape that broke."""
+    vocab = tmp_path / "vocab.db"
+    _make_vocab(vocab, [
+        {"lemma": "haben", "level": "a1", "rank": 86},
+        {"lemma": "Haben", "level": "a1", "rank": 85, "article": "das"},
+    ])
+    monkeypatch.setattr(enrich, "VOCAB_DB", vocab)
+    monkeypatch.setattr(enrich, "ENRICH_DB", tmp_path / "enrichment.db")
+    enrich.ensure_schema()
+
+
+def _card(lemma, ru):
+    return enrich.normalize_card({
+        "word": lemma, "pos": "verb", "ru": ru, "definition_de": "Etwas besitzen.",
+        "topic": "recht_gesetz", "confidence": "high",
+        "examples": [{"de": f"Ich **{lemma}**.", "ru": "Я."}],
+    })
+
+
+def test_skipping_a_whole_pair_is_refused(pair):
+    """The bug that killed haben/kommen/atmen: the model rejects both halves and
+    the word leaves the dictionary entirely."""
+    enrich.skip_words(["haben", "Haben"])
+    assert enrich.progress()["skipped"] == 0
+    assert enrich.get_card("haben") is None          # refusing is not inventing
+    # ...and they go back into circulation rather than becoming a silent hole
+    assert {"haben", "Haben"} <= {w["lemma"] for w in enrich.claim(1, 10)}
+
+
+def test_skip_is_accepted_once_the_twin_holds_a_card(pair):
+    """A decided pair must still be skippable — that is `nacht`/`Nacht` working."""
+    enrich.save_cards(1, {"haben": _card("haben", "иметь")}, {"haben": "a1"}, "m")
+    enrich.skip_words(["Haben"])
+    assert enrich.progress()["skipped"] == 1
+    assert "Haben" not in {w["lemma"] for w in enrich.claim(1, 10)}
+
+
+def test_an_insisting_model_lands_on_failed_not_on_a_silent_skip(pair):
+    for _ in range(enrich.MAX_ATTEMPTS):
+        enrich.skip_words(["haben"])
+    p = enrich.progress()
+    assert p["failed"] == 1 and p["skipped"] == 0     # visible, and it terminates
+    assert "haben" not in {w["lemma"] for w in enrich.claim(1, 10)}
+
+
+def test_plan_repairs_reclaims_a_pair_killed_before_the_guard(pair):
+    # damage as it exists in the live base: both halves skipped, no card anywhere
+    for lemma in ("haben", "Haben"):
+        enrich._conn().execute(
+            "INSERT INTO word_status(lemma,status,updated_at) VALUES(?,'skipped',0)",
+            (lemma,)).connection.commit()
+    assert enrich.plan_repairs()[enrich.PAIRS] == 2
+    assert {"haben", "Haben"} <= {w["lemma"] for w in enrich.claim(1, 10)}
+    # second run finds nothing: the tag is the self-limit, so no start-up loop
+    assert enrich.plan_repairs()[enrich.PAIRS] == 0

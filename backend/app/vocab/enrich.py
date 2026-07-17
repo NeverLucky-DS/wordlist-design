@@ -22,6 +22,7 @@ stale cards without re-doing good ones.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -32,6 +33,8 @@ from typing import Any
 from app.vocab import norm
 from app.vocab.topics import GENERAL_TOPIC, TOPICS, TOPIC_SLUGS
 
+log = logging.getLogger(__name__)
+
 # ── config ───────────────────────────────────────────────────────────────────
 VOCAB_DB = Path(os.environ.get("VOCAB_DB") or Path(__file__).with_name("vocab.db"))
 ENRICH_DB = Path(os.environ.get("ENRICH_DB") or VOCAB_DB.with_name("enrichment.db"))
@@ -40,7 +43,7 @@ ENRICH_DB = Path(os.environ.get("ENRICH_DB") or VOCAB_DB.with_name("enrichment.d
 # 2026-07-14: added model-side skip (reject non-words) + stronger ru_all.
 # 2026-07-17: skip inflected forms (hast/Stunden/gemacht got invented rare
 #             readings); allow "word" to carry the post-1996 spelling.
-PROMPT_VERSION = "enrich-2026-07-17"
+PROMPT_VERSION = "enrich-2026-07-18"
 CARD_SCHEMA = 1
 
 DEFAULT_BATCH = 10          # bench sweet spot (throughput flat, latency bounded)
@@ -103,7 +106,9 @@ def is_junk(lemma: str) -> bool:
 # and they exercise the response matcher on a small, known-answer set first. If
 # something is wrong with it, it shows up in minutes instead of at 4am.
 BACKFILL = "backfill"
+PAIRS = "repair_pairs"
 PHASES: tuple[tuple[str, str], ...] = (
+    (PAIRS, "Починка убитых пар"),
     ("repair_case", "Починка омографов"),
     ("repair_ortho", "Починка орфографии"),
     (BACKFILL, "Обогащение новых слов"),
@@ -170,16 +175,25 @@ AUSSORTIEREN (das Wichtigste zuerst):
     Adjektive ("das Ganze", "der Alte") sind echte Einträge.
   · Groß-/Kleinschreibungs-Artefakt: Substantive schreibt man IMMER groß, also ist
     eine kleingeschriebene Nomen-Form ("nacht", "zeit", "platz") ein Artefakt → skip,
-    behalte nur "Nacht"/"Zeit". Umgekehrt ist ein großgeschriebenes Funktions-/Nicht-
-    Substantiv am Satzanfang ("Aber", "Ja", "Unter", "Für", "Er") ein Artefakt → skip;
-    erfinde dafür KEINE Substantiv-Bedeutung (kein "Unter"=Spielkarte, kein "Ja"=Zustimmung).
+    behalte nur "Nacht"/"Zeit". Umgekehrt bei einer großgeschriebenen Form eines
+    Nicht-Substantivs: ENTSCHEIDE NACH DEN ROHDATEN, nicht nach dem Gefühl. Stehen
+    dort ein EIGENER Artikel und EIGENE, abweichende Übersetzungen, ist es eine echte
+    Substantivierung und BLEIBT ("das Ich" = я, личность; "das Aber" = возражение;
+    "das Ja" = согласие; "das Nein" = отказ). Fehlen Artikel UND eigene Bedeutung,
+    ist es ein Satzanfang-Artefakt → skip; erfinde dann KEINE Substantiv-Bedeutung.
   · fremdsprachiges Wort ohne echten deutschen Gebrauch.
   Erfinde NIEMALS eine seltene/konstruierte Bedeutung, nur um ein Wort zu "retten".
-- Kommen im selben Batch dieselbe Schreibung groß UND klein vor, behalte nur die
-  richtige Wortart (Substantiv groß, Verb/Adjektiv/Adverb/Funktionswort klein) und
-  setze die andere auf "skip". Bei echt getrennten Wörtern (z.B. "Morgen"=утро /
-  "morgen"=завтра, "Essen"=еда / "essen"=есть) BEIDE behalten, aber mit KORREKT
-  unterschiedlicher Wortart und Bedeutung — niemals identisch kopieren.
+- Kommen im selben Batch dieselbe Schreibung groß UND klein vor, beurteile JEDE
+  Hälfte EINZELN nach ihren eigenen Rohdaten. Hat jede Hälfte eine eigene Bedeutung,
+  BLEIBEN BEIDE ("Morgen"=утро / "morgen"=завтра, "Essen"=еда / "essen"=есть,
+  "das Haben"=кредит / "haben"=иметь) — mit KORREKT unterschiedlicher Wortart und
+  Bedeutung, niemals identisch kopiert. Nur die Hälfte OHNE eigene Bedeutung wird
+  zum Artefakt → "skip".
+  NIEMALS BEIDE HÄLFTEN SKIPPEN, solange die Rohdaten für mindestens eine ein echtes
+  Wort belegen (Goethe-Level a1..c2, mehrere "sources", eigene Übersetzungen).
+  Ein Verb in der Grundform ("haben", "kommen", "lesen", "atmen") ist IMMER ein
+  Eintrag — dass daneben die großgeschriebene Form steht, macht es NICHT zum
+  Artefakt, und die Grundform ist NIE eine "flektierte Wortform".
 - "confidence": "low" NUR für ein ECHTES Wort, dessen Bedeutung/Grammatik du nicht
   sicher weißt. Ist es kein echtes Wort → "skip", nicht "low".
 
@@ -637,6 +651,61 @@ def fail_words(lemmas: list[str]) -> None:
         con.close()
 
 
+def _has_twin(con: sqlite3.Connection, lemma: str) -> bool:
+    """Whether a spelling differing only in case also exists in vocab.db."""
+    return any(
+        con.execute("SELECT 1 FROM v.words WHERE lemma=?", (sp,)).fetchone()
+        for sp in case_partners(lemma))
+
+
+def _vouched(con: sqlite3.Connection, lemma: str) -> bool:
+    """Whether the curated source stands behind `lemma` as a real headword.
+
+    Goethe listing means a human picked the word for a syllabus, and that outranks
+    the model always. Outside the lists the bar is higher on purpose: several
+    independent dictionaries AND a case twin, i.e. exactly the setup that triggers
+    the pair bug. A solo unlisted word is the model judging one entry on its own
+    merits, which is its job and mostly right — it correctly buried `arten`,
+    `dingen`, `blauen` (archaic verbs sharing a spelling with a noun form). Guard
+    those too and they would fight the model for three attempts and land in
+    'failed'. So: defend the curated core everywhere, defend the rest only where
+    the mechanism we know is broken is actually in play.
+
+    Without vocab.db there is no evidence to vouch with, so nothing is protected
+    and the model's verdict stands — the same behaviour as before this guard.
+    """
+    if not VOCAB_DB.exists():
+        return False
+    row = con.execute(
+        "SELECT level, sources, translations FROM v.words WHERE lemma=?",
+        (lemma,)).fetchone()
+    if row is None:
+        return False
+    if (row["level"] or "unlisted") != "unlisted":
+        return True
+    if not _has_twin(con, lemma):
+        return False
+    try:
+        n_src = len(json.loads(row["sources"] or "[]"))
+        n_tr = len(json.loads(row["translations"] or "[]"))
+    except (ValueError, TypeError):
+        return False
+    return n_src >= 3 and n_tr >= 2
+
+
+def _annihilated(con: sqlite3.Connection, lemma: str) -> bool:
+    """True when no spelling of `lemma` is left holding a card.
+
+    `save_cards` runs before `skip_words` for a batch, so a twin the model kept
+    in this very batch is already visible here — which is the whole point: it
+    separates a decided pair from a destroyed one.
+    """
+    for spelling in {lemma} | case_partners(lemma):
+        if con.execute("SELECT 1 FROM cards WHERE lemma=?", (spelling,)).fetchone():
+            return False
+    return True
+
+
 def skip_words(lemmas: list[str]) -> None:
     """Terminal 'skipped' — the model judged these not real learnable headwords.
     No card, never re-served, does NOT count as a failure.
@@ -646,13 +715,27 @@ def skip_words(lemmas: list[str]) -> None:
     noun card wrongly filed under "nacht"), and leaving it would keep the thing
     we just decided is not a word in the search index. Nothing is lost for good —
     vocab.db is immutable and a requeue re-enriches the lemma from scratch.
+
+    A vouched lemma whose every spelling ends up card-less is NOT accepted as a
+    skip. Judging a case pair needs both halves in one batch (see
+    `_with_case_partners`), and the model answered that setup by rejecting BOTH —
+    it killed `haben`, `kommen`, `atmen` and ~1.3k other pairs outright, leaving
+    search to answer "haben" with "Habenseite". The prompt now forbids it, but a
+    prompt is a request; this is the floor. Refusing costs an attempt, so a model
+    that insists lands on terminal 'failed' — visible in progress — instead of a
+    silent hole. A pair the model really did decide keeps a card on one side and
+    never reaches here.
     """
     if not lemmas:
         return
     now = time.time()
     con = _conn()
     try:
+        refused: list[str] = []
         for lemma in lemmas:
+            if _vouched(con, lemma) and _annihilated(con, lemma):
+                refused.append(lemma)
+                continue
             con.execute("DELETE FROM cards WHERE lemma=?", (lemma,))
             con.execute(
                 """INSERT INTO word_status(lemma,status,attempts,lease_owner,lease_at,updated_at)
@@ -663,6 +746,10 @@ def skip_words(lemmas: list[str]) -> None:
         con.commit()
     finally:
         con.close()
+    if refused:
+        log.warning("skip refused for %d vouched lemma(s): %s",
+                    len(refused), ", ".join(refused[:8]))
+        fail_words(refused)
 
 
 def requeue(lemmas: list[str], *, drop_card: bool = True,
@@ -794,6 +881,30 @@ def _case_collision_victims(con: sqlite3.Connection) -> list[str]:
     return victims
 
 
+def _annihilated_victims(con: sqlite3.Connection) -> list[str]:
+    """Vouched lemmas the model destroyed instead of judging — see `skip_words`.
+
+    The predicate is deliberately the same one that now guards writes: a word is
+    a victim exactly when the guard would have refused its skip. So this is not a
+    second heuristic to keep in sync, it is the guard applied backwards over
+    damage done before it existed.
+
+    Measured on the live base: 1293 case pairs came back with BOTH halves skipped
+    and no card anywhere, `haben`/`kommen`/`atmen`/`lesen` among them. Pairs the
+    model really did decide keep a card on one side and are not touched, which is
+    what keeps ~64k good cards out of this.
+    """
+    cards = {r["lemma"] for r in con.execute("SELECT lemma FROM cards")}
+    victims: list[str] = []
+    for (lemma,) in con.execute(
+            "SELECT lemma FROM word_status WHERE status='skipped'"):
+        if lemma in cards or any(sp in cards for sp in case_partners(lemma)):
+            continue
+        if _vouched(con, lemma):
+            victims.append(lemma)
+    return victims
+
+
 def plan_repairs() -> dict:
     """Queue the known-bad cards for re-enrichment and backfill `cards.zipf`.
 
@@ -832,13 +943,26 @@ def plan_repairs() -> dict:
         ]
         broken = [r[0] for r in con.execute(
             f"SELECT lemma FROM word_status WHERE status='failed' AND {untagged}")]
+        # Self-limiting on its OWN tag, not on `untagged`: most victims already
+        # carry a phase from the pass that killed them (358 sit in repair_case),
+        # and `untagged` would skip exactly the words this phase exists for. The
+        # tag is fresh, so nothing holds it yet, every victim is tagged once, and
+        # the second run finds none — including the ones the model buries again.
+        killed = [
+            l for l in _annihilated_victims(con)
+            if con.execute(
+                f"SELECT 1 FROM word_status WHERE lemma=? "
+                f"AND COALESCE(phase,'') != '{PAIRS}'", (l,)).fetchone()
+        ]
         con.commit()
     finally:
         con.close()
     # Keep the old cards live while they wait — a stale entry beats a hole.
+    n_pairs = requeue(killed, drop_card=False, phase=PAIRS)
     n_case = requeue(victims, drop_card=False, phase="repair_case")
     n_ortho = requeue(broken, drop_card=False, phase="repair_ortho")
-    return {"repair_case": n_case, "repair_ortho": n_ortho, "zipf_filled": zipf_filled}
+    return {PAIRS: n_pairs, "repair_case": n_case, "repair_ortho": n_ortho,
+            "zipf_filled": zipf_filled}
 
 
 def requeue_low_confidence() -> int:
