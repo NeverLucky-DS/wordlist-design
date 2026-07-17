@@ -199,6 +199,19 @@ h1.title{font-family:'Cormorant Garamond',serif;font-size:76px;font-weight:600;l
 .w-act[data-act="have"]:hover{transform:none}
 .w-act:disabled{cursor:default}
 
+/* "seltener" — the synonyms search folded under the head word above. Quiet by
+   design: they answer the same meaning, so they read as a footnote to the head,
+   not as rows competing with it. Indented to sit under the word, hugging it. */
+.syn-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 4px;
+  margin:-4px 0 2px;padding:0 14px 6px 26px}
+.syn-lab{flex:none;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
+  letter-spacing:.7px;text-transform:uppercase;color:var(--muted-2);margin-right:5px}
+.syn-chip{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.15;
+  color:var(--ink-soft);background:transparent;border:0;border-radius:8px;
+  padding:2px 7px;cursor:pointer;transition:color .18s,background .18s}
+.syn-chip:hover{color:var(--ink);background:var(--hair-2)}
+.syn-chip.is-open{color:var(--rose);background:var(--rose-soft)}
+
 /* Empty states carry a heading, a line of prose and sometimes a control —
    stack them rather than letting the button land inside the paragraph flow. */
 .empty{padding:34px 20px;color:var(--muted);font-style:italic;line-height:1.6;

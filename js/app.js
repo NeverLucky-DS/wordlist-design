@@ -140,8 +140,34 @@ function renderResults() {
       `„${esc(query)}“ steht noch nicht im Wörterbuch. Der Bestand wächst laufend.</div>`;
     return;
   }
-  results.forEach(card => el.results.appendChild(
-    wordRow(card, card.in_list ? 'have' : 'add')));
+  results.forEach(group => {
+    el.results.appendChild(wordRow(group, group.in_list ? 'have' : 'add'));
+    if (group.syn && group.syn.length) el.results.appendChild(synRow(group.syn));
+  });
+}
+
+/* The "seltener" row: cards that answer the query with the SAME meaning as the
+   head above them, so search collapses them here instead of as equal rows (the
+   shape Yandex nests under `tr`, Linguee prints as "less common"). Compact
+   chips, not full rows — a click opens the card, where the collect button lives,
+   which keeps the answer from turning back into the wall we just folded. */
+function synRow(syns) {
+  const wrap = document.createElement('div');
+  wrap.className = 'syn-row';
+  const openLemma = openCard && openCard.card.lemma;
+  wrap.innerHTML = `<span class="syn-lab">seltener</span>` + syns.map(s => {
+    const art = s.article ? `${esc(s.article)} ` : '';
+    const on = s.lemma === openLemma ? ' is-open' : '';
+    return `<button class="syn-chip${on}" type="button" data-lemma="${esc(s.lemma)}">` +
+      `${art}${esc(s.lemma)}</button>`;
+  }).join('');
+  return wrap;
+}
+
+// Head cards plus their nested synonyms, flattened — the click and connector
+// both address a synonym by lemma, and it lives one level down from `results`.
+function flatResults() {
+  return results.flatMap(g => [g, ...(g.syn || [])]);
 }
 
 /* ---------- personal list ---------- */
@@ -368,6 +394,12 @@ el.search.addEventListener('input', event => {
 
 function rowHandler(source, side, snapshotOnly) {
   return async event => {
+    const chip = event.target.closest('.syn-chip');
+    if (chip) {
+      const syn = flatResults().find(c => c.lemma === chip.dataset.lemma);
+      if (syn) showCard(syn, side);   // already a full card_out — no fetch needed
+      return;
+    }
     const row = event.target.closest('.word');
     if (!row) return;
     const lemma = row.dataset.lemma;
@@ -405,7 +437,8 @@ document.addEventListener('keydown', event => {
 document.addEventListener('click', event => {
   if (!openCard) return;
   if (el.detail.contains(event.target)) return;
-  if (event.target.closest('.word') || event.target.closest('.pg-btn')) return;
+  if (event.target.closest('.word') || event.target.closest('.syn-chip') ||
+      event.target.closest('.pg-btn')) return;
   closeCard();
 });
 
@@ -433,7 +466,9 @@ function updateLink() {
   if (!openCard) { hideLink(); return; }
   const titleEl = el.detail.querySelector('.d-word');
   const container = openCard.side === 'right' ? el.results : el.mine;
-  const wordEl = container.querySelector(`.word[data-lemma="${CSS.escape(openCard.card.lemma)}"] .de`);
+  const key = CSS.escape(openCard.card.lemma);
+  const wordEl = container.querySelector(`.word[data-lemma="${key}"] .de`)
+    || container.querySelector(`.syn-chip[data-lemma="${key}"]`);
   if (!titleEl || !wordEl) { hideLink(); return; }
 
   const t = titleEl.getBoundingClientRect(), w = wordEl.getBoundingClientRect();
