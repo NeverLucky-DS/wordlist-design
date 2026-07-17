@@ -35,4 +35,5 @@ backend/data/*.db
 # vocab pipeline local data (large / third-party dictionaries)
 dictionaries/
 backend/app/vocab/vocab.db
+backend/app/vocab/enrichment.db
 backend/app/vocab/vocab_data/

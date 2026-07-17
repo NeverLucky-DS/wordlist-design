@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site-header.css?v=9">
-<link rel="stylesheet" href="css/pipeline.css?v=4">
+<link rel="stylesheet" href="css/pipeline.css?v=8">
 </head>
 <body>
 
@@ -70,6 +70,75 @@
       </section>
     </div>
 
+    <!-- ── server-side LLM enrichment (server calls Mistral with the account key) ── -->
+    <section class="pg-card enrich" id="enrichCard">
+      <div class="card-head">
+        <h2 class="serif">Обогащение нейросетью</h2>
+        <span class="elapsed" id="enrRate"></span>
+      </div>
+      <p class="sub">Привяжи в аккаунте <b>свой</b> ключ Mistral — он шифруется на сервере, и обогащение идёт строго через него.
+        Запусти — и сервер берёт слова непрерывно (приоритет Goethe A1–B1), даже если закроешь вкладку. Подключи разные аккаунты с разными ключами, чтобы обогащать параллельно.</p>
+
+      <div class="keyrow">
+        <input id="mkey" type="password" autocomplete="off" spellcheck="false"
+               placeholder="Ключ Mistral (шифруется в БД, к серверу привязан к аккаунту)…">
+        <button class="kbtn" id="saveKey">Сохранить ключ</button>
+        <button class="kbtn ghost" id="clearKey" hidden>Удалить</button>
+      </div>
+      <p class="keystate" id="keyState"></p>
+
+      <button class="run" id="enrBtn" disabled>Запустить обогащение</button>
+      <div class="stage" id="enrStage">Войди в аккаунт и добавь ключ Mistral, чтобы начать.</div>
+      <div class="enr-bar"><i id="enrFill"></i></div>
+      <ol class="phases" id="enrPhases"></ol>
+      <div class="kpis" id="enrKpis"></div>
+      <div class="enr-feed" id="enrFeed"></div>
+    </section>
+
+    <!-- ── admin: every account from one place (hidden unless ADMIN_EMAILS lists you) ── -->
+    <section class="pg-card admin" id="adminCard" hidden>
+      <div class="card-head">
+        <h2 class="serif">Флот аккаунтов</h2>
+        <span class="elapsed" id="fleetSum"></span>
+      </div>
+      <p class="sub">Запуск обогащения на всех аккаунтах с привязанным ключом сразу —
+        каждый работает <b>своим</b> ключом, десять вкладок не нужны. Расход токенов
+        считается по каждому аккаунту отдельно и ничего не останавливает.</p>
+
+      <div class="fleet-run">
+        <button class="run" id="fleetStart">Запустить все аккаунты</button>
+        <button class="kbtn ghost" id="fleetStop">Остановить все</button>
+      </div>
+      <div class="stage" id="fleetStage"></div>
+      <div id="fleetTable"></div>
+    </section>
+
+    <!-- ── enriched-card browser (the OUTPUT the app will show) ── -->
+    <section class="pg-card">
+      <div class="card-head">
+        <h2 class="serif">Обогащённые карточки</h2>
+        <span class="elapsed" id="cardCount"></span>
+      </div>
+      <p class="sub">Готовый результат — то, что увидит пользователь: несколько переводов,
+        грамматика, примеры. Раскрой карточку, чтобы оценить качество для заучивания и для детальной страницы слова.</p>
+
+      <div class="reqrow" id="reqRow" hidden>
+        <span class="reqnote" id="reqNote"></span>
+        <button class="kbtn ghost" id="requeueLow" hidden>Переобогатить низкую уверенность</button>
+      </div>
+
+      <div class="wsearch">
+        <input id="cq" placeholder="Найди лемму среди обогащённых, напр. Zeit, gelten…" autocomplete="off">
+        <div class="lvls" id="cconf">
+          <button class="on" data-c="">все</button>
+          <button data-c="high">уверенные</button>
+          <button data-c="low">низкая</button>
+        </div>
+      </div>
+      <div id="cardResults"><div class="empty">Загрузка…</div></div>
+      <button class="morebtn" id="cardMore" hidden>Показать ещё</button>
+    </section>
+
     <!-- ── stats ── -->
     <section class="pg-card">
       <h2 class="serif">Состояние базы</h2>
@@ -105,5 +174,6 @@
 
 <script src="js/site-header.js?v=8"></script>
 <script src="js/pipeline.js?v=4"></script>
+<script src="js/enrich.js?v=5"></script>
 </body>
 </html>

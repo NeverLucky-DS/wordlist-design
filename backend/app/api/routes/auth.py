@@ -12,13 +12,22 @@ from app.auth import (
     create_auth_session,
     get_principal,
     hash_password,
+    is_admin_email,
     require_user,
     revoke_cookie_session,
     verify_password,
 )
 from app.db.models import Essay, User
 from app.db.session import get_db
-from app.schemas import AuthStateOut, DeleteAccountIn, LoginIn, RegisterIn, UserOut
+from app.schemas import (
+    AuthStateOut,
+    DeleteAccountIn,
+    LoginIn,
+    MistralKeyIn,
+    RegisterIn,
+    UserOut,
+)
+from app.services import crypto
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -41,11 +50,55 @@ async def me(
         return {
             "authenticated": True,
             "user": user,
+            "has_mistral_key": bool(user and user.mistral_key_enc),
+            "key_storage_enabled": crypto.is_enabled(),
+            "is_admin": is_admin_email(principal.email),
         }
     return {
         "authenticated": False,
         "guest_expires_at": principal.guest_expires_at,
+        "key_storage_enabled": crypto.is_enabled(),
     }
+
+
+@router.put("/mistral-key", status_code=status.HTTP_204_NO_CONTENT)
+async def set_mistral_key(
+    body: MistralKeyIn,
+    principal: Principal = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Attach/replace this account's Mistral key (stored encrypted, never
+    returned). Rejects a key Mistral explicitly refuses (401/403)."""
+    import asyncio
+
+    from app.services.mistral_http import verify_key
+
+    if not crypto.is_enabled():
+        raise HTTPException(status_code=503, detail="Key storage is disabled on this server")
+    key = body.key.strip()
+    if await asyncio.to_thread(verify_key, key) is False:
+        raise HTTPException(status_code=400, detail="Mistral rejected this key")
+    await db.execute(
+        update(User).where(User.id == principal.user_id).values(
+            mistral_key_enc=crypto.encrypt(key)
+        )
+    )
+    await db.commit()
+
+
+@router.delete("/mistral-key", status_code=status.HTTP_204_NO_CONTENT)
+async def clear_mistral_key(
+    principal: Principal = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove the stored key and stop any running worker for this account."""
+    from app.vocab import enrich_worker
+
+    enrich_worker.stop_worker(principal.user_id)
+    await db.execute(
+        update(User).where(User.id == principal.user_id).values(mistral_key_enc=None)
+    )
+    await db.commit()
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)

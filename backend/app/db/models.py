@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -33,6 +34,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # Per-user Mistral API key, encrypted at rest (Fernet). NULL = not attached.
+    # Used by the server-side vocab enrichment worker; never returned to clients.
+    mistral_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     sessions: Mapped[list["AuthSession"]] = relationship(
@@ -241,3 +245,102 @@ class UserStats(Base):
     streak_last_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     total_words_learned: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+# ── Wörterbuch: dictionary mirror + personal word list ───────────────────────
+# The enrichment worker owns `enrichment.db` (SQLite) and keeps writing to it.
+# These tables are a read-optimized replica in Postgres, so that fuzzy search
+# (pg_trgm) and the per-user word list live in ONE database and can be joined.
+# `app.vocab.mirror` syncs them incrementally; nothing here writes back.
+
+
+class VocabCard(Base):
+    __tablename__ = "vocab_cards"
+    __table_args__ = (Index("ix_vocab_cards_band", "band"),)
+
+    lemma: Mapped[str] = mapped_column(String(128), primary_key=True)
+    # Two search keys, both case-folded: `lemma_norm` substitutes umlauts the
+    # correct way (grün→gruen), `lemma_ascii` flattens them (grün→grun). People
+    # type both on an umlaut-less keyboard and neither form finds the other, so
+    # search scores against whichever matches better. GIN trigram indexes are
+    # added on both by the migration (they cannot live in the model: SQLite,
+    # which the test suite builds with create_all, has no GIN).
+    lemma_norm: Mapped[str] = mapped_column(String(160))
+    lemma_ascii: Mapped[str] = mapped_column(String(160))
+    level: Mapped[str] = mapped_column(String(16), default="unlisted")
+    # Display band, clamped to the B1–C1 brush set (see LEVEL_BAND).
+    band: Mapped[str] = mapped_column(String(4), default="C1")
+    topic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    pos: Mapped[str] = mapped_column(String(16), default="other")
+    article: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    ru: Mapped[str] = mapped_column(Text, default="")
+    confidence: Mapped[str] = mapped_column(String(8), default="high")
+    register: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    data: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
+    # Zipf frequency (wordfreq, ~1–7) carried over from vocab.db. Search needs a
+    # tie-break: every exact hit for "быстрый" scores identically, so the order
+    # fell to lemma length and put `schnell` — the 354th most common word in
+    # German — BELOW fix, rasch, prompt, rapide and zügig. NULL sorts last, which
+    # is what we want for the few cards with no source row (renamed spellings).
+    zipf: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # `cards.created_at` from SQLite — the incremental sync watermark.
+    source_created_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    synced_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    translations: Mapped[list["VocabCardTranslation"]] = relationship(
+        back_populates="card", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class VocabCardTranslation(Base):
+    """One row per Russian meaning (`ru_all`), so RU→DE search can be indexed.
+
+    Kept separate instead of a joined string: trigram similarity against one
+    long concatenation scores badly, against a single meaning it scores well.
+    """
+
+    __tablename__ = "vocab_card_translations"
+    __table_args__ = (
+        UniqueConstraint("lemma", "idx", name="uq_vocab_card_translation"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lemma: Mapped[str] = mapped_column(
+        ForeignKey("vocab_cards.lemma", ondelete="CASCADE"), index=True
+    )
+    idx: Mapped[int] = mapped_column(Integer, default=0)  # 0 = primary meaning
+    ru: Mapped[str] = mapped_column(String(255))
+    ru_norm: Mapped[str] = mapped_column(String(255))  # GIN trigram index in migration
+
+    card: Mapped["VocabCard"] = relationship(back_populates="translations")
+
+
+class UserWordList(Base):
+    """A word the user put on their learning list.
+
+    Keyed by `lemma` as plain text on purpose — no FK to `vocab_cards`:
+      • the enrichment prompt already separates homographs by case
+        (Morgen/morgen, Essen/essen), so a lemma is unambiguous on its own;
+      • the future browser extension adds words straight off arbitrary pages,
+        which may not be in our dictionary (yet).
+    The snapshot columns let the list render in one query without touching
+    `vocab_cards`; they are refreshed on add and may lag a re-enrichment.
+    """
+
+    __tablename__ = "user_word_list"
+    __table_args__ = (
+        UniqueConstraint("user_id", "lemma", name="uq_user_word_list"),
+        Index("ix_user_word_list_user_added", "user_id", "added_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    lemma: Mapped[str] = mapped_column(String(128))
+    ru: Mapped[str] = mapped_column(Text, default="")
+    level: Mapped[str] = mapped_column(String(16), default="unlisted")
+    band: Mapped[str] = mapped_column(String(4), default="C1")
+    pos: Mapped[str] = mapped_column(String(16), default="other")
+    article: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    topic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="learning")
+    added_at: Mapped[datetime] = mapped_column(server_default=func.now())

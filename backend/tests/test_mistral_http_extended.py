@@ -38,7 +38,7 @@ def test_cooldown_blocks_immediate_second_call():
         patch.object(mistral_http.time, "sleep") as sleep,
         patch.object(mistral_http.time, "monotonic", side_effect=[0.0, 0.0, 2.0, 2.0, 2.0]),
     ):
-        mistral_http._cooldown_until = 0.0
+        mistral_http._cooldowns.clear()
         out = mistral_http.post_mistral_json(
             [{"role": "user", "content": "x"}], "key", "model", delays=[1]
         )
@@ -54,7 +54,7 @@ def test_passes_temperature_to_api():
         return _ok({})
 
     with patch.object(mistral_http._requests, "post", side_effect=fake_post):
-        mistral_http._cooldown_until = 0.0
+        mistral_http._cooldowns.clear()
         mistral_http.post_mistral_json(
             [{"role": "user", "content": "hi"}],
             "key",
@@ -78,7 +78,7 @@ def test_invalid_retry_after_falls_back_to_delay():
         ),
         patch.object(mistral_http.time, "sleep") as sleep,
     ):
-        mistral_http._cooldown_until = 0.0
+        mistral_http._cooldowns.clear()
         out = mistral_http.post_mistral_json(
             [{"role": "user", "content": "hi"}], "key", "model", delays=[7]
         )

@@ -44,3 +44,14 @@ function brushOf(w) {
   if (!f) return 'none';
   return `url('${new URL('worte/' + f, document.baseURI).href}')`;
 }
+
+/* Brush for a card coming from /api/vocab/* — it arrives with `band` and `type`
+   already resolved server-side (app/vocab/norm.py), because the mapping is
+   shared with search and the word list and must not drift between the two.
+   The brush set only covers B1/B2/C1 × der/die/das/verb/adj, so the backend
+   clamps every level into that band and every part of speech onto those five. */
+function brushOfCard(card) {
+  const f = WASH[card.band + '|' + card.type] || '';
+  if (!f) return 'none';
+  return `url('${new URL('worte/' + f, document.baseURI).href}')`;
+}

@@ -158,15 +158,26 @@ async def require_user(
     return principal
 
 
+def is_admin_email(email: str | None) -> bool:
+    """Is this address on the server's admin list?
+
+    The list is server config (ADMIN_EMAILS) and nothing else, deliberately: an
+    admin can drive enrichment through OTHER accounts' Mistral keys, i.e. spend
+    their money. There is no endpoint that grants this, so the app can never
+    escalate into it — changing who is an admin means changing the environment.
+    """
+    allowed = {
+        entry.strip().lower()
+        for entry in settings.admin_emails.split(",")
+        if entry.strip()
+    }
+    return bool(email) and email.lower() in allowed
+
+
 async def require_admin(
     principal: Principal = Depends(require_user),
 ) -> Principal:
-    allowed = {
-        email.strip().lower()
-        for email in settings.admin_emails.split(",")
-        if email.strip()
-    }
-    if not principal.email or principal.email.lower() not in allowed:
+    if not is_admin_email(principal.email):
         raise HTTPException(status_code=403, detail="Admin access required")
     return principal
 
