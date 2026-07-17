@@ -122,6 +122,35 @@ async def test_search_de_ranks_exact_above_prefix(pg_session):
 
 
 # ── lookup: Russian side ─────────────────────────────────────────────────────
+async def test_search_ru_collapses_one_sense_into_head_plus_synonyms(pg_session):
+    """"перевод" answered with five equal rows, sorted by nothing a learner cares
+    about. They are one sense: the frequent word heads it, the rest are synonyms.
+    """
+    await _add_card(pg_session, "Übersetzung", "перевод", zipf=4.54)
+    await _add_card(pg_session, "Übertragung", "перевод", zipf=4.23)
+    await _add_card(pg_session, "Verlegung", "перевод", zipf=3.79)
+    await _add_card(pg_session, "Umschaltung", "перевод", zipf=2.50)
+    result = await search_mod.search(pg_session, "перевод")
+
+    assert _lemmas(result) == ["Übersetzung"]          # one answer, not four
+    head = result["items"][0]
+    assert head["meaning"] == "перевод"
+    # nothing is dropped — the rest ride along, most frequent first
+    assert [s["lemma"] for s in head["syn"]] == [
+        "Übertragung", "Verlegung", "Umschaltung"]
+
+
+async def test_search_ru_keeps_distinct_senses_apart(pg_session):
+    """Grouping is per meaning, so a different sense stays its own answer even
+    when it matches the same query."""
+    await _add_card(pg_session, "Übersetzung", "перевод", zipf=4.54)
+    await _add_card(pg_session, "Überweisung", "перевод (денег)", zipf=3.58)
+    result = await search_mod.search(pg_session, "перевод")
+
+    assert _lemmas(result) == ["Übersetzung", "Überweisung"]
+    assert result["items"][0]["syn"] == []
+
+
 async def test_search_ru_finds_by_primary_meaning(pg_session):
     await _add_card(pg_session, "Abhängigkeit", "зависимость")
     result = await search_mod.search(pg_session, "зависимость")

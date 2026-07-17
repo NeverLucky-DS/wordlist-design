@@ -78,6 +78,37 @@ def _match(column, folded: str, prefix: str):
     return or_(column.op("%")(folded), like)
 
 
+def _collapse_synonyms(rows: list[tuple[VocabCard, float, str]],
+                       limit: int) -> list[dict[str, Any]]:
+    """Group cards that answer the query with the SAME Russian meaning.
+
+    Reverse lookup asks a question the base was not written to answer. Each card
+    was enriched alone, knowing nothing of its neighbours, so five of them claim
+    the bare meaning "перевод" — Übersetzung, Übertragung, Verlegung, Translation
+    and Umschaltung — and a flat list presents all five as equal answers to
+    "перевод". They are not equal: they are synonyms of one sense, and only one
+    of them is what a learner means.
+
+    So the matched meaning is the group key, the most frequent card in the group
+    heads it, and the rest ride along as `syn` — the shape Yandex.Dictionary uses
+    (`tr` with nested `syn`) and Linguee renders as "less common". Nothing is
+    dropped; the answer just stops being a wall. Rows arrive already ordered by
+    relevance, so the first card of each group is its head and the groups keep
+    the order their heads had.
+    """
+    groups: dict[str, list[tuple[VocabCard, float]]] = {}
+    for card, score, meaning in rows:
+        groups.setdefault(meaning, []).append((card, score))
+    out: list[dict[str, Any]] = []
+    for meaning, members in list(groups.items())[:limit]:
+        head_card, head_score = members[0]
+        item = card_out(head_card, head_score)
+        item["meaning"] = meaning
+        item["syn"] = [card_out(c, s) for c, s in members[1:]]
+        out.append(item)
+    return out
+
+
 def card_out(card: VocabCard, score: float | None = None) -> dict[str, Any]:
     """Shape a card for the UI: promoted columns + the enriched JSON, plus the
     two derived fields the frontend paints with (`band`, `type`)."""
@@ -133,28 +164,39 @@ async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
     prefix = _like_prefix(folded)
 
     if lang == "ru":
-        # Rank per lemma across its meanings: a word matches if ANY of its
-        # meanings does, and is scored by its best one.
+        # A word matches if ANY of its meanings does, and is scored by its best
+        # one — but WHICH meaning that was has to survive the query, because it
+        # is what tells synonyms of one sense apart from separate answers.
         t = VocabCardTranslation
-        ranked = (
+        scored = (
             select(
                 t.lemma.label("lemma"),
-                func.max(
-                    _score(t.ru_norm, folded, prefix)
-                    + case((t.idx == 0, literal(_PRIMARY_BONUS, Float)),
-                           else_=literal(0.0, Float))
-                ).label("score"),
+                t.ru.label("meaning"),
+                (_score(t.ru_norm, folded, prefix)
+                 + case((t.idx == 0, literal(_PRIMARY_BONUS, Float)),
+                        else_=literal(0.0, Float))).label("score"),
             )
             .where(_match(t.ru_norm, folded, prefix))
-            .group_by(t.lemma)
+            .subquery()
+        )
+        best = (
+            select(scored.c.lemma, scored.c.meaning, scored.c.score)
+            .distinct(scored.c.lemma)
+            .order_by(scored.c.lemma, scored.c.score.desc())
             .subquery()
         )
         stmt = (
-            select(VocabCard, ranked.c.score)
-            .join(ranked, VocabCard.lemma == ranked.c.lemma)
-            .order_by(*_by_relevance(ranked.c.score))
-            .limit(limit)
+            select(VocabCard, best.c.score, best.c.meaning)
+            .join(best, VocabCard.lemma == best.c.lemma)
+            .order_by(*_by_relevance(best.c.score))
+            .limit(MAX_LIMIT)
         )
+        rows = (await db.execute(stmt)).all()
+        return {
+            "lang": lang,
+            "query": q,
+            "items": _collapse_synonyms(list(rows), limit),
+        }
     else:
         terms = _de_terms(q)
         scores = [_score(col, term, pfx) for col, term, pfx in terms]
