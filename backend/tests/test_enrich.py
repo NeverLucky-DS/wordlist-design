@@ -542,3 +542,19 @@ def test_plan_repairs_requeues_crammed_cards_without_touching_them(db):
     assert enrich.get_card("gelten") is not None
     assert "gelten" in {w["lemma"] for w in enrich.claim(1, 10)}
     assert enrich.plan_repairs()[enrich.SPLIT] == 0     # self-limiting on its tag
+
+
+def test_a_split_pass_may_not_delete_the_card_it_was_asked_to_reshape(db):
+    """It did: re-reading 77 published cards for their commas, the model called
+    springen and das Kommen non-words and skip_words dropped them."""
+    card = enrich.normalize_card({
+        "word": "gelten", "pos": "verb", "ru": "действовать, иметь силу",
+        "ru_all": ["действовать, иметь силу"], "definition_de": "Gültig sein.",
+        "topic": "recht_gesetz", "confidence": "high",
+        "examples": [{"de": "Es **gilt**.", "ru": "Действует."}],
+    })
+    enrich.save_cards(1, {"gelten": card}, {"gelten": "b1"}, "m")
+    enrich.plan_repairs()                       # tags gelten into repair_split
+    enrich.skip_words(["gelten"])
+    assert enrich.get_card("gelten") is not None      # the card survives the doubt
+    assert enrich.progress()["skipped"] == 0

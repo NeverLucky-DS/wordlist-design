@@ -43,7 +43,7 @@ ENRICH_DB = Path(os.environ.get("ENRICH_DB") or VOCAB_DB.with_name("enrichment.d
 # 2026-07-14: added model-side skip (reject non-words) + stronger ru_all.
 # 2026-07-17: skip inflected forms (hast/Stunden/gemacht got invented rare
 #             readings); allow "word" to carry the post-1996 spelling.
-PROMPT_VERSION = "enrich-2026-07-18b"
+PROMPT_VERSION = "enrich-2026-07-18c"
 CARD_SCHEMA = 1
 
 DEFAULT_BATCH = 10          # bench sweet spot (throughput flat, latency bounded)
@@ -208,9 +208,13 @@ REGELN für behaltene Wörter (skip=false):
   ß nach langem Vokal oder Diphthong ist KORREKT und bleibt (Straße, groß, weiß,
   heißen, Maß, Fuß) — ändere diese Wörter NICHT.
 - "ru_all": ALLE gängigen Bedeutungen als getrennte Einträge, wichtigste zuerst;
-  bei echter Polysemie mindestens 2. "ru" = das erste/häufigste davon.
+  bei echter Polysemie mindestens 2. "ru" MUSS ZEICHENGLEICH ru_all[0] sein — der
+  gleiche String, nicht eine eigene Zusammenfassung. Auch "ru" wird durchsucht.
   JEDER Eintrag ist GENAU EINE Bedeutung. Packe NIEMALS mehrere per Komma in einen
   Eintrag: ["приходить", "прибывать"] — NICHT ["приходить, прибывать"].
+  Die HÄUFIGSTE Bedeutung steht in ru_all[0] und bleibt OHNE Klammer-Zusatz:
+  "kommen" ist "приходить", nicht "приходить (сюда)". Ein Zusatz senkt die
+  Trefferquote (s.u.), also nimm ihn NUR, wenn der Eintrag ohne ihn falsch wäre.
   Grund: die Suche vergleicht jeden Eintrag EINZELN mit der Anfrage. "приходить"
   trifft den Eintrag "приходить" zu 1.00, den Eintrag "приходить, прибывать" nur zu
   0.63 — ein Doppel-Eintrag verliert damit gegen jedes seltene Synonym, das seine
@@ -734,6 +738,15 @@ def skip_words(lemmas: list[str]) -> None:
     that insists lands on terminal 'failed' — visible in progress — instead of a
     silent hole. A pair the model really did decide keeps a card on one side and
     never reaches here.
+
+    During a shape-only phase a skip is refused outright. `repair_split` re-asks
+    about cards we already published, to unpack their ru_all and nothing else, but
+    it rides on the one prompt, AUSSORTIEREN block included — so the model
+    re-opened the existence question and buried 77 live cards on a re-read:
+    `springen`, `Asylant`, and `das Kommen` half an hour after the pair repair
+    restored it. The verdict is not stable across reads, which makes every requeue
+    a dice roll on the card. A pass asked to move commas does not get to decide a
+    word is not a word.
     """
     if not lemmas:
         return
@@ -742,7 +755,10 @@ def skip_words(lemmas: list[str]) -> None:
     try:
         refused: list[str] = []
         for lemma in lemmas:
-            if _vouched(con, lemma) and _annihilated(con, lemma):
+            row = con.execute("SELECT phase FROM word_status WHERE lemma=?",
+                              (lemma,)).fetchone()
+            if (row is not None and row["phase"] == SPLIT) or (
+                    _vouched(con, lemma) and _annihilated(con, lemma)):
                 refused.append(lemma)
                 continue
             con.execute("DELETE FROM cards WHERE lemma=?", (lemma,))
@@ -943,14 +959,19 @@ def _crammed_victims(con: sqlite3.Connection) -> list[str]:
     ребёнком" is one meaning), and nothing in the string tells the two apart. So
     the model re-reads the word and decides, which is the one thing here that
     cannot be done with a rule. Cards stay live meanwhile.
+
+    `ru` is checked alongside ru_all because search indexes it too, as its own
+    row — the first split pass only cleaned ru_all and left 632 cards answering
+    from a crammed `ru` that no longer even matched their own ru_all[0].
     """
     victims: list[str] = []
     for lemma, data in con.execute("SELECT lemma, data FROM cards"):
         try:
-            ru_all = json.loads(data).get("ru_all") or []
+            card = json.loads(data)
         except (ValueError, TypeError):
             continue
-        if any(_splits_meanings(t) for t in ru_all if isinstance(t, str)):
+        texts = [card.get("ru") or "", *(card.get("ru_all") or [])]
+        if any(_splits_meanings(t) for t in texts if isinstance(t, str)):
             victims.append(lemma)
     return victims
 
