@@ -43,7 +43,7 @@ ENRICH_DB = Path(os.environ.get("ENRICH_DB") or VOCAB_DB.with_name("enrichment.d
 # 2026-07-14: added model-side skip (reject non-words) + stronger ru_all.
 # 2026-07-17: skip inflected forms (hast/Stunden/gemacht got invented rare
 #             readings); allow "word" to carry the post-1996 spelling.
-PROMPT_VERSION = "enrich-2026-07-18"
+PROMPT_VERSION = "enrich-2026-07-18b"
 CARD_SCHEMA = 1
 
 DEFAULT_BATCH = 10          # bench sweet spot (throughput flat, latency bounded)
@@ -207,6 +207,13 @@ REGELN für behaltene Wörter (skip=false):
   heißen, Maß, Fuß) — ändere diese Wörter NICHT.
 - "ru_all": ALLE gängigen Bedeutungen als getrennte Einträge, wichtigste zuerst;
   bei echter Polysemie mindestens 2. "ru" = das erste/häufigste davon.
+  JEDER Eintrag ist GENAU EINE Bedeutung. Packe NIEMALS mehrere per Komma in einen
+  Eintrag: ["приходить", "прибывать"] — NICHT ["приходить, прибывать"].
+  Grund: die Suche vergleicht jeden Eintrag EINZELN mit der Anfrage. "приходить"
+  trifft den Eintrag "приходить" zu 1.00, den Eintrag "приходить, прибывать" nur zu
+  0.63 — ein Doppel-Eintrag verliert damit gegen jedes seltene Synonym, das seine
+  Bedeutungen sauber trennt, und das häufigste Wort steht nicht mehr oben.
+  Erlaubt bleibt eine Präzisierung in Klammern: "приходить (сюда)", "пить (разг.)".
 - "grammar": NUR die zur Wortart passenden Schlüssel; Rest weglassen.
 - "topic": MUSS exakt ein slug aus der Liste sein (nicht erfinden).
 - "examples": GENAU 3 natürliche B2-Sätze, das Wort **fett**.
