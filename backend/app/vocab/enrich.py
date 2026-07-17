@@ -107,10 +107,12 @@ def is_junk(lemma: str) -> bool:
 # something is wrong with it, it shows up in minutes instead of at 4am.
 BACKFILL = "backfill"
 PAIRS = "repair_pairs"
+SPLIT = "repair_split"
 PHASES: tuple[tuple[str, str], ...] = (
     (PAIRS, "Починка убитых пар"),
     ("repair_case", "Починка омографов"),
     ("repair_ortho", "Починка орфографии"),
+    (SPLIT, "Расклейка значений"),
     (BACKFILL, "Обогащение новых слов"),
 )
 PHASE_PRIO = {name: i for i, (name, _) in enumerate(PHASES)}
@@ -912,6 +914,47 @@ def _annihilated_victims(con: sqlite3.Connection) -> list[str]:
     return victims
 
 
+def _splits_meanings(text: str) -> bool:
+    """Whether a ru_all entry looks like several meanings packed into one string.
+
+    Only a comma at the top level counts: "приходить (сюда)" is one meaning and a
+    parenthetical is free to contain anything.
+    """
+    depth = 0
+    for ch in text:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        elif ch == "," and depth == 0:
+            return True
+    return False
+
+
+def _crammed_victims(con: sqlite3.Connection) -> list[str]:
+    """Cards whose ru_all packs several meanings into one entry.
+
+    Search scores each entry whole, so "приходить, прибывать" answers "приходить"
+    at 0.63 and loses to any atomic synonym — `kommen` (zipf 5.71) ends up behind
+    `eintrudeln` (2.31). 762 cards carry this shape.
+
+    The test is deliberately loose and only ever selects a REQUEUE, never an edit:
+    a top-level comma does not prove cramming ("человек, присматривающий за
+    ребёнком" is one meaning), and nothing in the string tells the two apart. So
+    the model re-reads the word and decides, which is the one thing here that
+    cannot be done with a rule. Cards stay live meanwhile.
+    """
+    victims: list[str] = []
+    for lemma, data in con.execute("SELECT lemma, data FROM cards"):
+        try:
+            ru_all = json.loads(data).get("ru_all") or []
+        except (ValueError, TypeError):
+            continue
+        if any(_splits_meanings(t) for t in ru_all if isinstance(t, str)):
+            victims.append(lemma)
+    return victims
+
+
 def plan_repairs() -> dict:
     """Queue the known-bad cards for re-enrichment and backfill `cards.zipf`.
 
@@ -961,6 +1004,15 @@ def plan_repairs() -> dict:
                 f"SELECT 1 FROM word_status WHERE lemma=? "
                 f"AND COALESCE(phase,'') != '{PAIRS}'", (l,)).fetchone()
         ]
+        # Same own-tag self-limit as PAIRS, and for the same reason: these cards
+        # were written by earlier passes that already tagged them, so `untagged`
+        # would skip every one of them.
+        crammed = [
+            l for l in _crammed_victims(con)
+            if con.execute(
+                f"SELECT 1 FROM word_status WHERE lemma=? "
+                f"AND COALESCE(phase,'') != '{SPLIT}'", (l,)).fetchone()
+        ]
         con.commit()
     finally:
         con.close()
@@ -968,8 +1020,9 @@ def plan_repairs() -> dict:
     n_pairs = requeue(killed, drop_card=False, phase=PAIRS)
     n_case = requeue(victims, drop_card=False, phase="repair_case")
     n_ortho = requeue(broken, drop_card=False, phase="repair_ortho")
+    n_split = requeue(crammed, drop_card=False, phase=SPLIT)
     return {PAIRS: n_pairs, "repair_case": n_case, "repair_ortho": n_ortho,
-            "zipf_filled": zipf_filled}
+            SPLIT: n_split, "zipf_filled": zipf_filled}
 
 
 def requeue_low_confidence() -> int:

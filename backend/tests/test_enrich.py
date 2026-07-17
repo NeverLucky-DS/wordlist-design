@@ -436,7 +436,7 @@ def test_progress_falls_back_to_backfill_phase(db):
     p = enrich.progress()
     assert p["phase"] == "backfill"           # untagged words are the backfill
     assert [x["name"] for x in p["phases"]] == [
-        "repair_pairs", "repair_case", "repair_ortho", "backfill"]
+        "repair_pairs", "repair_case", "repair_ortho", "repair_split", "backfill"]
 
 
 def test_skip_and_requeue(db):
@@ -515,3 +515,30 @@ def test_plan_repairs_reclaims_a_pair_killed_before_the_guard(pair):
     assert {"haben", "Haben"} <= {w["lemma"] for w in enrich.claim(1, 10)}
     # second run finds nothing: the tag is the self-limit, so no start-up loop
     assert enrich.plan_repairs()[enrich.PAIRS] == 0
+
+
+@pytest.mark.parametrize("text, crammed", [
+    ("приходить, прибывать", True),            # two meanings in one entry
+    ("прибыль, доход", True),
+    ("приходить (сюда)", False),               # a parenthetical is one meaning
+    ("человек, присматривающий за ребёнком", True),   # false positive, on purpose
+    ("иметь", False),
+])
+def test_cramming_is_detected_by_a_top_level_comma(text, crammed):
+    assert enrich._splits_meanings(text) is crammed
+
+
+def test_plan_repairs_requeues_crammed_cards_without_touching_them(db):
+    card = enrich.normalize_card({
+        "word": "gelten", "pos": "verb", "ru": "действовать, иметь силу",
+        "ru_all": ["действовать, иметь силу", "считаться"],
+        "definition_de": "Gültig sein.", "topic": "recht_gesetz",
+        "confidence": "high",
+        "examples": [{"de": "Es **gilt**.", "ru": "Действует."}],
+    })
+    enrich.save_cards(1, {"gelten": card}, {"gelten": "b1"}, "m")
+    assert enrich.plan_repairs()[enrich.SPLIT] == 1
+    # the card stays live while it waits — search must not lose the word
+    assert enrich.get_card("gelten") is not None
+    assert "gelten" in {w["lemma"] for w in enrich.claim(1, 10)}
+    assert enrich.plan_repairs()[enrich.SPLIT] == 0     # self-limiting on its tag
