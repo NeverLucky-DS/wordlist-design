@@ -5,6 +5,7 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | Doc | Contents |
 |-----|----------|
 | [CRITICAL-LINKS.md](CRITICAL-LINKS.md) | **Safe-delete map — read before refactoring** |
+| [PLANS.md](PLANS.md) | **Work queue + open problems — pick the top item when idle** |
 | [architecture.md](architecture.md) | Deploy, nginx, services, data flow |
 | [frontend.md](frontend.md) | HTML pages, JS/CSS modules, assets |
 | [backend-api.md](backend-api.md) | REST endpoints |
