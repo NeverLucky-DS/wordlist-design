@@ -294,6 +294,13 @@ class VocabCard(Base):
     # `schnell`, and ranking reads zipf immediately after the match score.
     form_kind: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     form_of: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    # Full inflection paradigm from a Wiktionary dump (see vocab/morph.py): the
+    # six present-tense persons, imperative and Konjunktiv II for verbs, all four
+    # cases in both numbers for nouns. The model-written `data["grammar"]` keeps
+    # only two or three fields per word, which is enough to recognise a word and
+    # not enough to use one — `du gibst` and the n-declension live here.
+    # NULL for the ~37% of cards Wiktionary has no entry for.
+    morphology: Mapped[Optional[dict]] = mapped_column(JSON_TYPE, nullable=True)
     # `cards.created_at` from SQLite — the incremental sync watermark.
     source_created_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
     synced_at: Mapped[datetime] = mapped_column(server_default=func.now())

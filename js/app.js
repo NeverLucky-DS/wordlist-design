@@ -323,6 +323,52 @@ function gramSpec(card) {
   return chips.length ? `<div class="g-spec">${chips.join('')}</div>` : '';
 }
 
+/* The full paradigm, when Wiktionary had one (about two thirds of cards).
+   The chips above stay: they cover the third with no paradigm, and they are what
+   the enrichment model itself produced. This adds what the model never gave —
+   the six present-tense persons, so `du gibst` and `er gibt` are visible, and
+   all four noun cases, so the n-declension stops being a guess. */
+const PERSON_LABEL = { ich: 'ich', du: 'du', er: 'er/sie/es', wir: 'wir', ihr: 'ihr', sie: 'sie' };
+const CASE_LABEL = { nom: 'Nominativ', gen: 'Genitiv', dat: 'Dativ', akk: 'Akkusativ' };
+
+function paradigmBlock(card) {
+  const m = card.morphology;
+  if (!m) return '';
+  if (m.praesens || m.imperativ_du) return verbParadigm(m);
+  if (m.sg || m.pl) return nounParadigm(m);
+  return '';
+}
+
+function verbParadigm(m) {
+  const rows = Object.keys(PERSON_LABEL)
+    .filter(k => (m.praesens || {})[k])
+    .map(k => `<div class="p-cell"><i>${PERSON_LABEL[k]}</i>${esc(m.praesens[k])}</div>`)
+    .join('');
+  const extra = [];
+  const push = (label, value) => {
+    if (value) extra.push(`<div class="p-cell"><i>${label}</i>${esc(value)}</div>`);
+  };
+  push('du!', m.imperativ_du);
+  push('ihr!', m.imperativ_ihr);
+  push('Konj. II', m.konjunktiv2);
+  if (!rows && !extra.length) return '';
+  return `<div class="p-block">
+    ${rows ? `<div class="p-lab">Präsens</div><div class="p-grid">${rows}</div>` : ''}
+    ${extra.length ? `<div class="p-lab">Imperativ · Konjunktiv</div>
+      <div class="p-grid">${extra.join('')}</div>` : ''}
+  </div>`;
+}
+
+function nounParadigm(m) {
+  const cases = Object.keys(CASE_LABEL).filter(c => (m.sg || {})[c] || (m.pl || {})[c]);
+  if (!cases.length) return '';
+  const head = `<div class="p-row p-head"><span></span><span>Singular</span><span>Plural</span></div>`;
+  const body = cases.map(c => `<div class="p-row"><span>${CASE_LABEL[c]}</span>` +
+    `<span>${esc((m.sg || {})[c] || '—')}</span>` +
+    `<span>${esc((m.pl || {})[c] || '—')}</span></div>`).join('');
+  return `<div class="p-block"><div class="p-table">${head}${body}</div></div>`;
+}
+
 function useBlock(card) {
   const rule = card.rektion || '';
   const colls = card.collocations || [];
@@ -342,7 +388,7 @@ function renderCardSheet(card) {
     <div class="ex"><span class="ex-n">${String(i + 1).padStart(2, '0')}</span>
       <div class="ex-body"><p class="ex-de">${md(e.de || '')}</p>
       ${e.ru ? `<p class="ex-ru">${esc(e.ru)}</p>` : ''}</div></div>`).join('');
-  const grammar = gramSpec(card) + useBlock(card);
+  const grammar = gramSpec(card) + paradigmBlock(card) + useBlock(card);
   const inList = !!card.in_list;
 
   el.detail.innerHTML = `

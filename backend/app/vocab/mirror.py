@@ -47,11 +47,19 @@ def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
     con = sqlite3.connect(f"file:{ENRICH_DB}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
+        # LEFT JOIN, not a second pass: morphology is filled by an offline import
+        # that does not touch `cards.created_at`, so the cursor would never
+        # revisit a card to pick its paradigm up. Riding along on the card's own
+        # row means a re-import is published by the same full resync as any other
+        # in-place rewrite.
         rows = con.execute(
-            "SELECT lemma, level, topic, pos, article, ru, confidence, register, "
-            "       data, zipf, form_kind, form_of, created_at "
-            "FROM cards WHERE (created_at, lemma) > (?, ?) "
-            "ORDER BY created_at, lemma LIMIT ?",
+            "SELECT c.lemma, c.level, c.topic, c.pos, c.article, c.ru, c.confidence, "
+            "       c.register, c.data, c.zipf, c.form_kind, c.form_of, "
+            "       m.data AS morphology, c.created_at "
+            "FROM cards c "
+            "LEFT JOIN morphology m ON m.lemma = c.lemma AND m.pos = c.pos "
+            "WHERE (c.created_at, c.lemma) > (?, ?) "
+            "ORDER BY c.created_at, c.lemma LIMIT ?",
             (after_ts, after_lemma, limit),
         ).fetchall()
     finally:
@@ -112,6 +120,7 @@ def _card_values(row: dict) -> dict:
         "zipf": row.get("zipf"),
         "form_kind": row.get("form_kind"),
         "form_of": row.get("form_of"),
+        "morphology": json.loads(row["morphology"]) if row.get("morphology") else None,
         "source_created_at": float(row.get("created_at") or 0.0),
     }
 
@@ -146,7 +155,8 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
                 c: stmt.excluded[c]
                 for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
                           "pos", "article", "ru", "confidence", "register", "data",
-                          "zipf", "form_kind", "form_of", "source_created_at")
+                          "zipf", "form_kind", "form_of", "morphology",
+                          "source_created_at")
             }
             | {"synced_at": func.now()},
         )

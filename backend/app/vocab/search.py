@@ -140,6 +140,9 @@ def card_out(card: VocabCard, score: float | None = None) -> dict[str, Any]:
         # labels it ("форма от machen") instead of passing it off as a word.
         "form_kind": card.form_kind,
         "form_of": card.form_of,
+        # Full paradigm where Wiktionary had one; the UI falls back to the
+        # model-written `grammar` block when this is absent.
+        "morphology": card.morphology or None,
         "definition_de": data.get("definition_de") or "",
         "grammar": data.get("grammar") or {},
         "rektion": data.get("rektion") or "",

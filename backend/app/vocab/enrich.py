@@ -467,6 +467,11 @@ def ensure_schema() -> None:
         _add_column(con, "cards", "form_kind", "TEXT")
         _add_column(con, "cards", "form_of", "TEXT")
         con.execute("CREATE INDEX IF NOT EXISTS ix_cards_form ON cards(form_kind)")
+        # Full paradigms imported from a Wiktionary dump (see morph.py). Created
+        # here even though only the offline importer fills it: the mirror joins
+        # against it on every pass and would fail on a missing table.
+        from app.vocab import morph
+        morph.ensure_table(con)
         # What each account's key has spent. Lives here, next to the rest of the
         # work state, because the worker is a sync thread that already owns this
         # file — routing it to Postgres would mean an event loop per worker.
