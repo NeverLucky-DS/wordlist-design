@@ -37,3 +37,10 @@ dictionaries/
 backend/app/vocab/vocab.db
 backend/app/vocab/enrichment.db
 backend/app/vocab/vocab_data/
+
+# Golden backups of the enriched base (see GOLDEN-BACKUP.md). Ignored because
+# they are 126 MB of binary each — but they must NEVER be deleted from disk.
+# The .md next to them is tracked on purpose: it is the note explaining why the
+# untracked file beside it matters.
+enrichment-GOLDEN-*.db*
+vocab-GOLDEN-*.db*
