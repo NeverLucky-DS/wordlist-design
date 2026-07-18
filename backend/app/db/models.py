@@ -300,7 +300,17 @@ class VocabCard(Base):
     # only two or three fields per word, which is enough to recognise a word and
     # not enough to use one — `du gibst` and the n-declension live here.
     # NULL for the ~37% of cards Wiktionary has no entry for.
-    morphology: Mapped[Optional[dict]] = mapped_column(JSON_TYPE, nullable=True)
+    #
+    # `none_as_null` is load-bearing, not decoration. A plain JSON column turns a
+    # Python None into the JSON scalar `null`, which is emphatically NOT SQL NULL:
+    # the first resync wrote 'null'::jsonb into 27 929 rows, so `morphology IS
+    # NOT NULL` counted all 76 332 cards as having a paradigm. Reads happened to
+    # survive (JSON null decodes back to None), which is exactly what makes it
+    # worth pinning down — it lies to every query rather than to the API.
+    morphology: Mapped[Optional[dict]] = mapped_column(
+        JSON(none_as_null=True).with_variant(JSONB(none_as_null=True), "postgresql"),
+        nullable=True,
+    )
     # `cards.created_at` from SQLite — the incremental sync watermark.
     source_created_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
     synced_at: Mapped[datetime] = mapped_column(server_default=func.now())

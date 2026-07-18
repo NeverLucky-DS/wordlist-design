@@ -505,3 +505,26 @@ async def test_entry_returns_the_full_card(pg_client, pg_session):
 
 async def test_entry_404s_for_an_unknown_lemma(pg_guest_client):
     assert (await pg_guest_client.get("/api/vocab/entry/Nichtwort")).status_code == 404
+
+
+def test_mirror_chunks_stay_under_the_bind_parameter_ceiling():
+    """A multi-row INSERT spends one bind parameter per column per row, and the
+    wire protocol caps a statement at 32767 of them.
+
+    This is a regression test with a scar: adding form_kind, form_of and
+    morphology took the card insert from 14 columns to 17, and 17 x 2000 blew
+    past the ceiling. The suite runs on SQLite, which has a different limit, so
+    nothing failed until a real Postgres resync died mid-migration.
+    """
+    from app.vocab import mirror
+
+    for columns in (14, 17, 25, 60):
+        rows = [{}] * mirror.SYNC_BATCH
+        chunks = list(mirror._chunks(rows, columns))
+        assert sum(len(c) for c in chunks) == len(rows)      # nothing dropped
+        for chunk in chunks:
+            assert len(chunk) * columns <= mirror._PG_MAX_PARAMS
+
+    # A column count wider than the ceiling still has to emit rows, not hang.
+    assert list(mirror._chunks([{}, {}], 99999)) == [[{}], [{}]]
+    assert list(mirror._chunks([], 17)) == []

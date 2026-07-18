@@ -32,6 +32,22 @@ SYNC_BATCH = 2000       # cards per round trip
 SYNC_INTERVAL = 300.0   # s between background passes — enrichment adds ~1k/10min
 _MAX_RU_CHARS = 255     # matches the column; longer meanings are noise anyway
 
+# The wire protocol caps a single statement at 2^15-1 bind parameters, and a
+# multi-row INSERT spends one per column per row. Adding `form_kind`, `form_of`
+# and `morphology` took the card insert from 14 columns to 17, and 17 × 2000
+# crossed the line — the resync died with "the number of query arguments cannot
+# exceed 32767" after the schema had already migrated. Deriving the chunk from
+# the column count instead of hard-coding a smaller batch means the next column
+# shrinks the chunk by itself rather than breaking production again.
+_PG_MAX_PARAMS = 32767
+
+
+def _chunks(rows: list[dict], columns: int):
+    """Slices of `rows` that fit under the bind-parameter ceiling."""
+    per_statement = max(1, _PG_MAX_PARAMS // max(columns, 1))
+    for i in range(0, len(rows), per_statement):
+        yield rows[i:i + per_statement]
+
 
 # ── SQLite side (sync, read-only) ────────────────────────────────────────────
 def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
@@ -147,20 +163,21 @@ async def _cursor(db: AsyncSession) -> tuple[float, str]:
 
 async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
     cards = [_card_values(r) for r in rows]
-    stmt = pg_insert(VocabCard).values(cards)
-    await db.execute(
-        stmt.on_conflict_do_update(
-            index_elements=[VocabCard.lemma],
-            set_={
-                c: stmt.excluded[c]
-                for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
-                          "pos", "article", "ru", "confidence", "register", "data",
-                          "zipf", "form_kind", "form_of", "morphology",
-                          "source_created_at")
-            }
-            | {"synced_at": func.now()},
+    for chunk in _chunks(cards, len(cards[0]) if cards else 1):
+        stmt = pg_insert(VocabCard).values(chunk)
+        await db.execute(
+            stmt.on_conflict_do_update(
+                index_elements=[VocabCard.lemma],
+                set_={
+                    c: stmt.excluded[c]
+                    for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
+                              "pos", "article", "ru", "confidence", "register", "data",
+                              "zipf", "form_kind", "form_of", "morphology",
+                              "source_created_at")
+                }
+                | {"synced_at": func.now()},
+            )
         )
-    )
 
     lemmas = [c["lemma"] for c in cards]
     # Re-enrichment can shrink `ru_all`, so replace the set rather than upsert it;
@@ -173,8 +190,10 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
         for row in rows
         for i, ru in enumerate(_ru_meanings(row))
     ]
-    if translations:
-        await db.execute(pg_insert(VocabCardTranslation).values(translations))
+    # Same ceiling: a card averages ~2.4 meanings, so this list runs well past
+    # the card count even though it is only four columns wide.
+    for chunk in _chunks(translations, 4):
+        await db.execute(pg_insert(VocabCardTranslation).values(chunk))
 
 
 async def prune_orphans(db: AsyncSession) -> int:
