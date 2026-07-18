@@ -212,6 +212,22 @@ h1.title{font-family:'Cormorant Garamond',serif;font-size:76px;font-weight:600;l
 .syn-chip:hover{color:var(--ink);background:var(--hair-2)}
 .syn-chip.is-open{color:var(--rose);background:var(--rose-soft)}
 
+/* "Form von machen" — a word form the source dictionary listed next to real
+   headwords. It rides beside the lemma rather than under it: the row already
+   spends its second line on the Russian meaning, and a third would make forms
+   taller than the words they defer to. Muted, because the point of the note is
+   that this entry is NOT the one you were looking for. */
+.form-note{margin-left:8px;font-family:'Inter',sans-serif;font-size:10.5px;
+  font-weight:500;letter-spacing:.2px;color:var(--muted-2);white-space:nowrap}
+.form-base{font:inherit;color:var(--ink-soft);background:transparent;border:0;
+  border-bottom:1px solid var(--hair-2);padding:0 0 1px;margin-left:3px;
+  cursor:pointer;transition:color .18s,border-color .18s}
+.form-base:hover{color:var(--rose);border-color:var(--rose)}
+/* A form is still a legitimate hit, just never the headline — dim the brush so
+   the eye lands on real words first without the row looking disabled. */
+.word.is-form .wash{opacity:.45}
+.d-form{margin:-2px 0 8px;font-size:11px}
+
 /* Empty states carry a heading, a line of prose and sometimes a control —
    stack them rather than letting the button land inside the paragraph flow. */
 .empty{padding:34px 20px;color:var(--muted);font-style:italic;line-height:1.6;

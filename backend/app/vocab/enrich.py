@@ -462,6 +462,11 @@ def ensure_schema() -> None:
         # Frequency, carried over from vocab.db so search can rank by it without
         # joining across databases (the mirror only ever reads `cards`).
         _add_column(con, "cards", "zipf", "REAL")
+        # Not a headword but a form the source dictionary also listed — see
+        # forms.py. NULL means "a word in its own right", which is the majority.
+        _add_column(con, "cards", "form_kind", "TEXT")
+        _add_column(con, "cards", "form_of", "TEXT")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_cards_form ON cards(form_kind)")
         # What each account's key has spent. Lives here, next to the rest of the
         # work state, because the worker is a sync thread that already owns this
         # file — routing it to Postgres would mean an event loop per worker.
@@ -1035,6 +1040,12 @@ def plan_repairs() -> dict:
                 f"AND COALESCE(phase,'') != '{SPLIT}'", (l,)).fetchone()
         ]
         con.commit()
+        # Which cards are word forms rather than headwords. Deterministic like
+        # the rest of this function, and equally in-place: it rewrites existing
+        # cards without touching `created_at`, so the caller has to resync the
+        # mirror when it reports work, exactly as with `zipf` above.
+        from app.vocab import forms
+        form_stats = forms.tag_forms(con)
     finally:
         con.close()
     # Keep the old cards live while they wait — a stale entry beats a hole.
@@ -1043,7 +1054,10 @@ def plan_repairs() -> dict:
     n_ortho = requeue(broken, drop_card=False, phase="repair_ortho")
     n_split = requeue(crammed, drop_card=False, phase=SPLIT)
     return {PAIRS: n_pairs, "repair_case": n_case, "repair_ortho": n_ortho,
-            SPLIT: n_split, "zipf_filled": zipf_filled}
+            SPLIT: n_split, "zipf_filled": zipf_filled,
+            "forms_tagged": form_stats["tagged"],
+            "forms_cleared": form_stats["cleared"],
+            "forms_by_kind": form_stats["by_kind"]}
 
 
 def requeue_low_confidence() -> int:

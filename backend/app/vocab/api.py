@@ -124,13 +124,16 @@ async def enrich_start(
     state = await asyncio.to_thread(
         enrich_worker.start_worker, principal.user_id, api_key,
         settings.mistral_model, batch)
-    if (state.get("plan") or {}).get("zipf_filled"):
+    plan = state.get("plan") or {}
+    # Both of these rewrite existing cards in place, which leaves `created_at`
+    # untouched and therefore invisible to the mirror's forward cursor.
+    if plan.get("zipf_filled") or plan.get("forms_tagged") or plan.get("forms_cleared"):
         _schedule_resync()
     return {"ok": True, **state}
 
 
 def _schedule_resync() -> None:
-    """Replay the replica after `plan_repairs` backfilled `zipf` in place.
+    """Replay the replica after `plan_repairs` rewrote cards in place.
 
     Detached from the request: it is ~64k upserts and the button should not wait
     for it. Guarded by a module flag so ten accounts starting at once queue one

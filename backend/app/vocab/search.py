@@ -39,16 +39,26 @@ _PRIMARY_BONUS = 0.05  # tie-break toward a card's main meaning
 
 
 def _by_relevance(score):
-    """Order hits: match quality, then how common the word is, then length.
+    """Order hits: match quality, headwords before forms, frequency, then length.
 
     Frequency has to sit above length. Every exact hit for "быстрый" scores the
     same 2.0, so the tie used to fall straight to `length(lemma_norm)` — which
     answered fix, rasch, prompt, rapide, zügig and put `schnell`, the 354th most
     common word in German, LAST. Someone looking up "быстрый" wants schnell.
     NULLS LAST keeps the few cards with no source frequency out of the top.
+
+    But frequency cannot be trusted on its own, which is why `form_kind` sits
+    above it. `wordfreq` folds case and counts surface forms, so the dictionary's
+    non-headwords carry borrowed weight: `Schnell` (a combining form) wears the
+    5.51 of the adjective, `gemacht` the weight of every "hat gemacht" written.
+    Sorted by zipf alone those win, and "обманывать" answered `linken` — a rare
+    slang verb holding the frequency of `link` — above täuschen and betrügen.
+    Ordering by `form_kind IS NULL` first puts real words ahead of forms at equal
+    match quality, while leaving a form reachable when nothing else matches.
     """
     return (
         score.desc(),
+        VocabCard.form_kind.is_(None).desc(),
         VocabCard.zipf.desc().nullslast(),
         func.length(VocabCard.lemma_norm),
         VocabCard.lemma,
@@ -126,6 +136,10 @@ def card_out(card: VocabCard, score: float | None = None) -> dict[str, Any]:
         "topic_de": _TOPIC_DE.get(card.topic or "", ""),
         "confidence": card.confidence,
         "register": card.register,
+        # Non-NULL means the source listed this as a form, not a headword; the UI
+        # labels it ("форма от machen") instead of passing it off as a word.
+        "form_kind": card.form_kind,
+        "form_of": card.form_of,
         "definition_de": data.get("definition_de") or "",
         "grammar": data.get("grammar") or {},
         "rektion": data.get("rektion") or "",

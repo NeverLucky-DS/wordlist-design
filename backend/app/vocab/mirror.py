@@ -49,7 +49,7 @@ def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
     try:
         rows = con.execute(
             "SELECT lemma, level, topic, pos, article, ru, confidence, register, "
-            "       data, zipf, created_at "
+            "       data, zipf, form_kind, form_of, created_at "
             "FROM cards WHERE (created_at, lemma) > (?, ?) "
             "ORDER BY created_at, lemma LIMIT ?",
             (after_ts, after_lemma, limit),
@@ -110,6 +110,8 @@ def _card_values(row: dict) -> dict:
         "register": row.get("register"),
         "data": json.loads(row["data"]) if row.get("data") else {},
         "zipf": row.get("zipf"),
+        "form_kind": row.get("form_kind"),
+        "form_of": row.get("form_of"),
         "source_created_at": float(row.get("created_at") or 0.0),
     }
 
@@ -144,7 +146,7 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
                 c: stmt.excluded[c]
                 for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
                           "pos", "article", "ru", "confidence", "register", "data",
-                          "zipf", "source_created_at")
+                          "zipf", "form_kind", "form_of", "source_created_at")
             }
             | {"synced_at": func.now()},
         )

@@ -85,16 +85,45 @@ const ACT_LABEL = {
   remove: 'Aus der Lernliste entfernen',
 };
 
+/* A card the source dictionary listed as a form rather than a headword. Backend
+   demotes these below real words; here they just say what they are, so `gemacht`
+   reads as "Form von machen" instead of posing as a word of its own. The base is
+   a button because the next thing you want is that word — the move Yandex makes
+   when it answers a form with a link to its dictionary entry. */
+const FORM_OF_LABEL = {
+  inflection:  'Form von',
+  capitalised: 'Form von',
+  abbrev:      'Kurzform von',
+  variant:     'Nebenform von',
+};
+// A combining form has no base to point at: `Schnell-` is not a form of
+// anything, it is only ever the front half of Schnellzug.
+const FORM_PLAIN_LABEL = { compound: 'nur in Zusammensetzungen' };
+
+function formNote(card) {
+  if (!card.form_kind) return '';
+  const plain = FORM_PLAIN_LABEL[card.form_kind];
+  if (plain) return `<span class="form-note">${plain}</span>`;
+  // Every other kind names a base; without one there is nothing to say that the
+  // word does not already say for itself.
+  const prefix = FORM_OF_LABEL[card.form_kind];
+  if (!prefix || !card.form_of) return '';
+  return `<span class="form-note">${prefix} ` +
+    `<button class="form-base" type="button" data-base="${esc(card.form_of)}">` +
+    `${esc(card.form_of)}</button></span>`;
+}
+
 function wordRow(card, act) {
   const row = document.createElement('div');
-  row.className = 'word' + (openCard && openCard.card.lemma === card.lemma ? ' active' : '');
+  row.className = 'word' + (openCard && openCard.card.lemma === card.lemma ? ' active' : '')
+    + (card.form_kind ? ' is-form' : '');
   row.dataset.lemma = card.lemma;
   row.style.setProperty('--brush', brushOfCard(card));
   const art = card.article ? `<span class="art">${esc(card.article)}</span> ` : '';
   row.innerHTML = `
     <span class="wash"></span>
     <div class="w-body">
-      <div class="de">${art}${esc(card.lemma)}</div>
+      <div class="de">${art}${esc(card.lemma)}${formNote(card)}</div>
       <div class="ru">${esc(card.ru)}</div>
     </div>
     <div class="w-right">
@@ -326,6 +355,7 @@ function renderCardSheet(card) {
         <span class="d-level">${esc(card.band)}</span>
       </div>
       <div class="d-word${longCls}">${art}${esc(card.lemma)}</div>
+      ${formNote(card) ? `<div class="d-form">${formNote(card)}</div>` : ''}
       <div class="d-tools">
         <button class="d-hear" id="hear" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
@@ -394,6 +424,16 @@ el.search.addEventListener('input', event => {
 
 function rowHandler(source, side, snapshotOnly) {
   return async event => {
+    // "Form von machen" — the base is the entry the reader actually wanted, so
+    // send the search there instead of opening the form's own card.
+    const base = event.target.closest('.form-base');
+    if (base) {
+      event.stopPropagation();
+      el.search.value = base.dataset.base;
+      closeCard();
+      runSearch(base.dataset.base);
+      return;
+    }
     const chip = event.target.closest('.syn-chip');
     if (chip) {
       const syn = flatResults().find(c => c.lemma === chip.dataset.lemma);

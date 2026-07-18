@@ -283,6 +283,17 @@ class VocabCard(Base):
     # German — BELOW fix, rasch, prompt, rapide and zügig. NULL sorts last, which
     # is what we want for the few cards with no source row (renamed spellings).
     zipf: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # Set when the source dictionary listed this entry as a form rather than a
+    # headword (see vocab/forms.py): `form_kind` is what kind — inflection,
+    # compound, abbrev, variant, capitalised — and `form_of` the base lemma when
+    # it could be resolved. NULL is the normal case: a word in its own right.
+    #
+    # Search demotes non-NULL rows below real lemmas at equal match quality. It
+    # has to, because `wordfreq` folds case and counts surface forms, so exactly
+    # these entries carry inflated frequency: `Schnell` wears the zipf of
+    # `schnell`, and ranking reads zipf immediately after the match score.
+    form_kind: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    form_of: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     # `cards.created_at` from SQLite — the incremental sync watermark.
     source_created_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
     synced_at: Mapped[datetime] = mapped_column(server_default=func.now())
