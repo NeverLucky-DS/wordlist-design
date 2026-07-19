@@ -46,9 +46,9 @@
    two actions never move when the variant does */
 .d-foot{display:flex;align-items:center;gap:14px;padding:14px 30px 18px;border-top:1px solid var(--hair-2)}
 .d-collect{background:var(--graphite);color:#fff;border:1px solid var(--graphite);border-radius:10px;
-  padding:9px 18px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  padding:10px 19px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
 .d-collect:hover{box-shadow:0 12px 26px -12px rgba(51,51,58,.55)}
-.d-hear{background:none;border:0;color:var(--rose);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:0}
+.d-hear{background:none;border:0;color:#8c4f57;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:0}
 .d-hear:hover{text-decoration:underline}
 
 /* ---------- collapsible module, shared ---------- */
@@ -371,20 +371,196 @@
 .v5-syn{margin:8px 0 0;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ink)}
 
 /* =====================================================================
+   V6–V9 — the second generation, built on V4.
+
+   A shared floor first, because all four answer the same measured problem:
+   V4's extra translations and example translation sit at 2.79:1 against white
+   and its Rektion at 2.96:1, where WCAG AA asks 4.5:1. Those three lines are
+   the ones that vanish. So below, `--soft` replaces `--muted` for anything a
+   reader has to actually read, and nothing drops under 13px.
+   ===================================================================== */
+.nt{
+  /* 4.6:1 on white — the lightest ink allowed to carry a full sentence.
+     `--muted` (#9A9AA2) is 2.79:1 and is now only used for furniture.
+     The floor these four are held to, stated exactly so it can be checked:
+       · content text (meanings, examples, forms, collocations)  ≥ 15px
+       · labels and micro-captions                               ≥ 11px, bold
+       · everything, without exception                            ≥ 4.5:1
+     The last line is the one that bites: --rose is 2.95:1 on white and --muted-2
+     is 1.75:1, so neither may carry a label, however small and decorative it
+     looks. --rose-ink is the same hue at 6.2:1. */
+  --soft:#6A6A74;
+  --rose-ink:#8c4f57;
+  /* band tints for V8, kept in the existing palette so no new colour enters */
+  --tint-b1:var(--rose-soft); --tint-b2:var(--blue-soft); --tint-c1:var(--lav-soft);
+}
+
+/* ---------- shared head ---------- */
+.nt-head{position:relative;padding:23px 30px 19px;border-radius:16px 16px 0 0;overflow:hidden}
+.nt-head::before{content:"";position:absolute;inset:0;background:var(--brush) no-repeat center/cover;
+  opacity:.5;z-index:0}
+.nt-head::after{content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.88))}
+.nt-head>*{position:relative;z-index:2}
+/* the head's optional art sits top-right, clear of the word and of the close
+   button, and never pushes the text: it is absolutely positioned */
+.nt-art-slot{position:absolute;top:16px;right:52px;z-index:3;pointer-events:none}
+.nt-meta{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+.hm-pos{font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--ink-soft)}
+/* A published level and our own corpus reading stay different claims, but both
+   are now legible — the old frequency chip was the 2.79:1 one. */
+.hm-cefr{font-size:13px;font-weight:700;letter-spacing:.04em;color:#8c4f57;
+  background:var(--rose-soft);border-radius:6px;padding:2px 8px}
+.hm-freq{font-size:13px;font-weight:500;color:var(--ink-soft)}
+.hm-freq::before{content:'·';margin-right:8px;color:var(--muted-2)}
+/* The article is its own element, never glued into the lemma: it is the single
+   fact a learner most often comes back for, and it must be findable at a
+   glance rather than parsed out of the front of a long compound. */
+.nt-art{display:inline-block;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;
+  letter-spacing:.06em;color:#8c4f57;background:rgba(255,255,255,.72);
+  border:1px solid var(--rose-soft);border-radius:7px;padding:3px 9px;
+  vertical-align:middle;margin-right:11px;transform:translateY(-3px)}
+.nt-lemma{font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-.5px}
+.nt .form-note{margin-top:9px;font-size:13px;color:var(--ink-soft)}
+
+/* ---------- shared: meanings, all equal ---------- */
+/* No size or colour hierarchy inside the list. 77.2% of cards carry more than
+   one meaning, and for `entwickeln` they are three different Russian verbs —
+   printing two of them at 12.5px grey said "footnote" about the word the
+   reader may well have been looking for. */
+.mn{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;counter-reset:mn}
+.mn li{display:flex;gap:11px;align-items:baseline;counter-increment:mn}
+.mn .mn-n{flex:none;width:19px;font-size:13px;font-weight:700;color:var(--rose-ink);
+  font-variant-numeric:tabular-nums}
+.mn .mn-n::before{content:counter(mn)}
+.mn .mn-t{font-size:19px;font-weight:500;line-height:1.32;color:var(--ink)}
+.mn.is-single .mn-t{font-size:21px;font-weight:500;color:var(--ink)}
+
+/* ---------- shared: example, rektion, collocations ---------- */
+.nt .x-de{font-size:18px;font-weight:500;line-height:1.5;color:var(--ink)}
+.nt .x-de em{font-style:normal;font-weight:700;box-shadow:inset 0 -3px 0 var(--rose-soft)}
+/* was 14px at 2.79:1 — the single worst line on the card */
+.nt .x-ru{font-size:15.5px;line-height:1.45;color:var(--soft);font-style:normal;margin-top:6px}
+.nt-rek{font-size:16px;font-weight:600;color:var(--ink);
+  font-family:'SF Mono','Fira Code',ui-monospace,monospace;letter-spacing:-.01em}
+.nt-colls{display:flex;flex-wrap:wrap;gap:7px}
+.nt-colls span{font-size:14.5px;line-height:1.35;color:var(--ink-soft);
+  background:var(--bg-2);border-radius:8px;padding:5px 11px}
+.nt-colls em{font-style:normal;font-weight:700;color:var(--ink)}
+
+/* ---------- shared: labels ---------- */
+/* Russian, because a German label on German material is invisible — it reads
+   as more material. The chrome speaks Russian, the word speaks German. */
+.nt-lab{font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--rose-ink);margin-bottom:8px}
+
+/* ---------- shared: tabs & panels (bigger than V4's 10.5px caps) ---------- */
+.nt-tabs{display:flex;gap:4px;padding:0 30px;border-bottom:1px solid var(--hair)}
+.nt-tab{background:none;border:0;border-bottom:2.5px solid transparent;margin-bottom:-1px;
+  padding:11px 13px;font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.01em;
+  color:var(--soft);cursor:pointer;transition:color .16s,border-color .16s}
+.nt-tab:hover{color:var(--ink)}
+.nt-tab.on{color:var(--ink);font-weight:700;border-bottom-color:var(--rose)}
+.nt-panel{display:none;padding:18px 30px 8px}
+.nt-panel.on{display:block;animation:panelIn .22s ease}
+.p-def{margin:0;font-size:15.5px;line-height:1.6;color:var(--ink-soft)}
+.p-syn{margin:10px 0 0;font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--ink)}
+.nt .g-part b,.nt .g-step b,.nt .g-brief{font-size:21px}
+.nt .g-person{font-size:17.5px}
+/* The grammar micro-labels ship at 8.5px in --muted-2 (1.75:1) — invisible
+   twice over. Inside these variants they are 11px in --soft (4.6:1). */
+.nt .g-part i,.nt .g-step i,.nt .g-sub-lab,.nt .g-extra i,.nt .g-person i,
+.nt .g-brief-sep,.nt .g-cases thead th,.nt .g-cases tbody th{
+  font-size:11px;color:var(--soft);letter-spacing:.06em}
+.nt .g-sub-lab em{color:var(--rose-ink)}
+.nt .g-note{color:var(--rose-ink);font-size:12.5px}
+.nt .g-cases th,.nt .g-cases td{font-size:17px}
+.nt .g-more>summary{font-size:13px;color:var(--soft)}
+
+/* ===== V6 «Статья» — labels above their block ===== */
+.v6-word{font-size:46px;line-height:1.02;color:var(--ink)}
+.v6-body{padding:18px 30px 16px}
+.nt-sec+.nt-sec{margin-top:15px;padding-top:13px;border-top:1px solid var(--hair-2)}
+
+/* ===== V7 «Рубрики» — labels in a left rail ===== */
+.v7-word{font-size:46px;line-height:1.02;color:var(--ink)}
+.v7-body{padding:16px 30px 14px}
+/* 92px holds «Управление» at 11px without breaking; the reading column keeps
+   the rest, which at a 440px card is the tightest of the four. */
+.v7-row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:16px;align-items:start;
+  padding:11px 0;border-bottom:1px solid var(--hair-2)}
+.v7-row:last-child{border-bottom:0}
+/* the ink rule replaces a border, so the row it precedes drops its own */
+.v7-body>.art-slot{width:100%;margin:2px 0;opacity:.9}
+.v7-body>.art-slot+.v7-row{border-top:0}
+.v7-lab{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--rose-ink);padding-top:4px;line-height:1.3}
+.v7 .mn .mn-t{font-size:18px}
+.v7 .nt-colls span{font-size:13.5px}
+
+/* ===== V8 «Плитки» — tinted blocks ===== */
+.v8-word{font-size:46px;line-height:1.02;color:var(--ink)}
+.v8-body{padding:14px 22px 14px;display:flex;flex-direction:column;gap:8px}
+.v8-tile{background:var(--tint);border-radius:13px;padding:12px 15px 13px}
+/* the meanings tile is the answer to the lookup, so it gets the solid ground
+   and the others sit a step back */
+.v8-tile[data-t="sinn"]{background:var(--card);border:1.5px solid var(--tint);
+  box-shadow:0 2px 10px -6px rgba(40,40,45,.25)}
+.v8-tlab{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.v8-tlab span{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-soft)}
+.v8 .nt-colls span{background:rgba(255,255,255,.72)}
+/* A tint is not free: --soft clears 4.6:1 on white but only 4.39:1 on the band
+   tile, which is under AA. The tinted variant therefore needs one step darker
+   ink for running text — the same reason the tiles keep the meanings on solid
+   white rather than on colour. */
+.v8 .x-ru{color:var(--ink-soft)}
+
+/* ===== V9 «Крупно» — contrast first ===== */
+.v9-word{font-size:52px;line-height:1;color:var(--ink);letter-spacing:-1px}
+.v9 .nt-head::after{background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.93))}
+.v9-body{padding:19px 30px 17px}
+.v9-blk+.v9-blk{margin-top:16px;padding-top:15px;border-top:2px solid var(--hair)}
+/* A filled tag, not a tinted whisper: at this size the label has to survive
+   being read by someone who is already struggling with the body text. */
+.v9-lab{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:#fff;background:var(--graphite);border-radius:5px;
+  padding:3px 9px;margin-bottom:9px}
+.v9 .mn .mn-t{font-size:21px;font-weight:600}
+.v9 .mn.is-single .mn-t{font-size:23px;font-weight:600}
+.v9 .mn .mn-n{font-size:14px;color:var(--ink-soft)}
+.v9 .x-de{font-size:20px;font-weight:600;line-height:1.45}
+/* When the whole sentence is already 600, a 700 keyword does not read as
+   marked. At this weight the mark has to be a different channel, not a heavier
+   one — so the keyword carries a solid rule instead of extra weight. */
+.v9 .x-de em{font-weight:700;box-shadow:inset 0 -3px 0 var(--rose)}
+.v9 .x-ru{font-size:17px;color:var(--ink-soft)}
+.v9 .nt-colls span{font-size:15.5px;color:var(--ink);background:var(--bg-2);font-weight:500}
+.v9 .nt-rek{font-size:17px}
+.v9 .nt-tab{font-size:15px}
+.v9 .nt-tabs{border-bottom-width:2px}
+.v9 .nt-tab.on{border-bottom-color:var(--graphite);border-bottom-width:3px}
+
+/* =====================================================================
    Harness chrome — not part of any variant.
    ===================================================================== */
-.vbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:stretch;gap:0;
-  background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-top:1px solid var(--hair);
+/* Two rows, split by generation: the five originals and the four built on V4.
+   Nine buttons on one row would give each ~150px and read as one flat set,
+   hiding the fact that V6–V9 are all the same proposal seen four ways. */
+.vbar{position:fixed;left:0;right:0;bottom:0;z-index:60;
+  background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-top:1px solid var(--hair);
   padding:0 100px}
-.vb{flex:1;background:none;border:0;border-right:1px solid var(--hair-2);padding:11px 14px;
+.vbar-row{display:flex;align-items:stretch}
+.vbar-row+.vbar-row{border-top:1px solid var(--hair-2)}
+.vb{flex:1;background:none;border:0;border-right:1px solid var(--hair-2);padding:8px 14px;
   font-family:inherit;text-align:left;cursor:pointer;color:var(--muted);transition:background .15s,color .15s}
 .vb:hover{background:var(--bg-2)}
 .vb.on{background:var(--card);color:var(--ink);box-shadow:inset 0 2px 0 var(--rose)}
-.vb b{display:block;font-size:10px;letter-spacing:.16em;color:var(--rose)}
-.vb span{display:block;font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;line-height:1.15}
+.vb b{display:block;font-size:9.5px;letter-spacing:.16em;color:var(--rose)}
+.vb span{display:block;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;line-height:1.15}
 .vb i{display:block;font-style:normal;font-size:10.5px;color:var(--muted-2)}
-.measure{position:fixed;right:16px;bottom:74px;z-index:61;background:var(--graphite);color:#fff;
+.measure{position:fixed;right:16px;bottom:118px;z-index:61;background:var(--graphite);color:#fff;
   border-radius:8px;padding:5px 10px;font-size:11px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
-main{padding-bottom:150px}
+main{padding-bottom:190px}
 .proto-hint{font-size:12px;color:var(--muted);line-height:1.6;margin:-4px 0 14px}
 .proto-hint b{color:var(--ink-soft)}

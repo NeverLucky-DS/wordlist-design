@@ -440,6 +440,218 @@ function v5(card) {
   </div>`;
 }
 
+/* =====================================================================
+   V6–V9 — four takes on V4 «Bühne», against three complaints about it.
+
+   All four keep what V4 got right: the coloured head (the brush already
+   encodes level × gender), the article sitting where it can be seen, and a
+   body that cannot grow past one open panel.
+
+   What changes, and why it is not a matter of taste:
+
+   1. LEGIBILITY. Three of V4's seven text styles fail WCAG AA against white,
+      measured in the browser: the extra translations and the Russian line of
+      the example both sit at 2.79:1 (4.5:1 required) and the Rektion at
+      2.96:1. Those are exactly the lines that "disappear". So every one of
+      these variants is held to a floor: nothing below 13px, and no body text
+      under 4.5:1. `auditContrast()` at the bottom of this file re-checks it.
+
+   2. STRUCTURE. The opening card ran word → translation → sentence → chips
+      with nothing naming any of it. Labels are added, and they are RUSSIAN by
+      a rule worth stating once: **the chrome speaks Russian, the material
+      speaks German.** Everything the learner is here to absorb (lemma,
+      example, forms, collocations) stays German; everything that only tells
+      them where they are (перевод, пример, управление, tab names) is Russian.
+      A German label on a German example is invisible — it looks like more
+      material.
+
+   3. ALL MEANINGS ARE EQUAL. V4 printed `ru` at 26px and the rest at 12.5px
+      grey, which reads as "one real translation plus some footnotes". It is
+      not true: `ru_all` carries more than one meaning on 77.2% of cards
+      (71 053 of 92 090), and for a verb like entwickeln the three meanings —
+      развивать / разрабатывать / проявлять — are different verbs in Russian.
+      The order is meaningful (the model puts the main sense first), so all
+      four variants keep the ORDER visible while giving every meaning the same
+      size and weight. They differ in how: numbered list, rail, tiles, ladder.
+   ===================================================================== */
+
+const POS_RU = { noun: 'существительное', verb: 'глагол', adj: 'прилагательное',
+                 adv: 'наречие', other: 'слово' };
+// Frequency stays frequency, in Russian too — it is not a CEFR level, and the
+// wording must not let it be read as one (see norm.freq_of).
+const FREQ_RU = { haeufig: 'частое слово', mittel: 'средней частоты', selten: 'редкое слово' };
+
+/* The head meta line, shared by V6–V9: what part of speech, and either the
+   published Goethe level or our own frequency reading — never both dressed
+   alike. */
+function metaRU(card) {
+  const lv = levelMark(card);
+  const bits = [`<span class="hm-pos">${POS_RU[card.pos] || 'слово'}</span>`];
+  if (lv) {
+    bits.push(lv.kind === 'cefr'
+      ? `<span class="hm-cefr" title="Уровень по спискам Goethe">${esc(lv.text)}</span>`
+      : `<span class="hm-freq" title="Частотность по корпусу — это не уровень">${esc(FREQ_RU[card.freq] || '')}</span>`);
+  }
+  return bits.join('');
+}
+
+/* Every meaning at the same size, in the model's order. `n` is shown because
+   the order carries the claim "this sense first" — drop it and the list looks
+   like an unordered pile of synonyms, which for entwickeln it is not. */
+function meaningsHTML(card, cls) {
+  const all = (card.ru_all && card.ru_all.length) ? card.ru_all : [card.ru];
+  if (all.length === 1) return `<div class="${cls} is-single"><span class="mn-t">${esc(all[0])}</span></div>`;
+  return `<ol class="${cls}">${all.map(m =>
+    `<li><span class="mn-n"></span><span class="mn-t">${esc(m)}</span></li>`).join('')}</ol>`;
+}
+
+const TABS_RU = { ex: 'Примеры', gram: 'Грамматика', sense: 'Значение' };
+
+function panelsOf(card, gm) {
+  const ex = card.examples || [];
+  const t = [];
+  if (ex.length > 1) t.push(['ex', TABS_RU.ex,
+    `<div class="x-list">${ex.slice(1).map(e => `<div class="x">${exampleHTML(e)}</div>`).join('')}</div>`]);
+  if (gm) t.push(['gram', TABS_RU.gram, gramBody(gm, card)]);
+  t.push(['sense', TABS_RU.sense, `<p class="p-def">${esc(card.definition_de)}</p>` +
+    (card.synonyms.length ? `<p class="p-syn">${card.synonyms.map(esc).join(' · ')}</p>` : '')]);
+  return t;
+}
+
+/* Every panel CLOSED to start with, unlike V4, which opened the first one.
+   The opening card grew once the type got bigger, the labels arrived and all
+   meanings were given equal size — measured, +300px on `entwickeln` — and an
+   always-open panel pushed all four variants into the viewport clamp, which is
+   the one thing V4 was chosen for. Closed by default, the tabs also stop being
+   decoration and start being the module switch the brief asked for: nothing
+   secondary is on screen until it is asked for. Clicking the open tab closes
+   it again, so the card can always return to its shortest state. */
+const tabsHTML = t => `<div class="nt-tabs" role="tablist">${t.map(([id, lab]) =>
+    `<button class="nt-tab" type="button" data-tab="${id}">${esc(lab)}</button>`).join('')}</div>` +
+  t.map(([id, , body]) => `<div class="nt-panel" data-panel="${id}">${body}</div>`).join('');
+
+/* The coloured head, shared. The article is a separate element rather than a
+   prefix inside the word, so it can be given its own weight and never be
+   mistaken for part of the lemma. */
+function headHTML(card, wordCls, art = '') {
+  return `<div class="nt-head" style="--brush:${brushFor(card)}">
+    ${art ? `<div class="nt-art-slot">${art}</div>` : ''}
+    <div class="nt-meta">${metaRU(card)}</div>
+    <div class="${wordCls}">${card.article
+      ? `<span class="nt-art">${esc(card.article)}</span>` : ''}<span class="nt-lemma">${esc(card.lemma)}</span></div>
+    ${formNote(card)}
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------
+   V6 «Статья» — a dictionary entry, set large.
+   Labels sit above their block, flush left, so the eye learns one vertical.
+   Meanings are a numbered list at full size: the number carries the order,
+   the size says they matter equally.
+--------------------------------------------------------------------- */
+function v6(card) {
+  const gm = grammarModel(card), u = usageOf(card);
+  const ex = card.examples || [];
+  const sec = (lab, body, extra = '') =>
+    `<section class="nt-sec${extra}"><div class="nt-lab">${lab}</div>${body}</section>`;
+  return `
+  <div class="v6 nt">
+    ${headHTML(card, 'v6-word', slot('siegel-' + card.type, 46, 46,
+      'Aquarell-Siegel je Typ: der/die/das/Verb/Adjektiv — 5 Stück'))}
+    <div class="v6-body">
+      ${sec('Перевод', meaningsHTML(card, 'mn'))}
+      ${sec('Пример', `<div class="v6-ex">${exampleHTML(ex[0] || {})}</div>`)}
+      ${u.rektion ? sec('Управление', `<div class="nt-rek">${md(u.rektion)}</div>`) : ''}
+      ${u.colls.length ? sec('Сочетания', `<div class="nt-colls">${u.colls.map(c => `<span>${md(c)}</span>`).join('')}</div>`) : ''}
+    </div>
+    ${tabsHTML(panelsOf(card, gm))}
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------
+   V7 «Рубрики» — the label moves into a left rail.
+   Same information, but the labels stop interrupting the reading column:
+   they stand beside it, and the German material runs down one unbroken
+   vertical. Costs horizontal room, which is why the rail is narrow and the
+   labels are short.
+--------------------------------------------------------------------- */
+function v7(card) {
+  const gm = grammarModel(card), u = usageOf(card);
+  const ex = card.examples || [];
+  const row = (lab, body) => `<div class="v7-row"><div class="v7-lab">${lab}</div><div class="v7-val">${body}</div></div>`;
+  // The rail's rules are the one place this variant can carry a hand: three
+  // tileable ink strokes instead of a 1px border, so the grid reads as ruled
+  // paper rather than as a table. Nothing else in V7 is decorated.
+  const rule = slot('rule-ink', 300, 5, 'Tuschelinie, 3 Varianten, kachelbar, nur Alpha');
+  return `
+  <div class="v7 nt">
+    ${headHTML(card, 'v7-word')}
+    <div class="v7-body">
+      ${row('Перевод', meaningsHTML(card, 'mn'))}
+      ${row('Пример', `<div class="v7-ex">${exampleHTML(ex[0] || {})}</div>`)}
+      ${u.rektion ? row('Управление', `<div class="nt-rek">${md(u.rektion)}</div>`) : ''}
+      ${u.colls.length ? rule + row('Сочетания', `<div class="nt-colls">${u.colls.map(c => `<span>${md(c)}</span>`).join('')}</div>`) : ''}
+    </div>
+    ${tabsHTML(panelsOf(card, gm))}
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------
+   V8 «Плитки» — each block becomes a tinted panel.
+   For scanning rather than reading: the blocks are separated by ground, not
+   by whitespace, so the eye can jump to "the meanings" without parsing the
+   page. The tint is the word's own band colour, so the panels stay tied to
+   the head instead of introducing a second palette.
+--------------------------------------------------------------------- */
+function v8(card) {
+  const gm = grammarModel(card), u = usageOf(card);
+  const ex = card.examples || [];
+  const tile = (id, lab, body, icon) => `<section class="v8-tile" data-t="${id}">
+      <div class="v8-tlab">${slot('icon-' + id, 20, 20, `Tuschesymbol für „${lab}“`)}<span>${lab}</span></div>
+      ${body}</section>`;
+  return `
+  <div class="v8 nt" style="--tint:var(--tint-${card.band.toLowerCase()})">
+    ${headHTML(card, 'v8-word')}
+    <div class="v8-body">
+      ${tile('sinn', 'Перевод', meaningsHTML(card, 'mn'))}
+      ${tile('bsp', 'Пример', `<div class="v8-ex">${exampleHTML(ex[0] || {})}</div>`)}
+      ${u.rektion ? tile('rek', 'Управление', `<div class="nt-rek">${md(u.rektion)}</div>`) : ''}
+      ${u.colls.length ? tile('koll', 'Сочетания', `<div class="nt-colls">${u.colls.map(c => `<span>${md(c)}</span>`).join('')}</div>`) : ''}
+    </div>
+    ${tabsHTML(panelsOf(card, gm))}
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------
+   V9 «Крупно» — accessibility taken to the end of its own logic.
+   Biggest type in the set, heavy weights, near-black on white, 2px rules,
+   labels as filled tags rather than tinted whispers. Colour carries nothing
+   here except the head: everything else is contrast and size, so the card
+   still works for a reader who cannot separate the pastels at all.
+--------------------------------------------------------------------- */
+function v9(card) {
+  const gm = grammarModel(card), u = usageOf(card);
+  const ex = card.examples || [];
+  const blk = (lab, body) => `<section class="v9-blk"><span class="v9-lab">${lab}</span>${body}</section>`;
+  // Frequency is currently a phrase the reader has to parse. As a painted
+  // three-step meter it is read at a glance — and, unlike a number, it cannot
+  // be mistaken for a CEFR level, which is the one thing it must never look
+  // like. Drawn only when we HAVE a frequency; absent is not "rare".
+  const meter = card.freq ? slot('meter-' + card.freq, 58, 14,
+    'Häufigkeitsskala, 3 Zustände, gemalt') : '';
+  return `
+  <div class="v9 nt">
+    ${headHTML(card, 'v9-word', meter)}
+    <div class="v9-body">
+      ${blk('Перевод', meaningsHTML(card, 'mn'))}
+      ${blk('Пример', `<div class="v9-ex">${exampleHTML(ex[0] || {})}</div>`)}
+      ${u.rektion ? blk('Управление', `<div class="nt-rek">${md(u.rektion)}</div>`) : ''}
+      ${u.colls.length ? blk('Сочетания', `<div class="nt-colls">${u.colls.map(c => `<span>${md(c)}</span>`).join('')}</div>`) : ''}
+    </div>
+    ${tabsHTML(panelsOf(card, gm))}
+  </div>`;
+}
+
 /* ---------------------------------------------------------------------
    The grammar body, drawn from the model — one implementation, all variants.
    Each shape is chosen so the block says something the reader could not have
@@ -490,10 +702,15 @@ function gramBody(gm, card) {
    ===================================================================== */
 const VARIANTS = {
   v1: { fn: v1, name: 'Lexikon', sub: 'Nur Typografie' },
-  v2: { fn: v2, name: 'Karteikarte', sub: 'Vorder- und Rückseite' },
-  v3: { fn: v3, name: 'Datenblatt', sub: 'Raster, tabellarisch' },
-  v4: { fn: v4, name: 'Bühne', sub: 'Ein Panel zur Zeit' },
+  v2: { fn: v2, name: 'Karteikarte', sub: 'Vorder/Rückseite' },
+  v3: { fn: v3, name: 'Datenblatt', sub: 'Raster' },
+  v4: { fn: v4, name: 'Bühne', sub: 'Ein Panel' },
   v5: { fn: v5, name: 'Buchseite', sub: 'Marginalspalte' },
+  // built on v4, against the three complaints about it — see the block comment
+  v6: { fn: v6, name: 'Статья', sub: 'Подписи сверху', gen: 2 },
+  v7: { fn: v7, name: 'Рубрики', sub: 'Подписи слева', gen: 2 },
+  v8: { fn: v8, name: 'Плитки', sub: 'Блоки-панели', gen: 2 },
+  v9: { fn: v9, name: 'Крупно', sub: 'Максимум контраста', gen: 2 },
 };
 
 const state = { variant: 'v1', lemma: 'Wirkung', side: 'right' };
@@ -525,10 +742,19 @@ function wire() {
     const v = d.querySelector('.v2');
     v.dataset.face = v.dataset.face === 'front' ? 'back' : 'front';
   });
+  // V4 keeps its own always-one-open behaviour; V6–V9 start closed and let the
+  // active tab be clicked again to collapse back to the shortest card.
   d.querySelectorAll('.v4-tab').forEach(b => b.onclick = () => {
     d.querySelectorAll('.v4-tab').forEach(x => x.classList.toggle('on', x === b));
     d.querySelectorAll('.v4-panel').forEach(p =>
       p.classList.toggle('on', p.dataset.panel === b.dataset.tab));
+    requestAnimationFrame(link);
+  });
+  d.querySelectorAll('.nt-tab').forEach(b => b.onclick = () => {
+    const closing = b.classList.contains('on');
+    d.querySelectorAll('.nt-tab').forEach(x => x.classList.toggle('on', !closing && x === b));
+    d.querySelectorAll('.nt-panel').forEach(p =>
+      p.classList.toggle('on', !closing && p.dataset.panel === b.dataset.tab));
     requestAnimationFrame(link);
   });
   d.querySelectorAll('details').forEach(x => x.addEventListener('toggle', () => requestAnimationFrame(link)));
@@ -551,7 +777,8 @@ function link() {
         path = document.getElementById('linkPath'),
         dot = document.getElementById('linkDot'),
         anch = document.getElementById('linkAnchor');
-  const head = detail().querySelector('.v1-word,.v2-word,.v3-word,.v4-word,.v5-word');
+  const head = detail().querySelector(
+    '.v1-word,.v2-word,.v3-word,.v4-word,.v5-word,.v6-word,.v7-word,.v8-word,.v9-word');
   const col = state.side === 'right' ? document.getElementById('results') : document.getElementById('myList');
   const row = col.querySelector(`.word[data-lemma="${CSS.escape(state.lemma)}"] .de`);
   if (!head || !row) { svg.setAttribute('hidden', ''); return; }
@@ -593,9 +820,11 @@ function boot() {
   document.getElementById('myList').innerHTML = RIGHT.map(l => rowHTML(PROTO_CARDS[l])).join('');
 
   const bar = document.getElementById('vbar');
-  bar.innerHTML = Object.entries(VARIANTS).map(([k, v]) =>
-    `<button class="vb${k === state.variant ? ' on' : ''}" data-v="${k}">
-       <b>${k.toUpperCase()}</b><span>${v.name}</span><i>${v.sub}</i></button>`).join('');
+  const btn = ([k, v]) => `<button class="vb${k === state.variant ? ' on' : ''}" data-v="${k}">
+       <b>${k.toUpperCase()}</b><span>${v.name}</span><i>${v.sub}</i></button>`;
+  const gen = n => Object.entries(VARIANTS).filter(([, v]) => (v.gen || 1) === n);
+  bar.innerHTML = `<div class="vbar-row">${gen(1).map(btn).join('')}</div>` +
+                  `<div class="vbar-row">${gen(2).map(btn).join('')}</div>`;
   bar.onclick = e => {
     const b = e.target.closest('.vb'); if (!b) return;
     state.variant = b.dataset.v;
