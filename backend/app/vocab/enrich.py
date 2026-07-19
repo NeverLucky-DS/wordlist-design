@@ -30,7 +30,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from app.vocab import norm
+from app.vocab import funcwords, norm
 from app.vocab.topics import GENERAL_TOPIC, TOPICS, TOPIC_SLUGS
 
 log = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ ENRICH_DB = Path(os.environ.get("ENRICH_DB") or VOCAB_DB.with_name("enrichment.d
 # 2026-07-14: added model-side skip (reject non-words) + stronger ru_all.
 # 2026-07-17: skip inflected forms (hast/Stunden/gemacht got invented rare
 #             readings); allow "word" to carry the post-1996 spelling.
-PROMPT_VERSION = "enrich-2026-07-18c"
+PROMPT_VERSION = "enrich-2026-07-19a"
 CARD_SCHEMA = 1
 
 DEFAULT_BATCH = 10          # bench sweet spot (throughput flat, latency bounded)
@@ -58,10 +58,23 @@ _MAX_LIST_ITEMS = 12
 _POS = {"noun", "verb", "adj", "adv", "other"}
 _ARTICLES = {"der", "die", "das"}
 _REGISTERS = {"neutral", "gehoben", "umgangssprachlich", "fachsprachlich"}
+# Per part of speech, the only grammar keys we keep — `_norm_grammar` drops
+# everything else. Whatever is missing here is silently thrown away no matter
+# what the model returns, which is exactly what happened to adverbs: with no
+# `adv` entry, all 1 271 adverb cards carried `grammar: {}` and the detail page
+# rendered an empty box. Measured 2026-07-19: noun 3 empty of 55 822, verb 0 of
+# 8 882, adj 387 of 9 811 (non-gradable ones — `tot`, `schwanger` — correctly),
+# but adv 1 271 of 1 271 and other 546 of 571.
 _GRAMMAR_KEYS = {
     "noun": ("genitiv", "plural"),
     "verb": ("praeteritum", "partizip2", "hilfsverb"),
     "adj": ("komparativ", "superlativ"),
+    # Gradable adverbs inflect, and the common ones do it irregularly —
+    # gern/lieber/am liebsten, bald/eher/am ehesten, oft/öfter/am häufigsten.
+    "adv": ("komparativ", "superlativ"),
+    # Closed class: what a learner needs is the case a preposition governs and
+    # the paradigm slot a pronoun fills. `funcwords.py` writes the same keys.
+    "other": ("kasus", "deklination", "zusammensetzung"),
 }
 _SLUGSET = set(TOPIC_SLUGS)
 _TOPIC_LINES = "\n".join(f"{t['slug']} = {t['de']}" for t in TOPICS)
@@ -108,11 +121,18 @@ def is_junk(lemma: str) -> bool:
 BACKFILL = "backfill"
 PAIRS = "repair_pairs"
 SPLIT = "repair_split"
+QA = "repair_qa"
 PHASES: tuple[tuple[str, str], ...] = (
     (PAIRS, "Починка убитых пар"),
     ("repair_case", "Починка омографов"),
     ("repair_ortho", "Починка орфографии"),
     (SPLIT, "Расклейка значений"),
+    # Cards a QA pass judged defective. Ahead of backfill for the same reason
+    # the other repairs are: a wrong card is already live and being served,
+    # while an unenriched word is merely absent. `Die` glossed as a
+    # semiconductor chip sits at zipf 7.48 — top of every search — and fixing it
+    # cannot wait behind eleven thousand new words.
+    (QA, "Починка по итогам QA"),
     (BACKFILL, "Обогащение новых слов"),
 )
 PHASE_PRIO = {name: i for i, (name, _) in enumerate(PHASES)}
@@ -133,6 +153,20 @@ Unten stehen {count} deutsche Wörter mit Rohdaten aus unserer Wörterbuch-Daten
 Die Rohdaten sind oft verrauscht (OCR-Reste, veraltete/falsche Angaben, falscher
 Artikel) — KORRIGIERE das nach deinem Sprachwissen; übernimm keinen Müll.
 
+ZWEI ARTEN VON ROHDATEN — beurteile sie NICHT nach demselben Maßstab:
+1. Zweisprachige Wörterbücher ("universal", "langenscheidt", "lein", …): mehrere
+   Quellen, russische "translations", oft ein Goethe-"level". Diese Bestände sind
+   ALT (Stand vor 1995): moderne Bedeutungen fehlen dort teils ganz — ergänze sie.
+2. Quelle "wiktionary" (by_source.wiktionary.glosses_de): EINE Quelle, "level":
+   "unlisted" und "translations": [] — die russische Seite fehlt dort SYSTEMATISCH,
+   weil das Wörterbuch einsprachig ist. Das ist KEIN Hinweis auf ein zweifelhaftes
+   Wort. "glosses_de" ist eine geprüfte deutsche Definition und belegt das Wort
+   VOLLWERTIG; ein hoher "zipf" belegt es zusätzlich. Übersetze hier selbst ins
+   Russische und fülle die Karte normal aus.
+   Diese Wörter sind gerade die MODERNEN, die den alten Wörterbüchern fehlen
+   (Internet, E-Mail, Smartphone, Digitalisierung, Klimawandel, herunterladen) —
+   sie zu skippen wäre der teuerste Fehler in diesem Durchlauf.
+
 Gib AUSSCHLIESSLICH ein JSON-Objekt zurück (kein Markdown):
 {{"words": [
   {{
@@ -144,11 +178,7 @@ Gib AUSSCHLIESSLICH ein JSON-Objekt zurück (kein Markdown):
     "ru": "самый частотный современный перевод (1-3 слова)",
     "ru_all": ["ВСЕ употребимые значения, важнейшее первым (обычно 2-4)"],
     "definition_de": "Kurze deutsche Definition in EINEM Satz (B2).",
-    "grammar": {{
-      "genitiv": "des …", "plural": "die …",
-      "praeteritum": "…", "partizip2": "…", "hilfsverb": "haben | sein",
-      "komparativ": "…", "superlativ": "am …"
-    }},
+    "grammar": {{ siehe GRAMMATIK-TABELLE unten — NUR die Schlüssel der Wortart }},
     "rektion": "z.B. 'für + Akk.' oder \"\"",
     "synonyms": ["1-3 saubere deutsche Synonyme"],
     "collocations": ["1-3 typische Kollokationen"],
@@ -192,7 +222,8 @@ AUSSORTIEREN (das Wichtigste zuerst):
   Bedeutung, niemals identisch kopiert. Nur die Hälfte OHNE eigene Bedeutung wird
   zum Artefakt → "skip".
   NIEMALS BEIDE HÄLFTEN SKIPPEN, solange die Rohdaten für mindestens eine ein echtes
-  Wort belegen (Goethe-Level a1..c2, mehrere "sources", eigene Übersetzungen).
+  Wort belegen (Goethe-Level a1..c2, mehrere "sources", eigene Übersetzungen — ODER
+  eine "glosses_de" aus der Quelle "wiktionary", die genauso viel belegt).
   Ein Verb in der Grundform ("haben", "kommen", "lesen", "atmen") ist IMMER ein
   Eintrag — dass daneben die großgeschriebene Form steht, macht es NICHT zum
   Artefakt, und die Grundform ist NIE eine "flektierte Wortform".
@@ -220,7 +251,30 @@ REGELN für behaltene Wörter (skip=false):
   0.63 — ein Doppel-Eintrag verliert damit gegen jedes seltene Synonym, das seine
   Bedeutungen sauber trennt, und das häufigste Wort steht nicht mehr oben.
   Erlaubt bleibt eine Präzisierung in Klammern: "приходить (сюда)", "пить (разг.)".
-- "grammar": NUR die zur Wortart passenden Schlüssel; Rest weglassen.
+- "grammar": NUR die Schlüssel der jeweiligen Wortart, alles andere WEGLASSEN.
+  Fremde Schlüssel werden verworfen, fehlende sind für immer verloren.
+
+  GRAMMATIK-TABELLE (Schlüssel pro Wortart):
+  · noun  → "genitiv" ("des Hauses"), "plural" ("die Häuser")
+            Kein Plural möglich (Milch, Obst)? "plural": "—".
+  · verb  → "praeteritum" (1. Pers. Sg.: "ging"), "partizip2" ("gegangen"),
+            "hilfsverb": "haben" oder "sein"
+  · adj   → "komparativ" ("größer"), "superlativ" ("am größten")
+            NICHT steigerbar (tot, schwanger, rund, maximal)? BEIDE weglassen —
+            erfinde keine Formen für ein absolutes Adjektiv.
+  · adv   → "komparativ", "superlativ" NUR wenn steigerbar. Die häufigen sind
+            unregelmäßig und genau deshalb wichtig: gern → "lieber" / "am
+            liebsten"; bald → "eher" / "am ehesten"; oft → "öfter" / "am
+            häufigsten". Nicht steigerbar (heute, dort, vielleicht) → {{}}.
+  · other → "kasus" (welchen Fall eine Präposition regiert: "Dativ",
+            "Akkusativ", "Dativ/Akkusativ"), "deklination" (Paradigma eines
+            Pronomens), "zusammensetzung" (Verschmelzung: "in + dem").
+            Passt nichts davon (Konjunktion, Partikel) → {{}}.
+
+- "rektion": bei VERBEN und PRÄPOSITIONEN das Wichtigste überhaupt — gib sie an,
+  wann immer es eine gibt ("warten auf + Akk.", "helfen + Dat.", "wegen + Gen.").
+  Bei Substantiven/Adjektiven nur, wenn eine feste Präposition dazugehört
+  ("stolz auf + Akk.", "die Frage nach + Dat."). Sonst "".
 - "topic": MUSS exakt ein slug aus der Liste sein (nicht erfinden).
 - "examples": GENAU 3 natürliche B2-Sätze, das Wort **fett**.
 - "synonyms"/"collocations": echte, sonst [].
@@ -796,14 +850,24 @@ def requeue(lemmas: list[str], *, drop_card: bool = True,
     `drop_card=False` keeps the old card visible until a better one replaces it —
     what the repair phases want, since they re-enrich words that are already live
     and a gap in search would be worse than a stale entry for a few minutes.
+
+    Handwritten cards are never requeued. `der` and `des` sit in `failed`, which
+    is exactly what `repair_ortho` collects, so the ortho phase would hand them
+    straight back to the model — and the model skips them by design, at which
+    point `skip_words` DELETES the card. The closed class would silently vanish
+    again a run after being seeded. See funcwords.py.
     """
     if not lemmas:
         return 0
     now = time.time()
     con = _conn()
     try:
+        protected = {r[0] for r in con.execute(
+            "SELECT lemma FROM cards WHERE model=?", (funcwords.MODEL,))}
         n = 0
         for lemma in lemmas:
+            if lemma in protected:
+                continue
             if drop_card:
                 con.execute("DELETE FROM cards WHERE lemma=?", (lemma,))
             cur = con.execute(
@@ -998,6 +1062,11 @@ def plan_repairs() -> dict:
     ensure_schema()
     con = _conn()
     try:
+        # The closed class the model refuses by design (articles, contracted
+        # prepositions). Seeded FIRST so these lemmas leave 'failed' before
+        # `broken` is collected below, and guarded again inside `requeue`.
+        func_stats = funcwords.seed(con)
+
         # Frequency for cards enriched before the column existed.
         #
         # The EXISTS guard is what makes this terminate. A renamed card (Schluss)
@@ -1062,7 +1131,8 @@ def plan_repairs() -> dict:
             SPLIT: n_split, "zipf_filled": zipf_filled,
             "forms_tagged": form_stats["tagged"],
             "forms_cleared": form_stats["cleared"],
-            "forms_by_kind": form_stats["by_kind"]}
+            "forms_by_kind": form_stats["by_kind"],
+            "funcwords_written": func_stats["written"]}
 
 
 def requeue_low_confidence() -> int:

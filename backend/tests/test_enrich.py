@@ -435,8 +435,11 @@ def test_usage_of_an_account_that_never_ran_is_absent(db):
 def test_progress_falls_back_to_backfill_phase(db):
     p = enrich.progress()
     assert p["phase"] == "backfill"           # untagged words are the backfill
+    # Every repair runs ahead of backfill: a wrong card is already being served,
+    # an unenriched word is merely absent.
     assert [x["name"] for x in p["phases"]] == [
-        "repair_pairs", "repair_case", "repair_ortho", "repair_split", "backfill"]
+        "repair_pairs", "repair_case", "repair_ortho", "repair_split",
+        "repair_qa", "backfill"]
 
 
 def test_skip_and_requeue(db):
