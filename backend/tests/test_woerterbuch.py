@@ -222,6 +222,49 @@ async def test_search_ranks_cards_without_frequency_last(pg_session):
         "Schluss", "Schlusspunkt"]   # exact still beats prefix regardless
 
 
+async def _add_case_pair(session):
+    """`Die` "чип" and `die` the article — the real pair, real shared zipf.
+
+    `wordfreq` folds case, so both carry the identical 7.48 and no frequency
+    tie-break can separate them.
+    """
+    await _add_card(session, "Die", "чип", article="das", pos="noun", zipf=7.48)
+    await _add_card(session, "die", "определённый артикль", article=None,
+                    pos="other", zipf=7.48)
+
+
+async def test_a_lowercase_query_does_not_answer_with_the_capitalised_twin(
+        pg_session):
+    # Ordering fell through to `lemma`, where 'D' < 'd' — so the most common
+    # word in German answered a semiconductor die.
+    await _add_case_pair(pg_session)
+    assert _lemmas(await search_mod.search(pg_session, "die"))[0] == "die"
+
+
+async def test_a_capitalised_query_still_reaches_the_noun(pg_session):
+    # Case in the query is a statement of intent, and it is the only signal that
+    # tells `der Morgen` apart from `morgen` — so it must not be folded away.
+    await _add_case_pair(pg_session)
+    assert _lemmas(await search_mod.search(pg_session, "Die"))[0] == "Die"
+
+
+async def test_the_demoted_twin_stays_in_the_results(pg_session):
+    # `das Aber` is a real nominalisation, not junk: only its borrowed frequency
+    # is wrong, so it is ranked down rather than dropped.
+    await _add_case_pair(pg_session)
+    assert set(_lemmas(await search_mod.search(pg_session, "die"))) == {
+        "die", "Die"}
+
+
+async def test_case_never_outranks_frequency(pg_session):
+    # The case tie-break sits below zipf on purpose: it settles ties, it does
+    # not get to overturn a genuine frequency gap.
+    await _add_card(pg_session, "Recht", "право", article="das", zipf=5.61)
+    await _add_card(pg_session, "rechten", "судиться", pos="verb",
+                    article=None, zipf=2.0)
+    assert _lemmas(await search_mod.search(pg_session, "recht"))[0] == "Recht"
+
+
 async def test_search_does_not_let_wildcards_leak_into_like(pg_session):
     await _add_card(pg_session, "Fortschritt", "прогресс", article="der")
     assert (await search_mod.search(pg_session, "%"))["items"] == []

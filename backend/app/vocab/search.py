@@ -38,7 +38,7 @@ _PREFIX = 1.0   # entry starts with the query; + similarity to order within
 _PRIMARY_BONUS = 0.05  # tie-break toward a card's main meaning
 
 
-def _by_relevance(score):
+def _by_relevance(score, q: str | None = None):
     """Order hits: match quality, headwords before forms, frequency, then length.
 
     Frequency has to sit above length. Every exact hit for "быстрый" scores the
@@ -55,12 +55,38 @@ def _by_relevance(score):
     slang verb holding the frequency of `link` — above täuschen and betrügen.
     Ordering by `form_kind IS NULL` first puts real words ahead of forms at equal
     match quality, while leaving a form reachable when nothing else matches.
+
+    Case is the last tie-break because `zipf` cannot break a capitalisation pair
+    at all: `wordfreq` folds case, so `Die` and `die` do not merely rank close,
+    they carry the byte-identical 7.48 — measured across all 275 pairs at zipf
+    >= 4.0, every single one ties exactly. The tie then fell to `lemma`, where
+    'D' < 'd' sorts the capital first, and the most common word in German
+    answered `Die` "чип" (a bare semiconductor die) above the definite article.
+    Same for `Aber` "возражение" over `aber`, `Aus` "аут" over `aus`.
+
+    These capitals are not junk — `das Aber` and `das Gut` are real
+    nominalisations, which is why `forms.py` deliberately exempts them from the
+    `capitalised` tag. Only their borrowed frequency is wrong, so they get
+    demoted rather than dropped: both stay visible on adjacent rows.
+
+    Nothing in the data separates a rare nominalisation (`das Jetzt`) from a
+    common one (`der Morgen`) — that is per-sense frequency and we have none.
+    What we do have is the case the user typed, and it is a direct statement of
+    intent: "Morgen" wants the noun, "morgen" the adverb. So prefer the card
+    whose capitalisation matches the query, and fall back to lowercase-first
+    when the query cannot say (an all-lowercase or Cyrillic query), which is the
+    right answer for the function-word pairs that make up the bulk of the class.
     """
+    if q and q[:1].isupper():
+        cased = func.left(VocabCard.lemma, 1).op("~")(literal("[A-ZÄÖÜ]"))
+    else:
+        cased = func.left(VocabCard.lemma, 1).op("~")(literal("[a-zäöüß]"))
     return (
         score.desc(),
         VocabCard.form_kind.is_(None).desc(),
         VocabCard.zipf.desc().nullslast(),
         func.length(VocabCard.lemma_norm),
+        cased.desc(),
         VocabCard.lemma,
     )
 
@@ -205,7 +231,7 @@ async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
         stmt = (
             select(VocabCard, best.c.score, best.c.meaning)
             .join(best, VocabCard.lemma == best.c.lemma)
-            .order_by(*_by_relevance(best.c.score))
+            .order_by(*_by_relevance(best.c.score, q))
             .limit(MAX_LIMIT)
         )
         rows = (await db.execute(stmt)).all()
@@ -222,7 +248,7 @@ async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
         stmt = (
             select(VocabCard, score.label("score"))
             .where(or_(*matches))
-            .order_by(*_by_relevance(score))
+            .order_by(*_by_relevance(score, q))
             .limit(limit)
         )
 
