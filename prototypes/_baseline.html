@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Baseline — heutige Karte</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/site-header.css">
+<link rel="stylesheet" href="../css/styles.css">
+</head>
+<!--
+  Measurement harness, not a design. It loads the PRODUCTION js/app.js against
+  the same real cards the prototypes use and calls the production
+  renderCardSheet(), so "the card is too big" becomes a number taken from the
+  shipping code rather than an impression. Nothing here is meant to be looked
+  at; see cards.html for the actual proposals.
+-->
+<body>
+  <main id="mainGrid">
+    <section class="col-search"><div class="search-row"><label class="search">
+      <input id="search" type="text"><span class="search-lang" id="searchLang" hidden></span></label></div>
+      <div class="word-list is-single" id="results"></div></section>
+    <section class="col-mine"><div class="mine-head">
+      <div class="donut-wrap"><div id="donut"></div><div class="donut-center"><b id="donutTotal">0</b></div></div>
+      <div class="legend" id="legend"></div></div>
+      <div class="word-list is-single" id="myList"></div><div class="pager" id="pager" hidden></div></section>
+    <div class="card-layer on-right" id="cardLayer"><div class="detail" id="detail"></div></div>
+  </main>
+  <svg class="link-line" id="linkLine" hidden><path id="linkPath"/><circle id="linkAnchor"/><circle id="linkDot"/></svg>
+
+  <script src="../js/words-data.js"></script>
+  <script src="cards-data.js"></script>
+  <script src="../js/app.js"></script>
+</body>
+</html>

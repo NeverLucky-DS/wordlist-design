@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kartenentwürfe · Wörterbuch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- production chrome, unchanged: the card has to be judged where it will live -->
+<link rel="stylesheet" href="../css/site-header.css">
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="cards.css">
+</head>
+<body>
+
+  <div class="bg-column" aria-hidden="true"></div>
+  <div class="side-label">KARTENENTWÜRFE</div>
+
+  <header class="topbar">
+    <a class="brand" href="../index.html"><span>Deutsch</span><span>Essay</span></a>
+    <span class="brand-rule" aria-hidden="true"></span>
+    <nav class="nav" aria-label="Hauptnavigation">
+      <a href="../schreiben.html">Essay</a>
+      <a href="../pipeline.html">Pipeline</a>
+      <a href="../index.html" class="active" aria-current="page">Wörterbuch</a>
+    </nav>
+    <div class="top-right"><div class="avatar">D</div></div>
+  </header>
+
+  <main id="mainGrid">
+    <section class="col-search" id="colSearch">
+      <div class="eyebrow">Entwürfe</div>
+      <h1 class="title">Wortkarte</h1>
+      <p class="proto-hint">Links anklicken → Karte öffnet <b>rechts</b>. Rechts anklicken → Karte öffnet
+        <b>links</b>. Die Maße unten rechts müssen in beiden Fällen gleich bleiben — heute sind es
+        744 px gegen 440 px. Variante unten wechseln.</p>
+      <div class="word-list is-single" id="results"></div>
+    </section>
+
+    <section class="col-mine" id="colMine">
+      <div class="mine-head">
+        <div class="donut-wrap"><div id="donut"></div><div class="donut-center"><b>6</b></div></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="word-list is-single" id="myList"></div>
+    </section>
+
+    <div class="card-layer" id="cardLayer" hidden><div class="detail" id="detail"></div></div>
+  </main>
+
+  <svg class="link-line" id="linkLine" aria-hidden="true" hidden>
+    <path id="linkPath" d=""/>
+    <circle id="linkAnchor" class="ll-anchor" r="4.5"/>
+    <circle id="linkDot" class="ll-dot" r="4"/>
+  </svg>
+
+  <div class="measure" id="measure">—</div>
+  <div class="vbar" id="vbar"></div>
+
+  <script src="cards-data.js"></script>
+  <script src="cards.js"></script>
+</body>
+</html>
