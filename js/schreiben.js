@@ -696,7 +696,7 @@ function insertText(t){
    Tool cards — they expand downwards, in place (one open at a time)
    ===================================================================== */
 let openedTool = null;              /* 'hilfen' | 'woerterbuch' | null */
-let wbQuery = '', wbPage = 0, kliPage = 0;
+let wbQuery = '', wbPage = 0, kliPage = 0, kliQuery = '';
 
 function openTool(tool, keep){
   if (openedTool === tool){
@@ -736,7 +736,23 @@ function renderPager(el, count, page, onPage){
     el.appendChild(b);
   };
   mk('‹', page - 1, { disabled: page === 0 });
-  for (let i = 0; i < count; i++) mk(String(i + 1), i, { active: i === page });
+  // A window, not every page. This used to print one button per page, which was
+  // fine at two pages and broke the rail at a hundred and twenty-two — the
+  // cliché list went from 6 built-in phrases to 366 from the database.
+  const WINDOW = 2;
+  let last = -1;
+  for (let i = 0; i < count; i++) {
+    const near = Math.abs(i - page) <= WINDOW;
+    if (!near && i !== 0 && i !== count - 1) continue;
+    if (last >= 0 && i - last > 1) {
+      const gap = document.createElement('span');
+      gap.className = 'pg-gap';
+      gap.textContent = '…';
+      el.appendChild(gap);
+    }
+    mk(String(i + 1), i, { active: i === page });
+    last = i;
+  }
   mk('›', page + 1, { disabled: page === count - 1 });
 }
 
@@ -804,16 +820,96 @@ function renderWoerterbuch(){
   renderPager($('#wbPager'), pages, wbPage, p => { wbPage = p; renderWoerterbuch(); });
 }
 
+/* ---------- Schreibhilfen ----------
+
+   The clichés come from the `phrases` table — 1 713 distinct templates against
+   the 21 hard-coded here. The static list stays as the offline fallback: this
+   page is built to keep working without the backend, and a writer mid-essay
+   should never lose the phrase list to a failed request.
+
+   A stage maps to more than one essay_part on purpose. `beispiel` templates
+   ("Ein anschauliches Beispiel hierfür ist ...") belong wherever an argument is
+   being made, not in a section of their own — the roadmap has no such stage. */
+const KLI_PARTS = {
+  einleitung: ['einleitung'],
+  arg1:       ['argument', 'beispiel'],
+  arg2:       ['gegenargument', 'beispiel'],
+  schluss:    ['schluss'],
+};
+let kliByPart = null;          /* essay_part -> [{de, ru}] once fetched */
+let kliLoading = false;
+
+/* The API stores the gap as a plain "..."; the static list marks it up so the
+   placeholder reads as a gap rather than punctuation. Escape first — this text
+   goes in as innerHTML. */
+function kliMarkup(text){
+  return esc(text).replace(/\.\.\.|…/g, '<em>…</em>');
+}
+
+async function loadKlischees(){
+  if (kliByPart || kliLoading) return;
+  kliLoading = true;
+  try {
+    const res = await fetch('/api/phrases/templates', { credentials: 'include' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    const byPart = {};
+    rows.forEach(p => {
+      (byPart[p.essay_part] ||= []).push({
+        de: kliMarkup(p.text_de), ru: p.translation_ru || '', level: p.level });
+    });
+    if (rows.length) kliByPart = byPart;
+  } catch (err) {
+    console.info('[schreiben] Klischees offline, using the built-in list:', err.message);
+  } finally {
+    kliLoading = false;
+    if (openedTool === 'hilfen') renderHilfen();
+  }
+}
+
+function kliFor(stage){
+  if (!kliByPart) return stage.kli;
+  const parts = KLI_PARTS[stage.id] || [];
+  const out = parts.flatMap(p => kliByPart[p] || []);
+  return out.length ? out : stage.kli;
+}
+
+/* Paging through 366 templates three at a time is not browsing, it is a lottery
+   — so the list is searchable on both sides, German and Russian. Tags are
+   stripped first: the German carries <em> markup for its placeholder, and a
+   search for "dass" must not be thrown off by it. */
+function kliFiltered(stage){
+  const items = kliFor(stage);
+  const q = kliQuery.trim().toLowerCase();
+  if (!q) return items;
+  const plain = s => String(s || '').replace(/<[^>]*>/g, '').toLowerCase();
+  return items.filter(k => plain(k.de).includes(q) || plain(k.ru).includes(q));
+}
+
 /* ---------- Schreibhilfen ---------- */
 function renderHilfen(){
   const s = STAGES.find(x => x.id === activeStage);
-  const pages = Math.max(1, Math.ceil(s.kli.length / KLI_PAGE));
+  loadKlischees();
+  const kli = kliFiltered(s);
+  const pages = Math.max(1, Math.ceil(kli.length / KLI_PAGE));
   kliPage = Math.min(kliPage, pages - 1);
-  const slice = s.kli.slice(kliPage * KLI_PAGE, kliPage * KLI_PAGE + KLI_PAGE);
+  const slice = kli.slice(kliPage * KLI_PAGE, kliPage * KLI_PAGE + KLI_PAGE);
 
   $('#hilfenBody').innerHTML = `
-    <div class="kli-cap">Klischees · <b>${esc(s.title)}</b></div>
+    <div class="kli-cap">Klischees · <b>${esc(s.title)}</b>
+      <span class="kli-count">${kli.length}</span></div>
+    <label class="wb-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="kliSearch" type="text" placeholder="Formulierung suchen…" value="${esc(kliQuery)}">
+    </label>
     <div class="kli-list" id="kliList"></div>`;
+
+  $('#kliSearch').addEventListener('input', e => {
+    kliQuery = e.target.value; kliPage = 0;
+    const pos = e.target.selectionStart;
+    renderHilfen();
+    const inp = $('#kliSearch'); inp.focus(); inp.setSelectionRange(pos, pos);
+  });
 
   const list = $('#kliList');
   slice.forEach(k => {
