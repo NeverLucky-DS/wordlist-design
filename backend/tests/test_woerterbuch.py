@@ -54,6 +54,24 @@ def test_band_clamps_every_level_into_the_brush_set(level, band):
 
 
 @pytest.mark.parametrize(
+    "zipf,freq",
+    [(7.48, "haeufig"), (4.16, "haeufig"), (4.0, "haeufig"),
+     (3.99, "mittel"), (3.0, "mittel"),
+     (2.99, "selten"), (1.1, "selten")],
+)
+def test_frequency_band_splits_at_the_goethe_b1_centre(zipf, freq):
+    """4.0 is not arbitrary: Goethe's own B1 vocabulary has a median zipf of
+    4.16, so "häufig" means "as common as core B1 vocabulary"."""
+    assert norm.freq_of(zipf) == freq
+
+
+def test_frequency_is_none_when_unknown_rather_than_guessed_rare():
+    # Absent frequency is not evidence of rarity. The UI shows nothing for None;
+    # defaulting to "selten" would be a claim about a word we never counted.
+    assert norm.freq_of(None) is None
+
+
+@pytest.mark.parametrize(
     "pos,article,expected",
     [
         ("noun", "der", "der"), ("noun", "die", "die"), ("noun", "das", "das"),
@@ -263,6 +281,17 @@ async def test_case_never_outranks_frequency(pg_session):
     await _add_card(pg_session, "rechten", "судиться", pos="verb",
                     article=None, zipf=2.0)
     assert _lemmas(await search_mod.search(pg_session, "recht"))[0] == "Recht"
+
+
+async def test_search_reports_frequency_alongside_the_cefr_band(pg_session):
+    # `band` stays CEFR-shaped because it keys the brush; `freq` is the separate,
+    # honest claim for the 95.6% of cards Goethe never listed.
+    await _add_card(pg_session, "Internet", "интернет", level="unlisted",
+                    article="das", zipf=5.23)
+    hit = (await search_mod.search(pg_session, "Internet"))["items"][0]
+    assert hit["freq"] == "haeufig"
+    assert hit["level"] == "unlisted"    # unchanged — the UI decides what to show
+    assert hit["band"] == "C1"           # still the brush key
 
 
 async def test_search_does_not_let_wildcards_leak_into_like(pg_session):

@@ -113,6 +113,37 @@ function formNote(card) {
     `${esc(card.form_of)}</button></span>`;
 }
 
+// Goethe publishes word lists for A1/A2/B1 only, so 95.6% of the base carries
+// `level: "unlisted"` and the CEFR chip built from it said "C1" on almost every
+// row — a placeholder wearing the clothes of a fact. Where a real Goethe level
+// exists we show it; everywhere else we show frequency, which we know for every
+// single card, and label it as frequency.
+//
+// ⚠️ These are two different claims and must stay visually distinct. Frequency
+// is NOT a computed CEFR level: measured against the 4 023 genuinely labelled
+// cards, zipf cannot tell B1 from B2 at all (medians 4.16 vs 4.15). Styling the
+// frequency chip like the level chip would re-tell the same lie in a new font.
+const FREQ_LABEL = {
+  haeufig: 'häufig',
+  mittel:  'mittelhäufig',
+  selten:  'selten',
+};
+const FREQ_TITLE = {
+  haeufig: 'So häufig wie der B1-Grundwortschatz',
+  mittel:  'Weniger häufig als der Grundwortschatz',
+  selten:  'Seltenes Wort — im Aufsatz meist vermeidbar',
+};
+
+function levelChip(card) {
+  if (card.level && card.level !== 'unlisted') {
+    return `<span class="lvl-tag is-cefr" title="Goethe-Wortliste ${esc(card.band)}">` +
+      `${esc(card.band)}</span>`;
+  }
+  if (!card.freq) return '';   // no frequency known — say nothing, guess nothing
+  return `<span class="lvl-tag is-freq" title="${esc(FREQ_TITLE[card.freq] || '')}">` +
+    `${esc(FREQ_LABEL[card.freq] || '')}</span>`;
+}
+
 function wordRow(card, act) {
   const row = document.createElement('div');
   row.className = 'word' + (openCard && openCard.card.lemma === card.lemma ? ' active' : '')
@@ -127,7 +158,7 @@ function wordRow(card, act) {
       <div class="ru">${esc(card.ru)}</div>
     </div>
     <div class="w-right">
-      <span class="lvl-tag">${esc(card.band)}</span>
+      ${levelChip(card)}
       <button class="w-act" type="button" data-act="${act}" title="${ACT_LABEL[act]}"
               aria-label="${ACT_LABEL[act]}"${act === 'have' ? ' disabled' : ''}>${ICON[act]}</button>
     </div>`;
@@ -398,7 +429,12 @@ function renderCardSheet(card) {
     <div class="d-head">
       <div class="d-meta">
         <span class="d-cat"><span class="hl">${posLabel(card.pos)}</span>${card.topic_de ? ' · ' + esc(card.topic_de) : ''}</span>
-        <span class="d-level">${esc(card.band)}</span>
+        ${card.level && card.level !== 'unlisted'
+          ? `<span class="d-level" title="Goethe-Wortliste">${esc(card.band)}</span>`
+          : (card.freq
+              ? `<span class="d-level is-freq" title="${esc(FREQ_TITLE[card.freq] || '')}">`
+                + `${esc(FREQ_LABEL[card.freq] || '')}</span>`
+              : '')}
       </div>
       <div class="d-word${longCls}">${art}${esc(card.lemma)}</div>
       ${formNote(card) ? `<div class="d-form">${formNote(card)}</div>` : ''}

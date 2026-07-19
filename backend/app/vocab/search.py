@@ -155,6 +155,11 @@ def card_out(card: VocabCard, score: float | None = None) -> dict[str, Any]:
         "ru_all": data.get("ru_all") or ([card.ru] if card.ru else []),
         "level": card.level,
         "band": card.band,
+        # `band` is the brush key and stays CEFR-shaped; `freq` is what we can
+        # honestly say about the 95.6% of cards Goethe never listed. The UI
+        # shows the real level where there is one and the frequency otherwise —
+        # they are different claims and must not be rendered as the same chip.
+        "freq": norm.freq_of(card.zipf),
         "type": norm.type_of(card.pos, card.article),
         "pos": card.pos,
         "article": card.article,
