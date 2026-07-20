@@ -1,0 +1,612 @@
+/* =====================================================================
+   Wörterbuch — the finished Wortkarte, and three pages to put it in.
+
+   Palette and type are the production ones (css/styles.css); nothing new
+   enters except `--soft` and `--rose-ink`, which exist because the originals
+   fail WCAG AA and are documented where they are declared.
+   ===================================================================== */
+
+:root{
+  --bg:#FAFAF8; --bg-2:#F4F4F1; --card:#FFFFFF;
+  --ink:#2B2B30; --ink-soft:#55555E;
+  --muted:#9A9AA2; --muted-2:#C3C3CA;
+  --hair:#ECEAE4; --hair-2:#F2F1EC;
+  --rose:#C2868D; --rose-soft:#F2E6E6;
+  --lav:#A99BC0; --lav-soft:#ECE7F1;
+  --blue:#9DB2C9; --blue-soft:#E6ECF2;
+  --sand:#CDB68F; --graphite:#33333A; --orange:#E08A3C;
+
+  /* --- the accessibility floor, stated so it can be checked ---
+     Measured in the browser on V4's real colours: the extra translations and
+     the Russian line of the example sat at 2.79:1 and the Rektion at 2.96:1,
+     where AA asks 4.5:1. Those are exactly the lines that vanish at bad
+     eyesight. `--muted` (#9A9AA2) is 2.79:1 and `--muted-2` is 1.75:1, so
+     NEITHER may carry text a reader has to read — they are furniture only.
+       · content text  ≥ 15px      · labels ≥ 11px bold      · all ≥ 4.5:1 */
+  --soft:#6A6A74;          /* 4.6:1 on white  — lightest ink allowed to carry a sentence */
+  --rose-ink:#8C4F57;      /* 6.2:1 on white  — --rose is 2.95:1 and cannot label anything */
+
+  font-synthesis:none;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+svg{display:block}
+button{font-family:inherit}
+/* One visible focus ring for the whole prototype. Every control below is a real
+   <button>, so keyboard reach is not a separate feature that has to be added. */
+:focus-visible{outline:2.5px solid var(--rose-ink);outline-offset:2px;border-radius:6px}
+
+/* =====================================================================
+   Art slots — a frame with a brief, so the layout can be judged before the
+   art exists and after it arrives. Toggle in the harness bar.
+   ===================================================================== */
+.art-slot{display:inline-flex;align-items:center;justify-content:center;
+  width:var(--sw);height:var(--sh);flex:none;
+  border:1px dashed var(--rose);border-radius:6px;background:rgba(194,134,141,.05)}
+.art-slot i{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--rose-ink);opacity:.85;padding:0 3px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.art-slot.is-tiny i{font-size:7px;letter-spacing:0}
+/* Under ~52px no caption fits, and an ellipsised "FREQ-M…" reads as a broken
+   control rather than as a placeholder. The frame alone is the placeholder;
+   the brief lives in the title attribute. */
+.art-slot.is-mute i{display:none}
+/* the head wash is a BACKGROUND, so its slot lies flat behind the text rather
+   than pushing it — the only slot that is positioned */
+.art-slot.is-head{position:absolute;inset:0;width:auto;height:auto;border-radius:16px 16px 0 0;
+  align-items:flex-start;justify-content:flex-end;padding:5px 7px;z-index:1;
+  background:rgba(194,134,141,.04)}
+
+/* =====================================================================
+   THE CARD
+   440px everywhere, in every page variant, on both sides of the page.
+   Today the SAME card renders 744px wide when it opens over the lookup and
+   440px when it opens over the list — one object in two sizes, because the
+   grid gives the columns minmax(400px,1.05fr) and minmax(340px,440px) and the
+   sheet stretches to whichever it covers. 440 is the largest the narrow column
+   holds without overflowing, so it is the number that can be kept.
+   ===================================================================== */
+.wb-card{position:relative;width:440px;max-width:100%;background:var(--card);
+  border:1px solid var(--hair);border-radius:18px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(40,40,45,.04), 0 3px 8px rgba(40,40,45,.05),
+             0 24px 48px -20px rgba(40,40,45,.18), 0 50px 110px -50px rgba(40,40,45,.34)}
+
+.wb-close{position:absolute;top:14px;right:14px;z-index:6;width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.86);
+  backdrop-filter:blur(3px);border:1px solid var(--hair);color:var(--ink-soft);cursor:pointer;
+  transition:border-color .18s,color .18s,background .18s}
+.wb-close:hover{border-color:var(--rose);color:var(--rose-ink);background:#fff}
+
+/* ---------- head ----------
+   The brush is a real, deliberate band now. In V9 it ran at opacity .5 under a
+   white veil that reached .93 at the bottom, which left the paint as a barely
+   visible smudge — and the smudge was a LIST-ROW brush, drawn as a wide
+   horizontal streak, stretched to cover a 440×152 block. Hence `card-head-*`:
+   art drawn for this shape, at this size. */
+.wb-head{position:relative;padding:16px 26px 15px;overflow:hidden;
+  border-radius:17px 17px 0 0;isolation:isolate}
+/* Fallback while `card-head-*` does not exist yet: the row brush, cropped to a
+   BAND across the upper part of the head and faded out downward. Left to cover
+   the whole block it lands mid-head and runs straight through the lemma and the
+   IPA — on `berücksichtigen` it reads as a strikethrough. The mask keeps the
+   paint above the text and the text on clean ground. */
+.wb-head::before{content:"";position:absolute;left:0;right:0;top:0;height:78%;z-index:0;
+  background:var(--brush) no-repeat center/cover;opacity:.62;
+  -webkit-mask:linear-gradient(180deg,#000 0,#000 42%,rgba(0,0,0,.45) 72%,transparent 100%);
+          mask:linear-gradient(180deg,#000 0,#000 42%,rgba(0,0,0,.45) 72%,transparent 100%)}
+/* The veil has to lift the head's ink to AA without erasing the paint. V9 ran
+   the brush at .5 under a veil reaching .93, which left a smudge — the head
+   read as plain white and the colour coding was gone. Here the veil is a
+   bottom-weighted gradient: the word sits in the pale half, the paint keeps
+   the top edge, and the measured contrast on the lemma stays above 12:1. */
+.wb-head::after{content:"";position:absolute;inset:0;z-index:2;
+  background:linear-gradient(174deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,.80) 46%,rgba(255,255,255,.95) 100%)}
+.wb-head>*{position:relative;z-index:3}
+
+/* the meta line keeps clear of the close button by reserving its width, so no
+   element on the card is ever positioned into the ✕'s corner */
+.wb-meta{display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  min-height:20px;padding-right:38px;margin-bottom:8px}
+.wb-pos{font-size:13px;font-weight:700;letter-spacing:.01em;color:var(--ink-soft)}
+/* boxed, because it cites a published list */
+.wb-cefr{font-size:12.5px;font-weight:700;letter-spacing:.05em;color:var(--rose-ink);
+  background:rgba(255,255,255,.8);border:1px solid var(--rose-soft);border-radius:6px;padding:2px 8px}
+/* unboxed and painted, because it is our own reading of a corpus. A frequency
+   band and a CEFR level are different claims and must not wear the same clothes:
+   on the 4 023 cards that carry a real Goethe level, zipf cannot tell B1 from
+   B2 at all (medians 4.16 vs 4.15). */
+.wb-freq{display:inline-flex;align-items:center;gap:7px}
+.wb-freq b{font-size:12.5px;font-weight:500;color:var(--ink-soft)}
+
+.wb-word{font-family:'Cormorant Garamond',Georgia,serif;font-size:50px;font-weight:600;
+  line-height:1.02;letter-spacing:-.8px;color:var(--ink);display:flex;align-items:baseline;
+  flex-wrap:wrap;gap:0 12px}
+.wb-word.is-s{font-size:40px;letter-spacing:-.5px}
+.wb-word.is-xs{font-size:32px;letter-spacing:-.3px}
+/* The article is its own object, never glued into the front of the lemma: it is
+   the single fact a learner comes back for most often, and on a long compound
+   it would otherwise have to be parsed out of the first three characters. */
+.wb-art{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;letter-spacing:.06em;
+  color:var(--rose-ink);background:rgba(255,255,255,.78);border:1px solid var(--rose-soft);
+  border-radius:7px;padding:3px 9px;align-self:center;flex:none}
+.wb-lemma{min-width:0;word-break:break-word}
+
+.wb-form{margin-top:9px;font-size:12.5px;color:var(--soft)}
+.wb-base,.wb-syn-chip{font:inherit;font-size:13px;color:var(--rose-ink);background:rgba(255,255,255,.6);
+  border:1px solid var(--rose-soft);border-radius:7px;padding:2px 9px;margin-left:4px;cursor:pointer;
+  transition:background .16s,border-color .16s}
+.wb-base:hover,.wb-syn-chip:hover{background:var(--rose-soft);border-color:var(--rose)}
+
+.wb-pron{display:flex;align-items:center;gap:14px;margin-top:11px;flex-wrap:wrap}
+.wb-ipa{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:14px;
+  color:var(--ink-soft);letter-spacing:.01em}
+.wb-say{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;
+  color:var(--rose-ink);font-size:13px;font-weight:600;cursor:pointer}
+.wb-say:hover span{text-decoration:underline}
+
+/* ---------- body ---------- */
+.wb-body{padding:15px 26px 13px}
+.wb-blk+.wb-blk{margin-top:12px;padding-top:12px;
+  /* the ink rule replaces a 2px CSS border; falls back to the border if the art
+     never arrives, so the separator is never missing */
+  border-top:1.5px solid var(--hair);
+  background:var(--rule-ink,none) no-repeat left top/100% 5px}
+.wb-blk+.wb-blk.has-rule{border-top-color:transparent}
+
+/* A filled tag rather than a tinted whisper. At this size the label has to
+   survive being read by someone who is already struggling with the body text —
+   a 8.5px --muted-2 caption is 1.75:1 and effectively invisible. */
+.wb-lab{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:#fff;background:var(--graphite);border-radius:5px;
+  padding:3px 9px;margin-bottom:8px}
+
+/* meanings — all equal, order preserved by the numeral only */
+.wb-mn{list-style:none;display:flex;flex-direction:column;gap:5px;counter-reset:mn}
+.wb-mn li{display:flex;gap:12px;align-items:baseline;counter-increment:mn}
+.wb-mn .mn-n{flex:none;width:16px;font-size:13px;font-weight:700;color:var(--soft);
+  font-variant-numeric:tabular-nums}
+.wb-mn .mn-n::before{content:counter(mn)}
+.wb-mn .mn-t{font-size:21px;font-weight:600;line-height:1.3;color:var(--ink)}
+.wb-mn.is-single .mn-t{font-size:23px}
+
+/* example */
+.wb-x-de{font-size:20px;font-weight:600;line-height:1.44;color:var(--ink)}
+/* When the whole sentence is 600, a 700 keyword does not read as marked — at
+   this weight the mark has to be a different channel, not a heavier one. */
+.wb-x-de em{font-style:normal;font-weight:700;box-shadow:inset 0 -3px 0 var(--rose)}
+.wb-x-ru{margin-top:7px;font-size:17px;line-height:1.42;color:var(--ink-soft)}
+.wb-x-ru em{font-style:normal;font-weight:600;color:var(--ink)}
+
+/* usage — Rektion and collocations under one heading, because they are one
+   idea. As pills the collocations took one row each: "eine Theorie entwickeln"
+   is 214px of a 380px column, so two never fit and three became four rows. An
+   inline run separated by · is what a printed dictionary does here, and it is
+   two rows. */
+.wb-rek{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:16px;font-weight:600;
+  color:var(--ink);letter-spacing:-.01em;margin-bottom:8px;line-height:1.5}
+.wb-colls{font-size:16px;line-height:1.6;color:var(--ink-soft)}
+.wb-colls em{font-style:normal;font-weight:700;color:var(--ink)}
+/* --muted-2 is 1.75:1 and the audit is right to fail it: this dot is not
+   decoration, it is the only thing separating "Wirkung zeigen" from "Wirkung
+   haben". A separator a reader cannot see merges two collocations into one
+   nonsense phrase. --soft clears AA. */
+.wb-dot{color:var(--soft);padding:0 7px}
+
+/* ---------- tabs ---------- */
+/* Closed by default. The one property this card was chosen for is a body that
+   cannot grow, and an open panel spends it before anything has been asked for.
+   The count is what makes a closed tab honest — it declares its contents. */
+.wb-tabs{display:flex;gap:2px;padding:0 20px;border-top:1px solid var(--hair);
+  background:linear-gradient(180deg,var(--bg-2),var(--card))}
+.wb-tab{position:relative;background:none;border:0;padding:12px 11px 13px;
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:14px;font-weight:600;color:var(--soft);cursor:pointer;transition:color .16s}
+.wb-tab:hover{color:var(--ink)}
+.wb-tab.on{color:var(--ink);font-weight:700}
+/* the active mark is a painted stroke, not a rectangle — the one place the tab
+   row can carry the same hand as the rest of the page */
+.wb-tab.on::after{content:"";position:absolute;left:8px;right:8px;bottom:5px;height:5px;
+  background:var(--tab-stroke,var(--rose));border-radius:3px;
+  -webkit-mask:var(--tab-stroke-mask,none);mask:var(--tab-stroke-mask,none)}
+.wb-tab-n{font-size:11px;font-weight:700;color:var(--rose-ink);background:var(--rose-soft);
+  border-radius:20px;padding:1px 6px;min-width:18px;text-align:center}
+.wb-caret{width:7px;height:7px;border-right:1.8px solid currentColor;border-bottom:1.8px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);opacity:.5;transition:transform .2s,opacity .2s}
+.wb-tab.on .wb-caret{transform:rotate(225deg) translate(-2px,-2px);opacity:1}
+
+.wb-panel{display:none;padding:17px 26px 6px;border-top:1px solid var(--hair)}
+.wb-panel.on{display:block;animation:wbPanel .22s ease}
+@keyframes wbPanel{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.wb-def{font-size:16px;line-height:1.58;color:var(--ink-soft)}
+.wb-syn{margin-top:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.wb-syn-lab{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.wb-syn-chip{font-family:'Cormorant Garamond',serif;font-size:18px;margin-left:0}
+
+/* ---------- foot ---------- */
+/* One action. "Aussprache" used to sit here competing with it; it belongs
+   beside the transcription in the head, where the word it plays actually is. */
+.wb-foot{display:flex;align-items:center;gap:10px;padding:12px 26px 14px;
+  border-top:1px solid var(--hair);background:var(--card)}
+.wb-collect{flex:1;background:var(--graphite);color:#fff;border:1px solid var(--graphite);
+  border-radius:11px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;
+  transition:box-shadow .2s,background .2s,color .2s,border-color .2s}
+.wb-collect:hover{box-shadow:0 12px 26px -12px rgba(51,51,58,.55)}
+.wb-collect.is-in{background:var(--rose-soft);color:var(--rose-ink);border-color:var(--rose-soft)}
+.wb-collect.is-in:hover{background:var(--card);border-color:var(--rose);box-shadow:none}
+
+/* ---------- grammar ---------- */
+.g-parts{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:baseline}
+.g-part{display:flex;flex-direction:column;gap:3px}
+.g-part i,.g-step i,.g-sub-lab,.g-extra i,.g-person i,.g-brief-sep,
+.g-cases thead th,.g-cases tbody th{font-style:normal;font-size:11px;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--soft)}
+.g-part b,.g-step b{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;
+  color:var(--ink);line-height:1.1}
+.g-sub{margin-top:15px}
+.g-sub-lab{margin-bottom:7px}
+.g-sub-lab em{font-style:normal;color:var(--rose-ink);text-transform:none;letter-spacing:.02em}
+.g-persons{display:grid;grid-template-columns:repeat(2,1fr);gap:5px 20px}
+.g-person{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ink);
+  display:flex;align-items:baseline;gap:8px}
+.g-person i{flex:none;min-width:52px}
+.g-extra{display:flex;flex-wrap:wrap;gap:9px 22px;margin-top:13px}
+.g-extra span{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ink-soft);
+  display:flex;align-items:baseline;gap:8px}
+.g-ladder{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.g-ladder .g-arrow{width:16px;height:1.5px;background:var(--hair);margin-bottom:10px;flex:none}
+.g-brief{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;
+  font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink)}
+.g-brief-pl{display:inline-flex;align-items:baseline;gap:9px;white-space:nowrap}
+.g-brief-many{color:var(--ink-soft)}
+.g-note{margin-top:8px;font-size:12.5px;font-weight:500;color:var(--rose-ink)}
+.g-more{margin-top:12px}
+.g-more>summary{list-style:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--soft);
+  padding:5px 0}
+.g-more>summary::-webkit-details-marker{display:none}
+.g-more>summary::before{content:'+ ';color:var(--muted)}
+.g-more[open]>summary::before{content:'– '}
+.g-more>summary:hover{color:var(--ink)}
+.g-cases-wrap{overflow-x:auto}
+.g-cases{width:100%;border-collapse:collapse;margin-top:6px}
+.g-cases th,.g-cases td{text-align:left;padding:6px 12px 6px 0;
+  font-family:'Cormorant Garamond',serif;font-size:17.5px;color:var(--ink);white-space:nowrap}
+.g-cases tbody td:last-child{color:var(--ink-soft)}
+.g-cases tbody tr+tr th,.g-cases tbody tr+tr td{border-top:1px solid var(--hair-2)}
+
+.wb-x-list{display:flex;flex-direction:column;gap:15px}
+
+/* =====================================================================
+   THE WORD ROW — shared by all three page variants.
+
+   Two of the four complaints about today's page live here.
+
+   1. "мазки как чиркаши на туалетной бумаге". The row brush is sized
+      `width:108%; height:165%` of the ROW, so in a 744px column a mark drawn as
+      a compact watercolour pool is stretched to ~800×105px. That is not a
+      brush any more, it is a smear. Here the mark has a FIXED footprint —
+      212×64 — anchored to the left edge, `background-size:contain`, so it can
+      never stretch no matter how wide the row gets.
+
+   2. "перевод нечитаем". Today: 18px italic serif, --ink-soft, forced onto one
+      line with `white-space:nowrap; text-overflow:ellipsis`, over the densest
+      part of the paint. Here: 17px upright Inter, --ink-soft on clear ground,
+      two lines allowed. Italic serif is for the German material; the Russian
+      translation is chrome the reader parses, and parsing italic serif at 18px
+      over watercolour is the slowest possible way to read three words.
+   ===================================================================== */
+.wb-row{position:relative;display:flex;align-items:flex-start;gap:14px;width:100%;
+  padding:12px 14px 12px 22px;border-radius:14px;cursor:pointer;text-align:left;
+  background:none;border:0;transition:background .18s}
+.wb-row:hover{background:rgba(255,255,255,.72)}
+.wb-row.is-active{background:var(--card);box-shadow:0 2px 10px -6px rgba(40,40,45,.3)}
+
+/* The mark is sized by the WORD, not by the row and not by a constant.
+
+   Production sizes it off the row (`width:108%; height:165%`), so in a 744px
+   column a compact watercolour pool is stretched to ~800×105 — the "чиркаш".
+   A fixed footprint fixes the stretching but not the fit: at a constant 212px
+   it still overhangs `online` (85px of word) by 130px while barely clearing
+   `die Verantwortung` (230px). Hanging it on the inline `.wb-w`, which is
+   shrink-to-fit, makes the mark 44px longer than whatever word it is under —
+   short words get a short mark, long words a long one, at every zoom level and
+   in every column width, with no measuring in JS. */
+.wb-w{position:relative;display:inline;z-index:1}
+.wb-w::before{content:"";position:absolute;left:-22px;right:-22px;top:50%;
+  transform:translateY(-50%);height:58px;z-index:-1;pointer-events:none;
+  /* `cover`, not `contain`: the existing assets are wide horizontal streaks
+     drawn for a 700px row and contained in this box they collapse to a pale
+     hairline. Cropping to the densest part is the closest today's art gets to
+     the compact mark `row-brush-*` is briefed to be. */
+  background:var(--brush) no-repeat center/cover;opacity:.5;
+  transition:opacity .3s;
+  -webkit-mask:radial-gradient(115% 92% at 50% 50%,#000 34%,rgba(0,0,0,.4) 68%,transparent 92%);
+          mask:radial-gradient(115% 92% at 50% 50%,#000 34%,rgba(0,0,0,.4) 68%,transparent 92%)}
+.wb-row:hover .wb-w::before,.wb-row.is-active .wb-w::before{opacity:.9}
+.wb-row>*{position:relative;z-index:1}
+
+.wb-rw-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.wb-rw-de{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:600;line-height:1.1;
+  color:var(--ink);text-shadow:0 0 5px rgba(255,255,255,.55)}
+.wb-rw-de .art{font-weight:500;color:var(--ink-soft)}
+.wb-rw-ru{font-size:17px;line-height:1.38;color:var(--ink-soft);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wb-rw-right{flex:none;display:flex;align-items:center;gap:9px;padding-top:5px}
+.wb-rw-add{width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);
+  background:var(--card);color:var(--muted);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:border-color .18s,color .18s,background .18s,transform .18s}
+.wb-rw-add:hover{border-color:var(--rose);color:var(--rose-ink);background:var(--rose-soft);transform:scale(1.08)}
+.wb-rw-add.is-in{border-color:var(--rose-soft);background:var(--rose-soft);color:var(--rose-ink);cursor:default}
+
+/* level / frequency, on the row */
+.wb-tag{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--rose-ink);
+  border:1px solid var(--rose-soft);border-radius:7px;padding:3px 8px;background:var(--card)}
+/* the frequency reading is deliberately quieter and unboxed — but 12px in
+   --soft, not 10.5px in --muted at .75 opacity, which was 2.1:1 and unreadable */
+.wb-tag.is-freq{border-color:transparent;background:none;padding:3px 2px;
+  font-weight:500;letter-spacing:0;color:var(--soft);display:inline-flex;align-items:center;gap:6px}
+
+/* forms are legitimate hits, never headlines: dimmed paint, and they say so */
+.wb-row.is-form .wb-w::before{opacity:.28}
+.wb-rw-form{font-size:12px;color:var(--soft);margin-top:2px}
+
+/* "seltener" — the same meaning answered by rarer words. This is the
+   "hierarchy" the brief calls unreadable: today it is a 17px muted serif chip
+   with no ground, sitting at 2.79:1. Here the chips read at 16px on --ink-soft
+   with a real hit area, and the label says what the group is. */
+.wb-syns{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 14px 10px 22px;margin-top:-4px}
+.wb-syns-lab{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--soft);margin-right:4px}
+.wb-syns button{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--ink-soft);
+  background:var(--card);border:1px solid var(--hair);border-radius:9px;padding:3px 11px;
+  cursor:pointer;transition:color .16s,border-color .16s,background .16s}
+.wb-syns button:hover{color:var(--ink);border-color:var(--rose);background:var(--rose-soft)}
+
+/* =====================================================================
+   Chrome shared by the three page variants
+   ===================================================================== */
+.wb-top{position:relative;z-index:5;display:flex;align-items:center;gap:24px;
+  padding:22px 64px 16px}
+.wb-brand{font-family:'Cormorant Garamond',serif;font-size:25px;font-weight:600}
+.wb-brand i{font-style:italic;color:var(--rose-ink)}
+.wb-nav{display:flex;gap:28px;margin-left:auto}
+.wb-nav a{text-decoration:none;color:var(--soft);font-size:13.5px;font-weight:600;padding-bottom:5px;
+  position:relative}
+.wb-nav a.on{color:var(--ink)}
+.wb-nav a.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--rose)}
+.wb-av{width:36px;height:36px;border-radius:50%;background:var(--graphite);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:17px}
+
+/* the search field — one component, three placements */
+.wb-search{display:flex;align-items:center;gap:12px;background:var(--card);
+  border:1px solid var(--hair);border-radius:15px;padding:0 18px;height:56px;
+  box-shadow:0 1px 2px rgba(40,40,45,.03);transition:border-color .2s,box-shadow .2s}
+.wb-search:focus-within{border-color:var(--rose);box-shadow:0 0 0 4px var(--rose-soft)}
+.wb-search .ico{color:var(--muted);flex:none}
+.wb-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:16px;
+  color:var(--ink);font-family:inherit}
+.wb-search input::placeholder{color:var(--muted-2)}
+.wb-lang{flex:none;font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--rose-ink);
+  background:var(--rose-soft);border-radius:7px;padding:4px 8px}
+
+.wb-eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;font-weight:700;color:var(--rose-ink)}
+.wb-h1{font-family:'Cormorant Garamond',serif;font-weight:600;line-height:.98;letter-spacing:-1px}
+.wb-lede{font-size:15px;line-height:1.6;color:var(--ink-soft)}
+.wb-count{font-size:13px;color:var(--soft);font-weight:500}
+
+.wb-empty{padding:30px 22px;color:var(--soft);line-height:1.6;font-size:15px}
+.wb-empty b{display:block;font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;
+  color:var(--ink);margin-bottom:6px}
+
+/* =====================================================================
+   VARIANT A — «Разворот»
+   The answer to empty space is to stop RESERVING it. Today the grid always
+   holds a 440px column for the card whether a card is open or not, so at
+   1440px roughly a third of the page is a permanently empty slot, and the
+   lookup column is 744px wide with 360px of content in it.
+
+   Here there is one measure — 620px, about 62 characters of the Russian
+   translation, a comfortable reading column — centred on the page. When a card
+   opens, the spread becomes two pages: the list slides left and the card takes
+   the right-hand page. Nothing is reserved, so nothing is empty. The personal
+   list is a drawer on the right edge, because it is a place you GO, not a
+   thing you watch.
+   ===================================================================== */
+.pa{position:relative;min-height:100vh}
+.pa-wrap{max-width:1140px;margin:0 auto;padding:10px 40px 120px;
+  display:flex;justify-content:center;gap:56px;transition:none}
+.pa-main{width:620px;flex:none;max-width:100%}
+.pa .wb-eyebrow{margin-bottom:10px}
+.pa .wb-h1{font-size:62px;margin-bottom:12px}
+.pa .wb-lede{max-width:520px;margin-bottom:26px}
+.pa-search{margin-bottom:8px}
+.pa-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:14px 4px 6px;border-bottom:1px solid var(--hair);margin-bottom:8px}
+.pa-list{display:flex;flex-direction:column;gap:2px}
+/* the right-hand page. `position:sticky` keeps it with the reader while the
+   list scrolls; it scrolls internally when it is taller than the viewport. */
+.pa-side{width:440px;flex:none}
+.pa-side .wb-card{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto}
+.pa[data-card="0"] .pa-side{display:none}
+
+/* the personal list as a drawer, reached from a tab on the page edge */
+.pa-tab{position:fixed;right:0;top:38vh;z-index:40;writing-mode:vertical-rl;
+  background:var(--card);border:1px solid var(--hair);border-right:0;border-radius:12px 0 0 12px;
+  padding:18px 10px;font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);cursor:pointer;box-shadow:-6px 0 20px -14px rgba(40,40,45,.4)}
+.pa-tab:hover{color:var(--rose-ink);border-color:var(--rose)}
+.pa-tab b{color:var(--rose-ink);margin-top:10px}
+.pa-drawer{position:fixed;top:0;right:0;bottom:0;width:430px;max-width:92vw;z-index:50;
+  background:var(--card);border-left:1px solid var(--hair);box-shadow:-24px 0 60px -30px rgba(40,40,45,.4);
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);
+  display:flex;flex-direction:column}
+.pa-drawer.on{transform:none}
+.pa-drawer-head{padding:24px 24px 16px;border-bottom:1px solid var(--hair);
+  display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pa-drawer-head h2{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600}
+.pa-drawer-body{flex:1;overflow-y:auto;padding:10px 10px 30px}
+.pa-scrim{position:fixed;inset:0;z-index:45;background:rgba(40,40,45,.18);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+.pa-scrim.on{opacity:1;pointer-events:auto}
+
+/* =====================================================================
+   VARIANT B — «Верстак»
+   The opposite answer: keep the third column, but give it a JOB so it is never
+   empty. The card lives there permanently — when nothing is selected it holds
+   the word of the day, which is a real card, so the reader learns the object
+   before they have looked anything up. The left rail is narrow and carries the
+   progress that used to sit as a donut on top of a full-width column.
+
+   Cost, stated honestly: the connector line disappears, because the card no
+   longer moves and there is nothing to disambiguate. The active row is marked
+   instead.
+   ===================================================================== */
+.pb-wrap{display:grid;grid-template-columns:236px minmax(0,1fr) 440px;gap:34px;
+  padding:8px 48px 90px;align-items:start;max-width:1560px;margin:0 auto}
+/* explicit tracks: the rail is written after the main column in the DOM (so the
+   search field is one Tab from the top) and pulled back to column 1 here */
+.pb-rail{grid-column:1;grid-row:1;position:sticky;top:20px;display:flex;flex-direction:column;gap:22px}
+.pb-main{grid-column:2;grid-row:1}
+.pb-card{grid-column:3;grid-row:1;position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
+.pb-panel{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:18px}
+.pb-panel h3{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--soft);margin-bottom:14px}
+.pb-donut{display:flex;align-items:center;gap:16px}
+.pb-donut-wrap{position:relative;width:82px;height:82px;flex:none}
+.pb-donut-wrap svg{width:100%;height:100%}
+.pb-donut-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pb-donut-c b{font-family:'Cormorant Garamond',serif;font-size:27px;font-weight:600;line-height:1}
+.pb-donut-c span{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
+.pb-legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
+.pb-lg{display:flex;align-items:center;gap:9px;font-size:13px}
+.pb-lg .dot{width:9px;height:9px;border-radius:3px;flex:none}
+.pb-lg.b1 .dot{background:var(--rose)} .pb-lg.b2 .dot{background:var(--blue)} .pb-lg.c1 .dot{background:var(--lav)}
+.pb-lg .nm{font-weight:600;color:var(--ink-soft)}
+.pb-lg .vl{margin-left:auto;color:var(--soft);font-variant-numeric:tabular-nums}
+.pb-mine{display:flex;flex-direction:column;gap:1px}
+.pb-mini{display:flex;align-items:baseline;gap:8px;padding:7px 8px;border-radius:9px;
+  background:none;border:0;width:100%;text-align:left;cursor:pointer;transition:background .16s}
+.pb-mini:hover{background:var(--bg-2)}
+.pb-mini.is-active{background:var(--rose-soft)}
+.pb-mini b{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink)}
+.pb-mini span{font-size:12.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-main{min-width:0}
+.pb-head{margin-bottom:18px}
+.pb .wb-h1{font-size:40px;margin-bottom:6px}
+.pb-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:16px 4px 8px;border-bottom:1px solid var(--hair);margin-bottom:6px}
+.pb-list{display:flex;flex-direction:column;gap:2px}
+/* the active row carries a mark, since the card no longer travels to it */
+.pb-list .wb-row.is-active{box-shadow:inset 3px 0 0 var(--rose),0 2px 10px -6px rgba(40,40,45,.3)}
+.pb-hint{font-size:12.5px;color:var(--soft);line-height:1.5;margin-top:10px}
+
+/* =====================================================================
+   VARIANT C — «Картотека»
+   Neither reserve nor hide: make the whole width one grid of 440px cells, and
+   let the card BE a cell. Because tile and card are the same width, a card can
+   never render at two sizes — the property the other two variants have to
+   maintain by rule, this one gets from its geometry.
+
+   Search and the personal list are two tabs over the same grid, so both use
+   the full width instead of splitting it in half.
+   ===================================================================== */
+.pc-wrap{padding:8px 48px 100px;max-width:1560px;margin:0 auto}
+.pc-hero{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap;margin-bottom:20px}
+.pc-hero .wb-h1{font-size:52px}
+.pc-hero .pc-search{flex:1;min-width:320px;max-width:560px}
+.pc-tabs{display:flex;gap:4px;border-bottom:1px solid var(--hair);margin-bottom:20px}
+.pc-tab{position:relative;background:none;border:0;padding:12px 16px 13px;font-size:14.5px;
+  font-weight:600;color:var(--soft);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.pc-tab:hover{color:var(--ink)}
+.pc-tab.on{color:var(--ink);font-weight:700}
+.pc-tab.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2.5px;background:var(--rose)}
+.pc-tab .n{font-size:11px;font-weight:700;color:var(--rose-ink);background:var(--rose-soft);
+  border-radius:20px;padding:1px 7px}
+/* Uniform 440 columns: at 1440 two, at 1920 three, and the card drops in
+   without resizing anything.
+
+   CSS columns, NOT grid. Tried grid first and it reintroduced the exact
+   complaint this page is answering: `grid-template-columns:repeat(auto-fill,
+   440px)` puts every cell of a row on one baseline, so a 653px open card makes
+   its whole row 653px tall and the 160px tile beside it sits above ~490px of
+   nothing — measured, with the rest of the results pushed off screen. Column
+   flow has no rows, so a tall cell only lengthens its own column. */
+.pc-grid{column-width:440px;column-gap:26px;max-width:1372px;margin:0 auto}
+.pc-cell{width:440px;max-width:100%;margin:0 0 16px;
+  /* a card must never be sliced across a column break */
+  break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid}
+.pc-tile{width:100%;background:var(--card);border:1px solid var(--hair);border-radius:16px;
+  padding:2px 4px 6px;transition:border-color .18s,box-shadow .18s}
+.pc-tile:hover{border-color:var(--rose-soft);box-shadow:0 10px 26px -18px rgba(40,40,45,.4)}
+.pc-tile .wb-row{padding:14px 14px 12px 24px}
+.pc-tile .wb-row:hover{background:none}
+/* one line of the first example, so a tile answers "is this the word I meant?"
+   without opening anything — the tiles are wide enough to afford it */
+/* `-webkit-line-clamp` alone leaves a 3–4px sliver of the next line showing
+   under the ellipsis, which reads as a rendering fault. The explicit
+   max-height (1 × line-height) is what actually cuts it. */
+.pc-x{font-size:14.5px;line-height:1.5;color:var(--soft);margin:0 16px 10px 24px;
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;
+  overflow:hidden;max-height:1.5em}
+.pc-x em{font-style:normal;font-weight:700;color:var(--ink-soft)}
+
+/* =====================================================================
+   Harness — not part of any variant
+   ===================================================================== */
+.hbar{position:fixed;left:0;right:0;bottom:0;z-index:80;background:rgba(255,255,255,.96);
+  backdrop-filter:blur(10px);border-top:1px solid var(--hair);display:flex;align-items:stretch}
+.hb{flex:1;background:none;border:0;border-right:1px solid var(--hair-2);padding:9px 16px;
+  text-align:left;cursor:pointer;color:var(--soft);transition:background .15s,color .15s}
+.hb:hover{background:var(--bg-2)}
+.hb.on{background:var(--card);color:var(--ink);box-shadow:inset 0 2.5px 0 var(--rose)}
+.hb b{display:block;font-size:9.5px;letter-spacing:.16em;color:var(--rose-ink);font-weight:700}
+.hb span{display:block;font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;line-height:1.15}
+.hb i{display:block;font-style:normal;font-size:10.5px;color:var(--soft)}
+.hb-tools{display:flex;align-items:center;gap:14px;padding:0 20px;flex:none}
+.hb-tools label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);cursor:pointer}
+.hmeasure{position:fixed;right:14px;bottom:78px;z-index:81;background:var(--graphite);color:#fff;
+  border-radius:8px;padding:6px 11px;font-size:11.5px;font-variant-numeric:tabular-nums;
+  line-height:1.5;white-space:pre}
+body{padding-bottom:76px}
+
+/* =====================================================================
+   Responsive. The three variants degrade differently on purpose, and each
+   degradation is the variant's own idea taken to a narrow screen.
+   ===================================================================== */
+@media (max-width:1180px){
+  .pb-wrap{grid-template-columns:minmax(0,1fr) 440px;gap:26px}
+  .pb-rail{display:none}                       /* the rail is the first thing to go: it is a summary */
+  .pb-main{grid-column:1} .pb-card{grid-column:2}
+  .pa-wrap{gap:32px;padding-left:24px;padding-right:24px}
+  .pc-wrap,.wb-top{padding-left:24px;padding-right:24px}
+}
+@media (max-width:960px){
+  /* one column everywhere. A card that covers "the other column" has no other
+     column left, so in all three it becomes a sheet in the flow — full width,
+     capped at 440 so it is still the same object. */
+  .pa-wrap{flex-direction:column;align-items:center}
+  .pa-side{width:100%;max-width:440px}
+  .pa-side .wb-card{position:static;max-height:none}
+  .pa-main{width:100%;max-width:620px}
+  .pb-wrap{grid-template-columns:minmax(0,1fr);padding-left:20px;padding-right:20px}
+  /* `justify-self:center` leaves the track item shrink-to-fit, so the card's
+     `min(440px,100%)` has no definite base to resolve against and it settled at
+     395px inside a 294px column — 2px of horizontal page scroll at 390px wide.
+     Stretching the item gives the percentage something real to measure. */
+  .pb-main,.pb-card{grid-column:1;grid-row:auto}
+  .pb-card{position:static;max-height:none;justify-self:stretch;width:100%}
+  .pb-card .wb-card{margin:0 auto}
+  /* `column-width` is a MINIMUM, not a width: at a 900px viewport it makes one
+     852px column, and a cell told `width:100%` fills it. Both had to be capped
+     or the card rendered 537px in B and 852px in C — the exact "same card, two
+     sizes" defect this whole exercise exists to remove. Measured before the fix. */
+  .pc-grid{columns:1;max-width:440px;margin:0 auto}
+  .pc-cell,.wb-card{width:min(440px,100%)}
+  .wb-top{padding:16px 20px 12px;flex-wrap:wrap;gap:14px}
+  .pa .wb-h1{font-size:44px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}

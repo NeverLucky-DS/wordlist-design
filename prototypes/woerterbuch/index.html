@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wörterbuch — карточка и три варианта страницы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="wb.css?v=1">
+</head>
+<body>
+
+<div id="app"></div>
+
+<!-- live readout: the card's size in every variant and every state, because
+     "the same card renders 744px on one side and 440px on the other" is a
+     layout fact and the only way to see the fix hold is to print it -->
+<div class="hmeasure" id="hmeasure"></div>
+<div class="hbar" id="hbar"></div>
+
+<script src="../cards-data.js"></script>
+<script src="wb-card.js?v=1"></script>
+<script src="wb-page.js?v=1"></script>
+<script>boot();</script>
+</body>
+</html>
