@@ -38,6 +38,12 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
+/* html clips its own horizontal axis too, not just body: on entering the editor
+   the contenteditable auto-focuses and the browser scrolls ~34px right to the
+   caret, and since html allows horizontal scroll (body's overflow-x:hidden does
+   not cover it) that offset stuck and clipped the whole left rail off-screen.
+   `clip` stops the scroll without establishing a scroll container. */
+html{overflow-x:clip}
 html,body{height:100%}
 body{
   font-family:'Inter',system-ui,-apple-system,sans-serif;

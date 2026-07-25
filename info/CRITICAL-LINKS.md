@@ -10,24 +10,28 @@
 ## 1. Страницы → ассеты → API
 
 ```
-index.html   — переводчик-поиск (слева) + личный список слов (справа)
-├── css/site-header.css, css/styles.css
-├── js/site-header.js, js/words-data.js, js/app.js, js/animations.js
-├── images/abstract-watercolor-column.png   (styles.css .bg-column)
-├── images/decor-head.png                   (styles.css mask)
-├── images/Verwendung.png, Deklination.png  (styles.css CSS vars)
-├── worte/*.png                             (words-data.js brushOfCard → строки)
+index.html   — Wörterbuch: поиск-разворот + карточка + личный список в ящике
+                (2026-07-23: переписан на дизайн «Разворот», §6c. Единственный
+                 фронт — прототип на :8799 удалён 2026-07-25, поднимать make up)
+├── css/site-header.css, css/woerterbuch.css
+├── js/site-header.js, js/wb-card.js, js/wb-page.js   (+ inline boot())
+├── worte/*.png                             (wb-card.js brushFor, путь /worte/ АБСОЛЮТНЫЙ)
 └── API (все — /api/vocab/*, см. §6b):
     ├── GET    /api/vocab/search?q=          (поиск, публичный)
     ├── GET    /api/vocab/entry/{lemma}      (полная карточка, публичный)
     ├── GET    /api/vocab/list               (свои слова — ТРЕБУЕТ аккаунт)
-    ├── GET    /api/vocab/list/stats         (донат)
+    ├── GET    /api/vocab/list/stats         (донат — донат-виджет в ящике)
     ├── POST   /api/vocab/list               (добавить)
     └── DELETE /api/vocab/list/{lemma}       (убрать)
 
+⚠️ **`js/app.js` и `js/animations.js` ОСИРОТЕЛИ 2026-07-23** — index их больше не
+грузит. `words-data.js` жив (его грузит schreiben). `css/styles.css` тоже больше
+не на index (жив ли где-то ещё — проверить перед удалением). Не удалял в этом
+заходе; кандидаты на отдельную уборку.
+
 `GET /api/words` (Postgres-таблица `words`, 17 seed-слов) страницей БОЛЬШЕ НЕ
-используется — канон это обогащённые карточки. Роут жив, его зовёт только
-`editor.js`, которого тоже нет. Кандидат на удаление отдельным заходом.
+используется — канон это обогащённые карточки. Роут жив, звать его больше некому
+(`editor.js`/`app.js` мертвы). Кандидат на удаление отдельным заходом.
 
 schreiben.html
 ├── css/site-header.css, css/schreiben.css
@@ -306,8 +310,12 @@ POST /api/pipeline/queue
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
    (`site-header.css` сейчас `?v=11`, `site-header.js` — `?v=8`,
-   `schreiben.css` — `?v=28`, `styles.css` — `?v=28`, `app.js` — `?v=33`,
-   `words-data.js` — `?v=2`, `pipeline.css` — `?v=8`, `enrich.js` — `?v=5`).
+   `woerterbuch.css` — `?v=2`, `wb-card.js` — `?v=2`, `wb-page.js` — `?v=3`,
+   `schreiben.css` — `?v=33`, `words-data.js` — `?v=2`,
+   `pipeline.css` — `?v=8`, `enrich.js` — `?v=5`).
+   ⚠️ `index.html` САМ не версионируется, и in-app-браузер его агрессивно кэширует:
+   при проверке правок index-страницы бить кэш через `index.html?x=…`, иначе
+   грузится старый HTML со старыми `?v` (напоролись 2026-07-23).
 
 3. **Frontend mounts** — при добавлении нового публичного корневого файла/каталога
    явно добавить его в `docker-compose.yml`; весь репозиторий намеренно не монтируется.
@@ -745,6 +753,56 @@ enrichment.db (SQLite, WAL)  --read-only-->  app/vocab/mirror.py
 
 Линия рисуется **синхронно** в `showCard`, не через `requestAnimationFrame`:
 в фоновой вкладке rAF не вызывается вообще, и карточка осталась бы без связи.
+
+---
+
+## 6c. Wörterbuch v2 — «Разворот» в проде (2026-07-23)
+
+`index.html` переписан на дизайн-вариант A «Разворот»: одна мера по центру,
+при открытии слова — разворот (список уезжает влево, карточка встаёт справа),
+личный список в правом ящике (`.pa-drawer`, кнопка-корешок `.pa-tab`). Старый
+двухколоночный `js/app.js` больше не подключён (см. §1). §6b (зеркало, поиск,
+ключ списка) полностью в силе — менялся только фронт.
+
+**Одна площадка, и это принципиально (2026-07-25).** `css/woerterbuch.css`,
+`js/wb-card.js`, `js/wb-page.js` — канон, лежат в `css/`/`js/`, грузит их
+ровно один потребитель: прод `index.html` с nginx :8753, поднимаемый `make up`.
+
+Так было не всегда. До 25 июля те же файлы грузил ещё и
+`prototypes/woerterbuch/index.html` с файл-сервера :8799 (`python3 -m
+http.server`, запись `static` в `.claude/launch.json`). Дизайн там был **тот же
+самый** — прототип с 23 июля был тонким загрузчиком канона, — то есть это была
+вторая дверь в один код, и стоила она ровно одного: двух адресов, которые
+владельцу приходилось держать в голове и проверять. Папка `prototypes/` удалена
+целиком, `launch.json` сведён к одной attach-записи без команды.
+
+⚠️ **Не заводить второй способ поднять фронт.** Ни записи с командой в
+`launch.json`, ни `python3 -m http.server`, ни `app.vocab.server` (:8770, см.
+ниже) — единственный поддерживаемый путь `make up`.
+
+**Конфиг через `window.*` — ОСТАЛСЯ, но мёртв.** `wb-page.js` читает `CFG`,
+`wb-card.js` — `WORTE_BASE`; ни одну из переменных теперь никто не задаёт:
+- `WB_API`  — база vocab-API (дефолт `/api/vocab`);
+- `WB_DEMO` — держал список слов в памяти (`DEMO_LEMMAS`) для прототипа, которому
+  cookie аккаунта был кросс-ориджин недостижим. В проде не задавался никогда →
+  реальный `/api/vocab/list` + `SiteAuth`, гость видит «Войти». Все ветки
+  `CFG.demo` в `wb-page.js` (их ~10) недостижимы; не выпиливались, чтобы не
+  трогать рабочий прод ради инертного кода.
+- `WB_WORTE` не нужен: путь к кистям **обязан быть абсолютным `/worte/`**.
+  `--brush` это custom property с `url()`, и браузер резолвит его относительно
+  ПОТРЕБЛЯЮЩЕГО стайла (`css/woerterbuch.css`, т.е. `/css/`) — `worte/…` даёт
+  `/css/worte/… → 404`. Напоролись 2026-07-23.
+
+**Коннектор (`#wbLink` в HTML, вне `#app`)** — тот же приём, что §6b, но:
+- линия слегка прозрачна (`.wb-link.is-shown{opacity:.6}`) и на открытии
+  ПРОРИСОВЫВАЕТСЯ (`playReveal`: WAAPI по `stroke-dashoffset` len→0, 560ms),
+  затем возвращается к «муравьям» (`wbAnts`);
+- во время View-Transition линия перекрыта слоем перехода, поэтому её показывают
+  ПОСЛЕ `vt.finished`. Menять на «во время» нельзя без ухода от VT.
+
+**Заголовок — общий `.topbar`** (site-header.css/js), НЕ рендерится из JS. Тема
+(`body.theme-dim`) переключается кнопкой шапки; тёмная палитра — блок в конце
+`woerterbuch.css`, всё на переменных, поэтому одним махом.
 
 ---
 

@@ -1,0 +1,454 @@
+/* =====================================================================
+   Wörterbuch — the Wortkarte and the single page it lives in.
+
+   Palette and type are the production ones (css/styles.css). The only new inks
+   are `--soft` and `--rose-ink`: the originals fail WCAG AA and are documented
+   where they are declared. The scale here is deliberately compact — this is a
+   reference tool, read in glances, not an article.
+   ===================================================================== */
+
+:root{
+  --bg:#FAFAF8; --bg-2:#F4F4F1; --card:#FFFFFF;
+  --ink:#2B2B30; --ink-soft:#55555E;
+  --muted:#9A9AA2; --muted-2:#C3C3CA;
+  --hair:#ECEAE4; --hair-2:#F2F1EC;
+  --rose:#C2868D; --rose-soft:#F2E6E6;
+  --lav:#A99BC0; --lav-soft:#ECE7F1;
+  --blue:#9DB2C9; --blue-soft:#E6ECF2;
+  --sand:#CDB68F; --graphite:#33333A; --orange:#E08A3C;
+
+  /* --- the accessibility floor, stated so it can be checked ---
+     `--muted` (#9A9AA2) is 2.79:1 and `--muted-2` is 1.75:1, so NEITHER may
+     carry text a reader has to read — furniture only.
+       · content text ≥ 14px    · labels ≥ 10px bold    · all ≥ 4.5:1 */
+  --soft:#6A6A74;          /* 4.6:1 on white — lightest ink allowed to carry a sentence */
+  --rose-ink:#8C4F57;      /* 6.2:1 on white — --rose is 2.95:1 and cannot label anything */
+
+  font-synthesis:none;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+svg{display:block}
+button{font-family:inherit}
+/* One visible focus ring for the whole page. Every control is a real <button>. */
+:focus-visible{outline:2.5px solid var(--rose-ink);outline-offset:2px;border-radius:6px}
+
+/* Art slots — kept for the day the bespoke washes arrive; WB.art is false in
+   production, so these render nothing and every slot() call collapses. */
+.art-slot{display:inline-flex;align-items:center;justify-content:center;
+  width:var(--sw);height:var(--sh);flex:none;
+  border:1px dashed var(--rose);border-radius:6px;background:rgba(194,134,141,.05)}
+.art-slot i{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--rose-ink);opacity:.85;padding:0 3px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.art-slot.is-tiny i{font-size:7px;letter-spacing:0}
+.art-slot.is-mute i{display:none}
+.art-slot.is-head{position:absolute;inset:0;width:auto;height:auto;border-radius:16px 16px 0 0;
+  align-items:flex-start;justify-content:flex-end;padding:5px 7px;z-index:1;
+  background:rgba(194,134,141,.04)}
+
+/* =====================================================================
+   THE CARD — 420px wherever it opens, in every state.
+   ===================================================================== */
+.wb-card{position:relative;width:420px;max-width:100%;background:var(--card);
+  border:1px solid var(--hair);border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(40,40,45,.04), 0 3px 8px rgba(40,40,45,.05),
+             0 22px 44px -20px rgba(40,40,45,.18), 0 46px 100px -50px rgba(40,40,45,.32)}
+
+.wb-close{position:absolute;top:12px;right:12px;z-index:6;width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.86);
+  backdrop-filter:blur(3px);border:1px solid var(--hair);color:var(--ink-soft);cursor:pointer;
+  transition:border-color .18s,color .18s,background .18s}
+.wb-close:hover{border-color:var(--rose);color:var(--rose-ink);background:#fff}
+.wb-close svg{width:13px;height:13px}
+
+/* ---------- head ---------- */
+.wb-head{position:relative;padding:12px 20px 10px;overflow:hidden;
+  border-radius:15px 15px 0 0;isolation:isolate}
+/* the row brush, cropped to a band across the upper head and faded out downward,
+   so the paint stays above the text and the word sits on clean ground */
+.wb-head::before{content:"";position:absolute;left:0;right:0;top:0;height:76%;z-index:0;
+  background:var(--brush) no-repeat center/cover;opacity:.6;
+  -webkit-mask:linear-gradient(180deg,#000 0,#000 42%,rgba(0,0,0,.45) 72%,transparent 100%);
+          mask:linear-gradient(180deg,#000 0,#000 42%,rgba(0,0,0,.45) 72%,transparent 100%)}
+.wb-head::after{content:"";position:absolute;inset:0;z-index:2;
+  background:linear-gradient(174deg,rgba(255,255,255,.32) 0%,rgba(255,255,255,.80) 46%,rgba(255,255,255,.95) 100%)}
+.wb-head>*{position:relative;z-index:3}
+
+.wb-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  min-height:18px;padding-right:34px;margin-bottom:5px}
+.wb-pos{font-size:12px;font-weight:700;letter-spacing:.01em;color:var(--ink-soft)}
+.wb-cefr{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--rose-ink);
+  background:rgba(255,255,255,.8);border:1px solid var(--rose-soft);border-radius:6px;padding:2px 7px}
+.wb-freq{display:inline-flex;align-items:center;gap:6px}
+.wb-freq b{font-size:11.5px;font-weight:500;color:var(--ink-soft)}
+
+.wb-word{font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;font-weight:600;
+  line-height:1.04;letter-spacing:-.4px;color:var(--ink);display:flex;align-items:baseline;
+  flex-wrap:wrap;gap:0 9px}
+.wb-word.is-s{font-size:27px;letter-spacing:-.2px}
+.wb-word.is-xs{font-size:22px;letter-spacing:-.1px}
+/* the article is its own object, never glued into the lemma — the one fact a
+   learner comes back for most */
+.wb-art{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.05em;
+  color:var(--rose-ink);background:rgba(255,255,255,.78);border:1px solid var(--rose-soft);
+  border-radius:6px;padding:2px 8px;align-self:center;flex:none}
+.wb-lemma{min-width:0;word-break:break-word}
+
+.wb-form{margin-top:7px;font-size:12px;color:var(--soft)}
+.wb-base,.wb-syn-chip{font:inherit;font-size:12.5px;color:var(--rose-ink);background:rgba(255,255,255,.6);
+  border:1px solid var(--rose-soft);border-radius:7px;padding:2px 8px;margin-left:4px;cursor:pointer;
+  transition:background .16s,border-color .16s}
+.wb-base:hover,.wb-syn-chip:hover{background:var(--rose-soft);border-color:var(--rose)}
+
+.wb-pron{display:flex;align-items:center;gap:12px;margin-top:7px;flex-wrap:wrap}
+.wb-say{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;
+  color:var(--rose-ink);font-size:12.5px;font-weight:600;cursor:pointer}
+.wb-say:hover span{text-decoration:underline}
+
+/* ---------- body ---------- */
+.wb-body{padding:11px 20px 10px}
+.wb-blk+.wb-blk{margin-top:10px;padding-top:10px;border-top:1.5px solid var(--hair)}
+
+.wb-lab{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:#fff;background:var(--graphite);border-radius:5px;
+  padding:2px 8px;margin-bottom:6px}
+
+/* meanings — all equal, order preserved by the numeral only */
+.wb-mn{list-style:none;display:flex;flex-direction:column;gap:3px;counter-reset:mn}
+.wb-mn li{display:flex;gap:10px;align-items:baseline;counter-increment:mn}
+.wb-mn .mn-n{flex:none;width:14px;font-size:11px;font-weight:700;color:var(--soft);
+  font-variant-numeric:tabular-nums}
+.wb-mn .mn-n::before{content:counter(mn)}
+.wb-mn .mn-t{font-size:14.5px;font-weight:500;line-height:1.34;color:var(--ink)}
+.wb-mn.is-single .mn-t{font-size:16px}
+
+/* example */
+.wb-x-de{font-size:14px;font-weight:500;line-height:1.44;color:var(--ink)}
+.wb-x-de em{font-style:normal;font-weight:700;box-shadow:inset 0 -3px 0 var(--rose)}
+.wb-x-ru{margin-top:5px;font-size:13.5px;line-height:1.4;color:var(--ink-soft)}
+.wb-x-ru em{font-style:normal;font-weight:600;color:var(--ink)}
+
+/* usage — Rektion and collocations under one heading */
+.wb-rek{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:13px;font-weight:600;
+  color:var(--ink);letter-spacing:-.01em;margin-bottom:6px;line-height:1.5}
+.wb-colls{font-size:13.5px;line-height:1.56;color:var(--ink-soft)}
+.wb-colls em{font-style:normal;font-weight:700;color:var(--ink)}
+.wb-dot{color:var(--soft);padding:0 6px}
+
+/* ---------- tabs ---------- */
+.wb-tabs{display:flex;gap:2px;padding:0 18px;border-top:1px solid var(--hair);
+  background:linear-gradient(180deg,var(--bg-2),var(--card))}
+.wb-tab{position:relative;background:none;border:0;padding:10px 10px 12px;
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12.5px;font-weight:600;color:var(--soft);cursor:pointer;transition:color .16s}
+.wb-tab:hover{color:var(--ink)}
+.wb-tab.on{color:var(--ink);font-weight:700}
+.wb-tab.on::after{content:"";position:absolute;left:8px;right:8px;bottom:5px;height:4px;
+  background:var(--rose);border-radius:3px}
+.wb-tab-n{font-size:10px;font-weight:700;color:var(--rose-ink);background:var(--rose-soft);
+  border-radius:20px;padding:1px 6px;min-width:17px;text-align:center}
+.wb-caret{width:6px;height:6px;border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);opacity:.5;transition:transform .2s,opacity .2s}
+.wb-tab.on .wb-caret{transform:rotate(225deg) translate(-2px,-2px);opacity:1}
+
+.wb-panel{display:none;padding:14px 22px 6px;border-top:1px solid var(--hair)}
+.wb-panel.on{display:block;animation:wbPanel .22s ease}
+@keyframes wbPanel{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.wb-def{font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
+.wb-syn{margin-top:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.wb-syn-lab{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.wb-syn-chip{font-family:'Cormorant Garamond',serif;font-size:16px;margin-left:0}
+
+/* ---------- foot ---------- */
+.wb-foot{display:flex;align-items:center;gap:10px;padding:9px 20px 11px;
+  border-top:1px solid var(--hair);background:var(--card)}
+.wb-collect{flex:1;background:var(--graphite);color:#fff;border:1px solid var(--graphite);
+  border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  transition:box-shadow .2s,background .2s,color .2s,border-color .2s}
+.wb-collect:hover{box-shadow:0 12px 26px -12px rgba(51,51,58,.55)}
+.wb-collect.is-in{background:var(--rose-soft);color:var(--rose-ink);border-color:var(--rose-soft)}
+.wb-collect.is-in:hover{background:var(--card);border-color:var(--rose);box-shadow:none}
+
+/* ---------- grammar ---------- */
+.g-parts{display:flex;flex-wrap:wrap;gap:9px 24px;align-items:baseline}
+.g-part{display:flex;flex-direction:column;gap:2px}
+.g-part i,.g-step i,.g-sub-lab,.g-extra i,.g-person i,.g-brief-sep,
+.g-cases thead th,.g-cases tbody th{font-style:normal;font-size:10px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.g-part b,.g-step b{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;
+  color:var(--ink);line-height:1.12}
+.g-sub{margin-top:13px}
+.g-sub-lab{margin-bottom:6px}
+.g-sub-lab em{font-style:normal;color:var(--rose-ink);text-transform:none;letter-spacing:.02em}
+.g-persons{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 18px}
+.g-person{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--ink);
+  display:flex;align-items:baseline;gap:8px}
+.g-person i{flex:none;min-width:48px}
+.g-extra{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px}
+.g-extra span{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--ink-soft);
+  display:flex;align-items:baseline;gap:8px}
+.g-ladder{display:flex;align-items:flex-end;gap:11px;flex-wrap:wrap}
+.g-ladder .g-arrow{width:15px;height:1.5px;background:var(--hair);margin-bottom:9px;flex:none}
+.g-brief{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink)}
+.g-brief-pl{display:inline-flex;align-items:baseline;gap:8px;white-space:nowrap}
+.g-brief-many{color:var(--ink-soft)}
+.g-note{margin-top:7px;font-size:12px;font-weight:500;color:var(--rose-ink)}
+.g-more{margin-top:11px}
+.g-more>summary{list-style:none;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--soft);padding:4px 0}
+.g-more>summary::-webkit-details-marker{display:none}
+.g-more>summary::before{content:'+ ';color:var(--muted)}
+.g-more[open]>summary::before{content:'– '}
+.g-more>summary:hover{color:var(--ink)}
+.g-cases-wrap{overflow-x:auto}
+.g-cases{width:100%;border-collapse:collapse;margin-top:6px}
+.g-cases th,.g-cases td{text-align:left;padding:5px 12px 5px 0;
+  font-family:'Cormorant Garamond',serif;font-size:14.5px;color:var(--ink);white-space:nowrap}
+.g-cases tbody td:last-child{color:var(--ink-soft)}
+.g-cases tbody tr+tr th,.g-cases tbody tr+tr td{border-top:1px solid var(--hair-2)}
+
+.wb-x-list{display:flex;flex-direction:column;gap:13px}
+
+/* =====================================================================
+   THE WORD ROW — search results and the drawer share it.
+   ===================================================================== */
+/* No box. The row is the word on the page; hover and the open state are carried
+   by the PAINT getting denser, not by a container. */
+.wb-row{position:relative;display:flex;align-items:flex-start;gap:12px;width:100%;
+  padding:9px 12px 9px 22px;border-radius:12px;cursor:pointer;text-align:left;
+  background:none;border:0}
+
+/* The mark is sized by the WORD (hung on the inline `.wb-w`), not by the row or a
+   constant, so a short word gets a short mark and a long one a long mark — at
+   every zoom and column width, with no measuring in JS. Kept low and tight so it
+   stays under the German word and clear of the translation below it. */
+.wb-w{position:relative;display:inline;z-index:1}
+.wb-w::before{content:"";position:absolute;left:-22px;right:-22px;top:50%;
+  transform:translateY(-50%);height:52px;z-index:-1;pointer-events:none;
+  background:var(--brush) no-repeat center/cover;opacity:.6;transition:opacity .25s;
+  -webkit-mask:radial-gradient(118% 96% at 50% 50%,#000 40%,rgba(0,0,0,.45) 72%,transparent 96%);
+          mask:radial-gradient(118% 96% at 50% 50%,#000 40%,rgba(0,0,0,.45) 72%,transparent 96%)}
+.wb-row:hover .wb-w::before{opacity:.82}
+.wb-row.is-active .wb-w::before{opacity:1}
+.wb-row>*{position:relative;z-index:1}
+
+/* task 5: the translation is pushed clear of the word and its paint — a real gap,
+   not a hairline, so German material and Russian chrome never touch */
+.wb-rw-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.wb-rw-de{font-family:'Cormorant Garamond',serif;font-size:18.5px;font-weight:600;line-height:1.1;
+  color:var(--ink);text-shadow:0 0 6px rgba(255,255,255,.65)}
+.wb-rw-de .art{font-weight:500;color:var(--ink-soft)}
+.wb-rw-ru{font-size:13.5px;line-height:1.35;color:var(--ink-soft);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wb-rw-right{flex:none;display:flex;align-items:center;gap:8px;padding-top:3px}
+.wb-rw-add{width:26px;height:26px;border-radius:50%;border:1px solid var(--hair);
+  background:var(--card);color:var(--muted);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:border-color .18s,color .18s,background .18s,transform .18s}
+.wb-rw-add:hover{border-color:var(--rose);color:var(--rose-ink);background:var(--rose-soft);transform:scale(1.08)}
+.wb-rw-add.is-in{border-color:var(--rose-soft);background:var(--rose-soft);color:var(--rose-ink)}
+.wb-rw-add.is-del{color:var(--muted)}
+.wb-rw-add.is-del:hover{border-color:var(--rose);color:var(--rose-ink);background:var(--rose-soft)}
+
+.wb-tag{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--rose-ink);
+  border:1px solid var(--rose-soft);border-radius:7px;padding:3px 7px;background:var(--card)}
+.wb-tag.is-freq{border-color:transparent;background:none;padding:3px 2px;
+  font-weight:500;letter-spacing:0;color:var(--soft);display:inline-flex;align-items:center;gap:6px}
+
+/* forms are legitimate hits, never headlines: dimmed paint, and they say so */
+.wb-row.is-form .wb-w::before{opacity:.28}
+.wb-rw-form{font-size:11.5px;color:var(--soft);margin-top:1px}
+
+/* =====================================================================
+   "то же значение, реже" — the same meaning in rarer words (task 9).
+
+   Redesigned from a flat grey line into a legible hierarchy: the cluster hangs
+   off its head on an L-shaped connector rail, a caption names what binds the
+   group, and each alternative shows its article and word with an underline
+   affordance — a mark, not a box, so it stays in the same hand as the paint.
+   ===================================================================== */
+.wb-syns{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 12px;
+  margin:-2px 0 7px;padding:5px 14px 8px 40px}
+.wb-syns::before{content:"";position:absolute;left:26px;top:-7px;bottom:16px;width:11px;
+  border-left:1.6px solid var(--hair);border-bottom:1.6px solid var(--hair);
+  border-bottom-left-radius:9px}
+.wb-syns-lab{align-self:center;font-size:10px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--soft)}
+.wb-syns-list{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 15px}
+.wb-syn{display:inline-flex;align-items:baseline;gap:5px;background:none;border:0;
+  padding:2px 0 3px;cursor:pointer}
+/* the article is coloured by gender — redundant with the der/die/das text, so
+   it enriches and distinguishes the alternatives without being the only signal */
+.wb-syn-art{font-family:'Inter',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.02em;
+  color:var(--soft);align-self:center}
+.wb-syn-art.g-der{color:#4E6D8C}
+.wb-syn-art.g-die{color:#8C4F57}
+.wb-syn-art.g-das{color:#4F7A5E}
+.wb-syn-w{font-family:'Cormorant Garamond',serif;font-size:16.5px;color:var(--ink-soft);
+  border-bottom:1.5px dotted var(--muted-2);transition:color .16s,border-color .16s}
+.wb-syn:hover .wb-syn-w{color:var(--rose-ink);border-bottom-color:var(--rose)}
+
+/* =====================================================================
+   Shared chrome
+   ===================================================================== */
+.wb-search{display:flex;align-items:center;gap:10px;background:var(--card);
+  border:1px solid var(--hair);border-radius:13px;padding:0 14px;height:44px;
+  box-shadow:0 1px 2px rgba(40,40,45,.03);transition:border-color .2s,box-shadow .2s}
+.wb-search:focus-within{border-color:var(--rose);box-shadow:0 0 0 4px var(--rose-soft)}
+.wb-search .ico{color:var(--muted);flex:none}
+.wb-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:13.5px;
+  color:var(--ink);font-family:inherit}
+.wb-search input::placeholder{color:var(--muted-2)}
+.wb-lang{flex:none;font-size:9.5px;font-weight:700;letter-spacing:.11em;color:var(--rose-ink);
+  background:var(--rose-soft);border-radius:7px;padding:4px 8px}
+
+.wb-eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;font-weight:700;color:var(--rose-ink)}
+.wb-h1{font-family:'Cormorant Garamond',serif;font-weight:600;line-height:.98;letter-spacing:-1px}
+.wb-lede{font-size:13.5px;line-height:1.58;color:var(--ink-soft)}
+.wb-count{font-size:12.5px;color:var(--soft);font-weight:500}
+
+.wb-empty{display:flex;flex-direction:column;align-items:flex-start;
+  padding:26px 20px;color:var(--soft);line-height:1.6;font-size:14px}
+.wb-empty b{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;
+  color:var(--ink);margin-bottom:6px}
+.wb-empty-cta{margin-top:14px;background:var(--graphite);color:#fff;border:0;border-radius:9px;
+  padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:box-shadow .2s}
+.wb-empty-cta:hover{box-shadow:0 12px 26px -12px rgba(51,51,58,.55)}
+
+/* =====================================================================
+   THE PAGE — one measure that opens into a spread
+   ===================================================================== */
+.pa{position:relative;min-height:calc(100vh - 90px)}
+.pa-wrap{max-width:1040px;margin:0 auto;padding:22px 40px 90px;
+  display:flex;justify-content:center;gap:44px}
+.pa-main{width:560px;flex:none;max-width:100%}
+.pa .wb-eyebrow{margin-bottom:7px}
+.pa .wb-h1{font-size:36px;margin-bottom:8px}
+.pa .wb-lede{max-width:460px;margin-bottom:16px}
+.pa-search{margin-bottom:8px}
+.pa-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 2px 6px;border-bottom:1px solid var(--hair);margin-bottom:6px}
+.pa-list{display:flex;flex-direction:column;gap:2px}
+/* the right-hand page — sticky with the reader, scrolls internally when tall */
+.pa-side{width:420px;flex:none}
+.pa-side .wb-card{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
+.pa[data-card="0"] .pa-side{display:none}
+
+/* --- the opening move ---
+   the two columns carry view-transition names so the browser tweens the column
+   shift and the card entrance specifically, instead of crossfading the screen */
+.pa-main{view-transition-name:pa-main}
+.pa-side{view-transition-name:pa-side}
+@media (prefers-reduced-motion:no-preference){
+  ::view-transition-group(pa-main),
+  ::view-transition-group(pa-side),
+  ::view-transition-group(root){
+    animation-duration:.5s;animation-timing-function:cubic-bezier(.22,.61,.24,1)}
+  ::view-transition-new(pa-side){animation:.5s cubic-bezier(.22,.61,.24,1) both wbCardIn}
+  ::view-transition-old(pa-side){animation:.32s ease both wbCardOut}
+}
+@keyframes wbCardIn{from{opacity:0;transform:translateX(30px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes wbCardOut{from{opacity:1;transform:none}to{opacity:0;transform:translateX(20px)}}
+
+/* ---------- the personal list as a drawer ---------- */
+.pa-tab{position:fixed;right:0;top:36vh;z-index:40;writing-mode:vertical-rl;
+  background:var(--card);border:1px solid var(--hair);border-right:0;border-radius:11px 0 0 11px;
+  padding:15px 9px;font-size:11.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-soft);cursor:pointer;box-shadow:-6px 0 20px -14px rgba(40,40,45,.4);
+  transition:color .18s,border-color .18s}
+.pa-tab:hover,.pa-tab.is-open{color:var(--rose-ink);border-color:var(--rose)}
+.pa-tab b{color:var(--rose-ink);margin-top:9px}
+.pa-drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:92vw;z-index:50;
+  background:var(--card);border-left:1px solid var(--hair);box-shadow:-24px 0 60px -30px rgba(40,40,45,.4);
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);
+  display:flex;flex-direction:column}
+.pa-drawer.on{transform:none}
+.pa-drawer-head{padding:20px 22px 14px;border-bottom:1px solid var(--hair);
+  display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pa-drawer-head h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600}
+.pa-drawer-stat{padding:16px 20px 6px}
+.pa-drawer-body{flex:1;overflow-y:auto;padding:8px 10px 20px}
+.pa-drawer-pager{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;
+  padding:10px 16px 18px;border-top:1px solid var(--hair)}
+.wb-pg{min-width:30px;height:30px;border:1px solid var(--hair);background:var(--card);
+  border-radius:8px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+  transition:border-color .16s,color .16s,background .16s}
+.wb-pg:hover:not(:disabled){border-color:var(--rose);color:var(--rose-ink)}
+.wb-pg.is-active{background:var(--graphite);border-color:var(--graphite);color:#fff}
+.wb-pg:disabled{opacity:.4;cursor:default}
+.wb-pg-ell{align-self:flex-end;color:var(--muted);padding:0 2px}
+.pa-scrim{position:fixed;inset:0;z-index:45;background:rgba(40,40,45,.18);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+.pa-scrim.on{opacity:1;pointer-events:auto}
+
+/* the donut, reused in the drawer head */
+.pb-donut{display:flex;align-items:center;gap:14px}
+.pb-donut-wrap{position:relative;width:74px;height:74px;flex:none}
+.pb-donut-wrap svg{width:100%;height:100%}
+.pb-donut-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pb-donut-c b{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;line-height:1}
+.pb-donut-c span{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:var(--soft)}
+.pb-legend{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.pb-lg{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.pb-lg .dot{width:9px;height:9px;border-radius:3px;flex:none}
+.pb-lg.b1 .dot{background:var(--rose)} .pb-lg.b2 .dot{background:var(--blue)} .pb-lg.c1 .dot{background:var(--lav)}
+.pb-lg .nm{font-weight:600;color:var(--ink-soft)}
+.pb-lg .vl{margin-left:auto;color:var(--soft);font-variant-numeric:tabular-nums}
+
+/* =====================================================================
+   The connector (task 2) — from the card headword to the word's row.
+   Slightly transparent, and it DRAWS ITSELF IN on open (stroke-dashoffset in
+   wb-page.js playReveal) before settling into the marching-ants dashes.
+   ===================================================================== */
+.wb-link{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:35;
+  opacity:0;transition:opacity .32s ease}
+.wb-link[hidden]{display:none}
+.wb-link.is-shown{opacity:.6}
+.wb-link path{fill:none;stroke:var(--orange);stroke-width:2;stroke-linecap:round;
+  stroke-dasharray:6 7;filter:drop-shadow(0 1px 1.5px rgba(224,138,60,.45));
+  animation:wbAnts 3.2s linear infinite}
+.wb-link .ll-dot{fill:var(--orange);filter:drop-shadow(0 1px 2px rgba(224,138,60,.5));transition:opacity .2s}
+.wb-link .ll-anchor{fill:none;stroke:var(--orange);stroke-width:2}
+@keyframes wbAnts{to{stroke-dashoffset:-130}}
+@media (prefers-reduced-motion:reduce){.wb-link path{animation:none}}
+
+/* =====================================================================
+   Dark mode — the shared header's theme toggle flips body.theme-dim.
+   Everything is a variable, so the palette turns over in one block. The
+   watercolour brushes are images and simply sit a touch quieter on dark ground.
+   ===================================================================== */
+body.theme-dim{
+  --bg:#1B1B1F; --bg-2:#232329; --card:#25252B;
+  --ink:#EDEDF0; --ink-soft:#B8B8C0;
+  --muted:#7A7A84; --muted-2:#55555E;
+  --hair:#33333A; --hair-2:#2C2C32;
+  --rose-soft:#3A2A2E; --lav-soft:#2E2A38; --blue-soft:#26303B;
+  --soft:#9E9EA8; --rose-ink:#E0A6AC; --graphite:#EDEDF0;
+}
+body.theme-dim .wb-lab{color:#1B1B1F}
+body.theme-dim .wb-collect,body.theme-dim .wb-empty-cta,body.theme-dim .wb-pg.is-active{color:#1B1B1F}
+body.theme-dim .wb-head::after{
+  background:linear-gradient(174deg,rgba(37,37,43,.30) 0%,rgba(37,37,43,.80) 46%,rgba(37,37,43,.95) 100%)}
+
+/* =====================================================================
+   Responsive
+   ===================================================================== */
+@media (max-width:1080px){
+  .pa-wrap{gap:32px;padding-left:24px;padding-right:24px}
+}
+@media (max-width:900px){
+  /* one column: the card covers "the other column", which no longer exists, so
+     it becomes a sheet in the flow — full width, capped at 420 so it is the same
+     object. */
+  .pa-wrap{flex-direction:column;align-items:center}
+  .pa-side{width:100%;max-width:420px}
+  .pa-side .wb-card{position:static;max-height:none}
+  .pa-main{width:100%;max-width:560px}
+  .pa .wb-h1{font-size:32px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}

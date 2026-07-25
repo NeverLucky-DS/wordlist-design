@@ -6,15 +6,11 @@
 <title>Deutsch Essay · Wörterbuch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site-header.css?v=11">
-<link rel="stylesheet" href="css/styles.css?v=28">
+<link rel="stylesheet" href="css/woerterbuch.css?v=2">
 </head>
 <body>
-
-  <!-- left decorative watercolor column (images/abstract-watercolor-column.png) -->
-  <div class="bg-column" aria-hidden="true"></div>
-  <div class="side-label">WÖRTERBUCH</div>
 
   <!-- ===================== Shared top bar ===================== -->
   <header class="topbar">
@@ -36,55 +32,21 @@
     </div>
   </header>
 
-  <main id="mainGrid">
+  <!-- the whole page is rendered into #app by wb-page.js -->
+  <div id="app"></div>
 
-    <!-- ================= left: the lookup ================= -->
-    <section class="col-search" id="colSearch">
-      <div class="eyebrow">Nachschlagen</div>
-      <h1 class="title">Wörterbuch</h1>
-      <p class="lede">Deutsch oder Russisch — die Sprache wird automatisch erkannt.
-        Ein Wort wählen, um Bedeutung, Grammatik und Beispiele zu sehen.</p>
-
-      <div class="search-row">
-        <label class="search">
-          <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-          <input id="search" type="text" autocomplete="off" spellcheck="false"
-                 aria-label="Wort suchen" placeholder="z. B. „Fortschritt“ oder „прогресс“">
-          <span class="search-lang" id="searchLang" hidden></span>
-        </label>
-      </div>
-
-      <div class="word-list is-single" id="results"></div>
-    </section>
-
-    <!-- ================= right: the personal list ================= -->
-    <section class="col-mine" id="colMine">
-      <div class="mine-head">
-        <div class="donut-wrap">
-          <div id="donut"></div>
-          <div class="donut-center"><b id="donutTotal">0</b></div>
-        </div>
-        <div class="legend" id="legend"></div>
-      </div>
-      <div class="word-list is-single" id="myList"></div>
-      <div class="pager" id="pager" hidden></div>
-    </section>
-
-    <!-- Detail card. Opens over the column OPPOSITE the word it belongs to, so
-         the word itself stays visible and the connector can be drawn to it. -->
-    <div class="card-layer" id="cardLayer" hidden><div class="detail" id="detail"></div></div>
-  </main>
-
-  <!-- live orange connector, drawn over the page from the card's word to its row -->
-  <svg class="link-line" id="linkLine" aria-hidden="true" hidden>
-    <path id="linkPath" d=""/>
-    <circle id="linkAnchor" class="ll-anchor" r="4.5"/>
-    <circle id="linkDot" class="ll-dot" r="4"/>
+  <!-- the connector: a dashed orange stroke from the open card's headword to the
+       same word's row. Lives outside #app so a redraw never destroys it; it is
+       revealed by drawing itself in (wb-page.js playReveal). -->
+  <svg class="wb-link" id="wbLink" hidden>
+    <path id="wbLinkPath"></path>
+    <circle class="ll-anchor" id="wbLinkAnchor" r="3.5"></circle>
+    <circle class="ll-dot" id="wbLinkDot" r="4.5"></circle>
   </svg>
 
   <script src="js/site-header.js?v=8"></script>
-  <script src="js/words-data.js?v=2"></script>
-  <script src="js/app.js?v=33"></script>
-  <script src="js/animations.js?v=18"></script>
+  <script src="js/wb-card.js?v=2"></script>
+  <script src="js/wb-page.js?v=3"></script>
+  <script>boot();</script>
 </body>
 </html>

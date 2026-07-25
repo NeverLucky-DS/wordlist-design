@@ -198,7 +198,14 @@ function stemChanges(lemma, p) {
    `WB.art = false` swaps every slot for its CSS fallback, which is how the
    card is checked for "does it still work if the art never arrives".
 --------------------------------------------------------------------- */
-const WB = { art: true };
+const WB = { art: false };
+
+/* Brush assets live at /worte/. The path must be ABSOLUTE: `--brush` is a custom
+   property holding a url(), and browsers resolve that relative to the stylesheet
+   that CONSUMES it (css/woerterbuch.css, at /css/) — a bare `worte/…` would 404
+   at /css/worte/…. An origin-absolute `/worte/` is correct from the site root,
+   which since 2026-07-25 is the only place this runs (nginx :8753, `make up`). */
+const WORTE_BASE = window.WB_WORTE || '/worte/';
 
 function slot(id, w, h, what, cls = '') {
   if (!WB.art) return '';
@@ -230,7 +237,7 @@ const brushFor = card => {
     'C1|adj': 'C1_Adjectives_Plum_BG-Wash.png',
   };
   const f = WASH[card.band + '|' + card.type];
-  return f ? `url('../../worte/${f}')` : 'none';
+  return f ? `url('${WORTE_BASE}${f}')` : 'none';
 };
 
 /* ---------------------------------------------------------------------
@@ -263,14 +270,12 @@ function metaLine(card) {
   return bits.join('');
 }
 
-/* IPA is present on 99.5% of the dump (59 038 of 59 335) and we currently
-   answer "Aussprache" with a browser speech synthesiser. Printing the
-   transcription costs nothing and is the half a learner can actually use
-   silently — in a library, in a lesson, at 2am. */
+/* Pronunciation is a BUTTON, not a transcription. The IPA line (`ˈvɪʁkʊŋ`) was
+   removed on the owner's call: to a Russian-speaking learner the phonetic
+   alphabet is another cipher to decode, not help — it "only confuses". The
+   spoken form is the half that actually helps, so only «Прослушать» stays. */
 function pronLine(card) {
-  const ipa = card.ipa || '';
   return `<div class="wb-pron">
-    ${ipa ? `<span class="wb-ipa">${esc(ipa)}</span>` : ''}
     <button class="wb-say" type="button" data-say aria-label="Aussprache anhören">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M16.4 8.6a4.8 4.8 0 0 1 0 6.8"/></svg>
       <span>Прослушать</span></button></div>`;
