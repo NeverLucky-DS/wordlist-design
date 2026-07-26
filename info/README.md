@@ -10,6 +10,7 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | [frontend.md](frontend.md) | HTML pages, JS/CSS modules, assets |
 | [backend-api.md](backend-api.md) | REST endpoints |
 | [AUDIT-2026-07-26.md](AUDIT-2026-07-26.md) | **Приоритеты 1-й и 2-й очереди, с замером на пункт** |
+| [tooling.md](tooling.md) | **Инструменты качества: линтер, типы, снапшоты, фаззинг, хуки** |
 | [data-model.md](data-model.md) | PostgreSQL tables |
 | [files.md](files.md) | Canonical file tree (what matters) |
 | [graph.md](graph.md) | Code graph (Graphify) — how to navigate the repo structurally |
