@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -30,6 +31,12 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = "users"
+    # `unique=True` на колонке даёт УНИКАЛЬНЫЙ ИНДЕКС, а первая миграция создала
+    # ещё и одноимённое по смыслу CONSTRAINT (`users_email_key` — так Postgres
+    # называет ограничение из `sa.UniqueConstraint`). Автоген видит в базе
+    # объект, которого нет в модели, и предлагает его СНЕСТИ. Объявляем явно —
+    # см. общий комментарий про дрейф у `VocabCard.__table_args__`.
+    __table_args__ = (UniqueConstraint("email", name="users_email_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
@@ -49,6 +56,9 @@ class User(Base):
 
 class AuthSession(Base):
     __tablename__ = "auth_sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="auth_sessions_token_hash_key"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
@@ -61,6 +71,9 @@ class AuthSession(Base):
 
 class GuestSession(Base):
     __tablename__ = "guest_sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="guest_sessions_token_hash_key"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
@@ -256,15 +269,43 @@ class UserStats(Base):
 
 class VocabCard(Base):
     __tablename__ = "vocab_cards"
-    __table_args__ = (Index("ix_vocab_cards_band", "band"),)
+    # ⚠️ Индексы обязаны быть объявлены ЗДЕСЬ, а не только в миграции.
+    #
+    # `alembic revision --autogenerate` сравнивает базу с моделями, и всё, чего
+    # в моделях нет, он предлагает УДАЛИТЬ. Замер 2026-07-26 на чистой БД,
+    # поднятой `alembic upgrade head`: `alembic check` выдавал восемь операций
+    # удаления, среди них три GIN-trgm индекса, на которых стоит весь поиск
+    # Wörterbuch, и `ix_vocab_cards_zipf`, которым чинили тайбрейк по частоте
+    # (PLANS I0). Достаточно было один раз выполнить `make migration` после
+    # правки любой модели и применить результат не глядя.
+    #
+    # Прежний комментарий утверждал, что GIN «не может жить в модели», потому
+    # что тесты строят схему через `create_all` на SQLite. Это неверно:
+    # аргументы с префиксом `postgresql_` диалектные, SQLite их игнорирует и
+    # создаёт обычный индекс. Проверено прогоном всего набора на sqlite.
+    __table_args__ = (
+        Index("ix_vocab_cards_band", "band"),
+        Index("ix_vocab_cards_zipf", "zipf"),
+        Index(
+            "ix_vocab_cards_form_kind", "form_kind",
+            postgresql_where=text("form_kind IS NOT NULL"),
+        ),
+        Index(
+            "ix_vocab_cards_lemma_trgm", "lemma_norm",
+            postgresql_using="gin", postgresql_ops={"lemma_norm": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_vocab_cards_lemma_ascii_trgm", "lemma_ascii",
+            postgresql_using="gin", postgresql_ops={"lemma_ascii": "gin_trgm_ops"},
+        ),
+    )
 
     lemma: Mapped[str] = mapped_column(String(128), primary_key=True)
     # Two search keys, both case-folded: `lemma_norm` substitutes umlauts the
     # correct way (grün→gruen), `lemma_ascii` flattens them (grün→grun). People
     # type both on an umlaut-less keyboard and neither form finds the other, so
-    # search scores against whichever matches better. GIN trigram indexes are
-    # added on both by the migration (they cannot live in the model: SQLite,
-    # which the test suite builds with create_all, has no GIN).
+    # search scores against whichever matches better. Both carry a GIN trigram
+    # index, declared in `__table_args__` above.
     lemma_norm: Mapped[str] = mapped_column(String(160))
     lemma_ascii: Mapped[str] = mapped_column(String(160))
     level: Mapped[str] = mapped_column(String(16), default="unlisted")
@@ -330,6 +371,11 @@ class VocabCardTranslation(Base):
     __tablename__ = "vocab_card_translations"
     __table_args__ = (
         UniqueConstraint("lemma", "idx", name="uq_vocab_card_translation"),
+        # Русская сторона поиска — см. комментарий у `VocabCard.__table_args__`.
+        Index(
+            "ix_vocab_card_translations_ru_trgm", "ru_norm",
+            postgresql_using="gin", postgresql_ops={"ru_norm": "gin_trgm_ops"},
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
