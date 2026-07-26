@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 
 from app.db.models import Essay, EssayAnalysis, EssayVersion
 from app.db.session import SessionLocal

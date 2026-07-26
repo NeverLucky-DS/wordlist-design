@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
 from sqlalchemy import select
 
 from app.auth import Principal
-from app.db.models import Essay, EssayAnalysis, User, UserPhraseKnown, UserWordProgress, Word
+from app.db.models import EssayAnalysis, User, Word
 from app.services import essays_repo, phrases_repo, words_repo
 from tests.helpers import essay_payload, seed_words_and_phrases
 

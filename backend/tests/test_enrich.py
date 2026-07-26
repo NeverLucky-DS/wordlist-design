@@ -82,7 +82,14 @@ def test_poison_word_fails_after_max_attempts(db):
     con.close()
     assert failed >= 1
     # failed words are never handed out again
+    #
+    # The assertion below used to be `progress()["failed"] >= 1`, which merely
+    # repeats the check three lines up: `remaining` was collected and then
+    # never looked at, so the invariant in the comment was never actually
+    # tested. Caught by ruff (F841) on 2026-07-26.
+    poison = {w["lemma"] for w in batch}
     remaining = {w["lemma"] for w in enrich.claim(1, 10)}
+    assert not (poison & remaining), f"failed word handed out again: {poison & remaining}"
     assert enrich.progress()["failed"] >= 1
 
 

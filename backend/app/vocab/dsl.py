@@ -11,7 +11,6 @@ sources (Advanced German Russian, Idioms) are added later via pyglossary.
 from __future__ import annotations
 
 import gzip
-import io
 import re
 from dataclasses import dataclass, field
 from pathlib import Path

@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from tests.helpers import essay_payload, seed_words_and_phrases
+from tests.helpers import essay_payload
 
 
 async def test_delete_essay(client):
