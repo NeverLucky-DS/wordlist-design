@@ -36,6 +36,29 @@ def test_wrong_secret_cannot_decrypt(monkeypatch):
     assert crypto.decrypt(token) is None        # different secret → None, not crash
 
 
+def test_usable_asks_whether_the_key_still_reads_not_whether_it_exists(monkeypatch):
+    """`usable` is deliberately not `bool(token)` — that is the bug it replaces.
+
+    A stored token survives a secret rotation; the ability to decrypt it does
+    not. Callers that only checked NOT NULL reported "key attached" for a row
+    nobody could use.
+    """
+    _with_secret(monkeypatch, "secret-A")
+    token = crypto.encrypt("sk-key")
+    assert crypto.usable(token) is True
+
+    _with_secret(monkeypatch, "secret-B")            # ротация
+    assert bool(token) is True                       # колонка по-прежнему NOT NULL...
+    assert crypto.usable(token) is False             # ...а ключа у нас больше нет
+
+
+def test_usable_on_nothing_stored(monkeypatch):
+    _with_secret(monkeypatch, "secret-A")
+    assert crypto.usable(None) is False
+    assert crypto.usable("") is False
+    assert crypto.usable("not-a-valid-token") is False
+
+
 def test_disabled_without_secret(monkeypatch):
     _with_secret(monkeypatch, "")
     assert crypto.is_enabled() is False

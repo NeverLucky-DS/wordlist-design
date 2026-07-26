@@ -48,3 +48,19 @@ def decrypt(token: str) -> str | None:
         return _fernet().decrypt(token.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError, KeyStorageDisabled):
         return None
+
+
+def usable(token: str | None) -> bool:
+    """Is this stored token something we could actually call Mistral with?
+
+    Deliberately NOT `bool(token)`. A column that is merely NOT NULL proves the
+    user once saved a key, not that we can still read it: rotating
+    `MISTRAL_KEY_SECRET` (or restoring a database next to a different one)
+    leaves every row present and every row undecryptable. Answering "yes" then
+    is the worst of both worlds — the account looks equipped, so nobody
+    re-enters the key, and the worker fails on `decrypt` returning None.
+
+    That is the same question `decrypt` already answers, so ask it rather than
+    keeping a second, weaker definition of "has a key" in the API layer.
+    """
+    return bool(token) and decrypt(token) is not None

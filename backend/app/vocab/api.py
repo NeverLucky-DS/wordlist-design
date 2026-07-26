@@ -254,11 +254,13 @@ class FleetStartIn(BaseModel):
 def _account_row(user, worker: dict | None, usage: dict) -> dict:
     """One line of the fleet table: who, whether it can work, what it is doing,
     what it has spent. `worker` is None for an account that never started."""
+    from app.services import crypto
+
     w = worker or {}
     return {
         "user_id": user.id,
         "email": user.email,
-        "has_key": bool(user.mistral_key_enc),
+        "has_key": crypto.usable(user.mistral_key_enc),
         "running": bool(w.get("running")),
         "done": w.get("done", 0),
         "skipped": w.get("skipped", 0),
