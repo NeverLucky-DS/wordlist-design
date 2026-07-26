@@ -24,9 +24,14 @@ moved to the audit:
 | Open signup + guest AI has no quota | auth + essay analysis; cost/abuse risk, private beta only. Measured 2026-07-26: `/analyze*` runs on the owner's shared key for anonymous guests |
 | No email verification / password reset | auth — email is the login identifier, a lost password cannot be recovered |
 | Analysis worker is in-process | `analysis_jobs.py` — navigation survives, a backend restart interrupts the run |
-| 2 Mistral HTTP stacks | `mistral_http.py` vs `mistral_analyzer.py` |
 | `@app.on_event` deprecated | `main.py` — warns on every test run |
 | `/health` doesn't check DB | `health.py` |
+
+**Closed 2026-07-26 — "2 Mistral HTTP stacks".** There was one live stack and one
+corpse: `mistral_analyzer._chat_json` + `_analyze_single_part` (httpx, ~74 lines)
+had zero callers, and the live path already went through
+`mistral_http.post_mistral_json`. The dead half is deleted, so the entry no
+longer describes anything real.
 
 ## Resolved ✅ (2026-07-10 — migrations + tooling)
 

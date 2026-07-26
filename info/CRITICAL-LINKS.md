@@ -14,7 +14,8 @@ index.html   — Wörterbuch: поиск-разворот + карточка + �
                 (2026-07-23: переписан на дизайн «Разворот», §6c. Единственный
                  фронт — прототип на :8799 удалён 2026-07-25, поднимать make up)
 ├── css/site-header.css, css/woerterbuch.css
-├── js/site-header.js, js/wb-card.js, js/wb-page.js   (+ inline boot())
+├── js/site-header.js, js/words-data.js, js/wb-card.js, js/wb-page.js  (+ inline boot())
+│     words-data.js ПЕРЕД wb-card.js: карта кистей одна на сайт, см. §2
 ├── worte/*.png                             (wb-card.js brushFor, путь /worte/ АБСОЛЮТНЫЙ)
 └── API (все — /api/vocab/*, см. §6b):
     ├── GET    /api/vocab/search?q=          (поиск, публичный)
@@ -24,14 +25,16 @@ index.html   — Wörterbuch: поиск-разворот + карточка + �
     ├── POST   /api/vocab/list               (добавить)
     └── DELETE /api/vocab/list/{lemma}       (убрать)
 
-⚠️ **`js/app.js` и `js/animations.js` ОСИРОТЕЛИ 2026-07-23** — index их больше не
-грузит. `words-data.js` жив (его грузит schreiben). `css/styles.css` тоже больше
-не на index (жив ли где-то ещё — проверить перед удалением). Не удалял в этом
-заходе; кандидаты на отдельную уборку.
+✅ **`js/app.js`, `js/animations.js`, `css/styles.css` УДАЛЕНЫ 2026-07-26** —
+осиротели 23 июля вместе с переписыванием index на V9, 60 293 байта. Вместе со
+`styles.css` удалена `images/Verwendung.png`: это была её единственная ссылка во
+всём репозитории.
 
-`GET /api/words` (Postgres-таблица `words`, 17 seed-слов) страницей БОЛЬШЕ НЕ
-используется — канон это обогащённые карточки. Роут жив, звать его больше некому
-(`editor.js`/`app.js` мертвы). Кандидат на удаление отдельным заходом.
+✅ **Роутер `/api/words` УДАЛЁН 2026-07-26** вместе с `words_repo.py`,
+`grammar_parser.py` и `wiktionary_client.py` (после удаления роута у них не
+осталось ни одного вызывающего). Канон — обогащённые карточки `/api/vocab/*`.
+Таблица `words` в Postgres жива: её читает уборка лемм на старте контейнера
+(`app/services/word_cleanup.py`) и сидирование 17 слов.
 
 schreiben.html
 ├── css/site-header.css, css/schreiben.css
@@ -48,16 +51,22 @@ schreiben.html
 
 pipeline.html
 ├── css/site-header.css, css/pipeline.css
-├── js/site-header.js, js/words-data.js, js/pipeline.js
+├── js/site-header.js, js/pipeline.js, js/enrich.js
+│     ⚠️ words-data.js тут НЕТ и не было с 07-13: слов на этой странице нет
 ├── images/abstract-watercolor-column.png   (pipeline.css)
-├── worte/*.png (PIPELINE_WASHES в words-data.js)
-└── API (через nginx proxy /api/*):
-    ├── GET  /api/pipeline/overview   (poll 3–9s)
-    ├── GET  /api/pipeline/runs
-    ├── GET  /api/pipeline/queue
-    ├── POST /api/pipeline/queue        { topics: [...] }
-    ├── POST /api/pipeline/run          { topic, article_urls: [] }
-    └── GET  /api/pipeline/run/{id}     (детали ошибок)
+└── API (через nginx proxy /api/*) — всё это `/api/vocab/*`, полный разбор в §6a:
+    ├── GET  /api/vocab/status | /stats | /words | /word/{lemma}   (pipeline.js)
+    ├── POST /api/vocab/build                       (АДМИН — пересобирает словарь)
+    ├── GET  /api/vocab/enrich/progress             (enrich.js, poll 2.5s)
+    ├── GET  /api/vocab/enrich/cards | /card/{lemma}
+    ├── GET  /api/vocab/enrich/fleet                (АДМИН — таблица аккаунтов)
+    ├── POST /api/vocab/enrich/{start,stop}         (свой ключ)
+    ├── POST /api/vocab/enrich/fleet/{start,stop}   (АДМИН — весь флот)
+    └── POST /api/vocab/enrich/requeue              (АДМИН, если со списком лемм)
+
+⚠️ Роутера `/api/pipeline/*` НЕ СУЩЕСТВУЕТ — он удалён вместе с topic-pipeline
+2026-07-13 (миграция `b3f8c1d2e4a5` дропнула и его таблицы). Этот блок до
+2026-07-26 описывал именно его.
 ```
 
 ### Навигация между страницами
@@ -80,8 +89,8 @@ Pomodoro отображается только на Essay.
 
 | Файл | Роль |
 |------|------|
-| `js/words-data.js` | WASH, typeKey, brushOf, **brushOfCard**, ~~PIPELINE_WASHES~~ |
-| `js/app.js` | Wörterbuch: поиск + личный список (кисти через `brushOfCard`) |
+| `js/words-data.js` | WASH, typeKey, brushOf, **brushOfCard** |
+| `js/wb-card.js` | Карточка Wörterbuch: `brushFor` делегирует общему `brushOfCard` |
 | `js/schreiben.js` | demo WORDS + server-hydrated essay store (кисти через `brushOf`) |
 
 **Маппинг WASH:** ключ = `{level}|{type}`, где level = `B1`|`B2`|`C1`, а type = `der`|`die`|`das`|`verb`|`adj`. Всего 15 кистей — новых не рисуем.
@@ -106,7 +115,7 @@ der/die Jugendliche — у них артикль и правда не фикси
 `unlisted` вырос до **95.6 %** (88 067 из 92 090), то есть CEFR-бейдж почти на
 каждой строке был заглушкой. Теперь `card_out` отдаёт ещё и
 `freq` = `haeufig|mittel|selten|null` (`norm.freq_of`, порог häufig 4.0 —
-там центр B1-лексики Goethe, медиана 4.16), а `js/app.js levelChip()` рисует
+там центр B1-лексики Goethe, медиана 4.16), а `js/wb-card.js metaLine()` рисует
 настоящий уровень тем 4 023, у кого он есть, и частотность всем остальным.
 
 ⚠️ **`band` при этом НЕ трогали** — он по-прежнему CEFR-образный и по-прежнему
@@ -122,9 +131,13 @@ der/die Jugendliche — у них артикль и правда не фикси
 
 **Устарело / мёртвое:**
 
-- `PIPELINE_WASHES` — **не используется никем**. `pipeline.html` больше не грузит
-  `words-data.js` (только `site-header.js`, `pipeline.js`, `enrich.js`).
-  Раньше документ утверждал обратное.
+- `PIPELINE_WASHES` — **удалён 2026-07-26**, не использовался никем.
+  `pipeline.html` не грузит `words-data.js` (только `site-header.js`,
+  `pipeline.js`, `enrich.js`).
+- **Копия карты WASH в `js/wb-card.js` — удалена 2026-07-26.** Она завелась,
+  когда index перестал грузить `words-data.js`, и полгода была побайтово
+  одинаковой. Теперь index грузит `words-data.js` перед `wb-card.js`, а
+  `brushFor` делегирует `brushOfCard`. Стережёт `tests/frontend/test_asset_links.py`.
 
 ---
 
@@ -135,13 +148,11 @@ der/die Jugendliche — у них артикль и правда не фикси
 | Файл | ~KB | Кто ссылается | Production? |
 |------|-----|---------------|-------------|
 | `background_schreiben.png` | 896 | `schreiben.css` body | ✅ schreiben |
-| `autumn.png` | 864 | `editor.js` L1173 | ❌ editor only |
 | `kli-1.png` | 420 | `schreiben.css`, `editor.css` | ✅ schreiben |
 | `kli-2.png` | 420 | `schreiben.css`, `editor.css` | ✅ schreiben |
 | `kli-3.png` | 356 | `schreiben.css`, `editor.css` | ✅ schreiben |
-| `abstract-watercolor-column.png` | 288 | `styles.css`, `pipeline.css`, `editor.css` | ✅ index, pipeline |
-| `Deklination.png` | 224 | `styles.css`, `schreiben.css` | ✅ index, schreiben |
-| `Verwendung.png` | 204 | `styles.css`, `editor.css` | ✅ index |
+| `abstract-watercolor-column.png` | 288 | `pipeline.css` | ✅ pipeline |
+| `Deklination.png` | 224 | `schreiben.css` | ✅ schreiben |
 | `tool-card-wash.png` | 180 | `schreiben.css` | ✅ schreiben |
 | `timer-wash.png` | 160 | `schreiben.css` | ✅ schreiben |
 | `tool-woerterbuch.png` | 56 | `schreiben.html` L166 | ✅ schreiben |
@@ -149,7 +160,8 @@ der/die Jugendliche — у них артикль и правда не фикси
 | `roadmap-leaf-2.png` | 44 | `schreiben.js` LEAF_SPOTS | ✅ schreiben |
 | `tool-hilfen.png` | 20 | `schreiben.html` L154 | ✅ schreiben |
 | `roadmap-leaf-3.png` | 20 | `schreiben.js` LEAF_SPOTS, MID_LEAVES | ✅ schreiben |
-| `decor-head.png` | 8 | `styles.css`, `schreiben.css`, `editor.css` | ✅ index, schreiben |
+| `decor-head.png` | 8 | `schreiben.css` | ✅ schreiben |
+| `background-image.png` | 2146 | `schreiben.css` (`.ann-popover`) | ✅ schreiben |
 
 ### `images/header/` (4 RGBA PNG)
 
@@ -178,8 +190,8 @@ der/die Jugendliche — у них артикль и правда не фикси
 
 | Группа | Файлы | Где | Почему опасно |
 |--------|-------|-----|---------------|
-| **Кисти** | все 15 `worte/*.png` | `app.js`, `schreiben.js`, `pipeline.html` WASHES | CSS `background-image` + `opacity` в CSS — любой артефакт виден на карточках слов |
-| **Декор** | `abstract-watercolor-column.png` | index, pipeline, editor CSS | мягкая акварель по краю |
+| **Кисти** | все 15 `worte/*.png` | `words-data.js` (единственная карта) | CSS `background-image` + `opacity` в CSS — любой артефакт виден на карточках слов |
+| **Декор** | `abstract-watercolor-column.png` | `pipeline.css` | мягкая акварель по краю |
 | **Маска** | `decor-head.png` | CSS `-webkit-mask` / `mask` | WebP-lossy ломает маску → детальная карточка без «головы» |
 | **Washes** | `timer-wash.png`, `tool-card-wash.png` | `schreiben.css` | полупрозрачные подложки |
 | **Header art** | все 4 файла `images/header/*.png` | `site-header.css` | фон, декор и mask с мягкой альфой |
@@ -194,9 +206,7 @@ der/die Jugendliche — у них артикль и правда не фикси
 |------|-----|-----|-------------|
 | `background_schreiben.png` | 896 | `schreiben.css` body | RGB, без альфы — **главный выигрыш** |
 | `kli-1/2/3.png` | 420+420+352 | `schreiben.css` ::after | mode=P, без transparency index — проверить визуально после сжатия |
-| `Deklination.png` | 221 | `styles.css`, `schreiben.css` | opaque, но фон detail-блока — осторожно |
-| `Verwendung.png` | 201 | `styles.css` | opaque |
-| `autumn.png` | 861 | `editor.js` only | editor скорее убираем |
+| `Deklination.png` | 221 | `schreiben.css` | opaque, но фон detail-блока — осторожно |
 
 #### Итого по объёму
 
@@ -211,9 +221,9 @@ der/die Jugendliche — у них артикль и правда не фикси
 Обновить **каждую** ссылку только для тех файлов, что реально конвертировали:
 
 ```
-CSS:  styles.css, schreiben.css, pipeline.css
+CSS:  woerterbuch.css, schreiben.css, pipeline.css, site-header.css
 HTML: schreiben.html (2× <img> — только если иконки трогали)
-JS:   app.js, schreiben.js, pipeline.html inline WASHES[]
+JS:   words-data.js (карта WASH), schreiben.js (LEAF_SPOTS)
 nginx.conf: добавить webp в cache location
 ```
 
@@ -237,29 +247,35 @@ docker-compose: postgres + backend + frontend (только публичные f
 | `health` | `/health` | nginx proxy; `editor-api.js` |
 | `auth` | `/api/auth` | общий header |
 | `essays` | `/api/essays` | `schreiben.js` |
-| `words` | `/api/words` | `app.js`, `editor.js` |
-| `phrases` | `/api/phrases` | **только editor** |
-| `topics` | `/api/topics` | никто на фронте |
-| `pipeline` | `/api/pipeline/*` | `pipeline.html` inline |
+| `phrases` | `/api/phrases/templates` | `schreiben.js` (1 748 клише) |
+| `vocab` | `/api/vocab/*` (ops) | `pipeline.js`, `enrich.js` |
+| `woerterbuch` | `/api/vocab/*` (продукт) | `wb-page.js` |
 
-### Pipeline backend chain (production-critical)
+⚠️ Роутеры `words`, `topics` и ручка `GET /api/phrases` удалены 2026-07-26 —
+ноль потребителей во фронте. `pipeline` не существует с 2026-07-13.
+
+### Словарный конвейер (production-critical)
 
 ```
-POST /api/pipeline/queue
-  → scheduler.py (если pipeline_autorun=true)
-  → runner.py
-      → discovery.py (Grok/DDG)
-      → extraction.py
-      → enrichment.py (Mistral batch)
-      → supplement.py
-      → normalize.py (НЕ вызывается на write! — баг)
+dictionaries/*.dsl → app/vocab/build.py     → vocab.db      (офлайн, ноль LLM)
+                     app/vocab/intake.py    → vocab.db      (вливание из Wiktionary)
+vocab.db           → app/vocab/enrich_worker.py (Mistral, ключ НА АККАУНТ)
+                                             → enrichment.db
+enrichment.db      → app/vocab/mirror.py    → Postgres      (read-only источник)
+Postgres           → app/vocab/search.py    → /api/vocab/search → index.html
 ```
 
-**v2 vs v3 split:** `content_llm.py`, `verify.py` — только в `backend/scripts/`, НЕ в runner. Не удалять пока не унифицировано.
+Ни одного файла из старой цепочки (`runner.py`, `discovery.py`, `extraction.py`,
+`supplement.py`, `scheduler.py`, `content_llm.py`, `verify.py`) в репозитории нет.
 
-### DB tables (pipeline-related)
+### DB tables
 
-`words`, `phrases`, `word_topics`, `pipeline_runs`, `topic_queue_items`, `word_failures`
+Postgres: `users`, `auth_sessions`, `guest_sessions`, `essays`, `essay_versions`,
+`essay_analyses`, `words`, `word_topics`, `user_word_progress`, `phrases`,
+`user_phrase_known`, `user_stats`, `vocab_cards`, `vocab_card_translations`,
+`user_word_list`. SQLite: `vocab.db` (источник), `enrichment.db` (карточки).
+Таблицы `pipeline_runs`, `topic_queue_items`, `word_failures` дропнуты
+миграцией `b3f8c1d2e4a5` 2026-07-13.
 
 `index.html` читает `words` через API. `schreiben.html` пока **не** читает — статический `THEMEN` + demo `WORDS`.
 
@@ -272,7 +288,6 @@ POST /api/pipeline/queue
 | Путь | Почему |
 |------|--------|
 | `screenshots/` | Только README |
-| `images/autumn.png` | Только editor (если editor убираем) |
 | `info/AUDIT.md` | Документация (не runtime) |
 
 > `PIPELINE.md` удалён 2026-07-06 — заменён на `info/pipeline.md`.
@@ -281,21 +296,20 @@ POST /api/pipeline/queue
 
 | Путь | Зависимости |
 |------|-------------|
-| `editor.html` | `editor.js`, `editor-api.js`, `editor.css`, `autumn.png` |
-| `js/editor.js` | 1593 строк, API essays/phrases/analyze |
-| `js/editor-api.js` | Только editor |
-| `css/editor.css` | Только editor |
-| `js/animations.js` | Только `index.html` — **НЕ удалять** пока index жив |
+| `POST /api/phrases/{id}/known` + `user_phrase_known` | Незаконченная фича: пишущая половина есть, читающая (`known` в `/templates`) есть, интерфейса нет ни для одной. Удалять — только вместе с таблицей и решением владельца |
+| `user_stats` + `user_stats_service.py` | Пишется при каждом разборе эссе, не читается ниоткуда; `total_words_learned` гарантированно 0, потому что писать в `UserWordProgress` стало некому после удаления `/api/words` |
+
+> Обе строки — не мёртвый код, а недостроенные фичи с таблицами в БД. Удаление
+> требует миграции, то есть решения владельца, а не уборки.
 
 ### 🔴 НЕ трогать без полного аудита
 
 | Путь | Почему |
 |------|--------|
-| `js/app.js` | index word grid + API merge + WASH |
 | `js/schreiben.js` | Весь schreiben UI + localStorage store |
 | `js/site-header.js` | index + pipeline (theme toggle) |
 | `worte/*.png` | 3 JS-файла + pipeline inline |
-| `backend/app/pipeline/runner.py` | Production pipeline |
+| `backend/app/vocab/enrich.py` | Обогащение: фазы, промпт, сопоставление ответа |
 | `backend/app/db/models.py` | Schema для всего |
 | `nginx.conf` | API proxy + cache rules |
 | `docker-compose.yml` | Dev stack |
@@ -309,10 +323,13 @@ POST /api/pipeline/queue
    не возвращать туда отдельную копию `.topbar` / `.nav`.
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
-   (`site-header.css` сейчас `?v=11`, `site-header.js` — `?v=8`,
-   `woerterbuch.css` — `?v=2`, `wb-card.js` — `?v=2`, `wb-page.js` — `?v=3`,
-   `schreiben.css` — `?v=33`, `words-data.js` — `?v=2`,
-   `pipeline.css` — `?v=8`, `enrich.js` — `?v=5`).
+   (`site-header.css` — `?v=11` на ВСЕХ ТРЁХ страницах, `site-header.js` — `?v=8`,
+   `woerterbuch.css` — `?v=2`, `wb-card.js` — `?v=3`, `wb-page.js` — `?v=3`,
+   `schreiben.css` — `?v=34`, `words-data.js` — `?v=3` на обеих страницах,
+   `pipeline.css` — `?v=9`, `pipeline.js` — `?v=5`, `enrich.js` — `?v=5`).
+   ⚠️ Номер обязан совпадать НА ВСЕХ страницах, которые грузят файл. Он уже
+   расходился: `77e71df` (07-13) переписал `pipeline.html` целиком и вернул
+   `site-header.css` с `v=11` на `v=9`, где тот и простоял 13 дней.
    ⚠️ `index.html` САМ не версионируется, и in-app-браузер его агрессивно кэширует:
    при проверке правок index-страницы бить кэш через `index.html?x=…`, иначе
    грузится старый HTML со старыми `?v` (напоролись 2026-07-23).
@@ -761,7 +778,7 @@ enrichment.db (SQLite, WAL)  --read-only-->  app/vocab/mirror.py
 `index.html` переписан на дизайн-вариант A «Разворот»: одна мера по центру,
 при открытии слова — разворот (список уезжает влево, карточка встаёт справа),
 личный список в правом ящике (`.pa-drawer`, кнопка-корешок `.pa-tab`). Старый
-двухколоночный `js/app.js` больше не подключён (см. §1). §6b (зеркало, поиск,
+двухколоночный `js/app.js` удалён 2026-07-26 (см. §1). §6b (зеркало, поиск,
 ключ списка) полностью в силе — менялся только фронт.
 
 **Одна площадка, и это принципиально (2026-07-25).** `css/woerterbuch.css`,
@@ -853,8 +870,8 @@ open http://localhost:8753/pipeline.html     # overview poll, queue, shelf tiles
 
 # API health
 curl -s http://localhost:8753/health
-curl -s http://localhost:8753/api/pipeline/overview | head
-curl -s http://localhost:8753/api/words?limit=3
+curl -s "http://localhost:8753/api/vocab/search?q=Haus" | head -c 400
+curl -s http://localhost:8753/api/vocab/status
 ```
 
 **Визуально проверить:** watercolor-колонка слева, brush-фоны на словах, фон schreiben, листья roadmap, tool-иконки, tile-washes на pipeline shelf.

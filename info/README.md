@@ -15,17 +15,18 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | [files.md](files.md) | Canonical file tree (what matters) |
 | [graph.md](graph.md) | Code graph (Graphify) — how to navigate the repo structurally |
 
-⚠️ **Устарели, доверять с проверкой (2026-07-26).** Все четыре описывают topic-pipeline,
-которого больше нет: роутера `/api/pipeline/*` не существует, пакета
-`backend/app/pipeline/` тоже, Grok не упоминается в `backend/` ни разу.
+✅ **Сверены с кодом 2026-07-26:** `pipeline.md`, `backend-api.md`, `frontend.md`,
+`data-model.md`, `files.md`. До этого все пять описывали topic-pipeline, которого
+нет с 13 июля, и молчали про `backend/app/vocab/` — самый большой пакет проекта.
+Два из них (`data-model.md`, `files.md`) не попадали даже в этот список
+предупреждений, хотя болели тем же.
+
+⚠️ **Осталось устаревшим:**
 
 | Doc | Что в нём протухло |
 |-----|--------------------|
-| [pipeline.md](pipeline.md) | описывает удалённый v2-путь целиком |
-| [backend-api.md](backend-api.md) | 7 несуществующих ручек `/api/pipeline/*` |
-| [frontend.md](frontend.md) | `pipeline.html` как потребитель `/api/pipeline/*` |
-| [architecture.md](architecture.md) | `GROK_API_KEY` в обязательных env, пакет `pipeline/` |
-| [known-debt.md](known-debt.md) | переписан 2026-07-26; актуальный долг — в AUDIT |
+| [architecture.md](architecture.md) | `GROK_API_KEY` в обязательных env, пакет `pipeline/` (грепа `grok\|xai` по `backend/` — ноль) |
+| [known-debt.md](known-debt.md) | живая часть — семь строк «Still open»; остальное историческая сводка |
 | [AUDIT.md](AUDIT.md) | аудит от 2026-07-11, заменён AUDIT-2026-07-26 |
 
 ## One-paragraph summary
@@ -36,7 +37,7 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 
 | URL | File | Backend |
 |-----|------|---------|
-| `/` | `index.html` | `/api/vocab/*` (search, entry, list). `GET /api/words` жив, но не зовётся ниоткуда |
+| `/` | `index.html` | `/api/vocab/*` (search, entry, list) |
 | `/schreiben.html` | `schreiben.html` | `/api/auth/*`, `/api/essays/*` (localStorage offline copy) |
 | `/pipeline.html` | `pipeline.html` | `/api/vocab/*` (`/api/pipeline/*` удалён вместе с topic-pipeline) |
 | `/api/*` | — | all routes |

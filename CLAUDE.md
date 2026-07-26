@@ -29,7 +29,7 @@ Deutsch Essay Trainer — B1–C1 немецкий: тематический с�
 
 ## Стек
 
-FastAPI + PostgreSQL (`backend/`) · vanilla HTML/JS/CSS без сборки (фронт) · nginx · Docker Compose · pytest (436 тестов, замер 2026-07-26)
+FastAPI + PostgreSQL (`backend/`) · vanilla HTML/JS/CSS без сборки (фронт) · nginx · Docker Compose · pytest (~410 тестов; точное число — `uv run pytest --collect-only -q | tail -1`, цифра здесь протухала уже дважды)
 
 ## Команды
 
@@ -37,7 +37,7 @@ FastAPI + PostgreSQL (`backend/`) · vanilla HTML/JS/CSS без сборки (ф
 
 - Первый раз: `make setup` (uv sync + создаёт `backend/.env` из шаблона)
 - Запуск: `make up` — поднимает стек, применяет миграции, печатает ссылки. Остановить: `make down`
-- Тесты: `make test` (= `cd backend && uv run pytest -v`) — прогонять после любых правок в `backend/`, не считать backend-задачу готовой, если тесты не зелёные
+- Тесты: `make test-unit` (= `uv run pytest -v -m "not mistral_live"`) — прогонять после любых правок в `backend/`, не считать backend-задачу готовой, если тесты не зелёные. `make test` гоняет ещё и живые вызовы Mistral и требует рабочий ключ в `backend/.env`. Полный набор маркеров, которым проверяет CI: `-m "not mistral_live and not schema_debt and not visual"` (`schema_debt` падает намеренно — см. `make schema-debt`, `visual` требует поднятый стек)
 - Зависимости: `uv` + корневой `pyproject.toml` (+ `uv.lock`, `.venv/` в корне). `uv sync`/`uv run` работают из любой папки. Не использовать pip/requirements.txt — их больше нет.
 - Миграции БД: **Alembic** (`backend/alembic/`), единый источник схемы. Применяются автоматически в entrypoint контейнера (`alembic upgrade head`). После правок `app/db/models.py`: `make migration name="..."` → `make migrate`. Модели остаются source of truth (тесты создают схему через `create_all`).
 - Граф проекта (Graphify): `graphify-out/` git-ignored, генерится локально. Как читать/обновлять — `info/graph.md`. Кратко: свежесть = `git rev-parse HEAD` vs «Built from commit» в `graphify-out/GRAPH_REPORT.md`; после крупных структурных правок `graphify update .` (без API-стоимости).
@@ -61,7 +61,9 @@ conventional-префикс, в заголовке следствие («оди�
 
 ## Опасные места (сверяться, а не гадать)
 
-- `js/words-data.js` — единственный источник `WASH`/`brushOf`/`PIPELINE_WASHES`, используется в `index.html`, `schreiben.html`, `pipeline.html`. Не дублировать данные по страницам — правь только здесь.
+- `js/words-data.js` — единственный источник `WASH`/`brushOf`/`brushOfCard`, грузят его `index.html` и `schreiben.html` (`pipeline.html` — нет, слов на этой странице нет). Не дублировать данные по страницам — правь только здесь. Правило нарушалось: после переписывания index на V9 копия карты кистей завелась в `js/wb-card.js` и прожила там до 2026-07-26; сейчас источник снова один, и это стережёт `tests/frontend/test_asset_links.py`.
 - Pipeline: `backend/app/vocab/` — словарная ingestion + будущее LLM-обогащение из `vocab.db`. Legacy topic-pipeline (`runner.py`, `/api/pipeline/*`) удалён.
 - `backend/data/*.db`, `backend/scripts/*`, `backend/audit_db.py` — локальные БД и ручные maintenance-CLI, не трогать и не запускать автоматически без явной просьбы.
 - Перед удалением или переименованием любого файла — сверься с `info/CRITICAL-LINKS.md` (карта зависимостей).
+- Индексы БД объявляй в `app/db/models.py`, а не только в миграции. Автоген (`make migration`) предлагает УДАЛИТЬ всё, чего нет в моделях: 2026-07-26 `alembic check` показал восемь таких операций, включая три GIN-trgm индекса, на которых стоит поиск. Проверка — `alembic check` должен отвечать «No new upgrade operations detected».
+- Один способ поднять фронт — `make up`. Не заводить второй (файл-сервер, отдельный FastAPI со `StaticFiles`, запись с командой в `.claude/launch.json`). Такой второй уже был дважды и оба раза удалён — подробности в §6c `CRITICAL-LINKS.md`.
