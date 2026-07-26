@@ -19,6 +19,13 @@ os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 os.environ["MISTRAL_API_KEY"] = ""
 os.environ["CORS_ORIGINS"] = "http://127.0.0.1:8753"
 os.environ["ADMIN_EMAILS"] = "tester@example.com"
+# Флот (`test_enrich_fleet.py`) шифрует ключи аккаунтов, и без этой переменной
+# `crypto._fernet()` поднимает KeyStorageDisabled. Раньше она сюда просто
+# утекала из `backend/.env` разработчика — тесты были зелёными локально и
+# падали пятёркой там, где .env нет. Обнаружилось, когда CI впервые запустился.
+# Значение произвольно по построению: crypto.py выводит ключ Fernet через
+# SHA-256 из ЛЮБОЙ строки, поэтому это не секрет, а фикстура.
+os.environ["MISTRAL_KEY_SECRET"] = "test-only-secret-not-used-anywhere-real"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
