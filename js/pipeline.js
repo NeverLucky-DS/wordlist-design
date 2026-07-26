@@ -34,6 +34,15 @@ async function startBuild(){
   btn.disabled = true;
   const r = await fetch(`/api/vocab/build?min_zipf=${minZipf}`, {method:"POST"});
   if (r.status === 409){ btn.disabled = false; toast("Обработка уже идёт"); return; }
+  // /build пересобирает vocab.db с нуля, поэтому она admin-only. Без этой ветки
+  // отказ выглядел бы как зависание: кнопка осталась бы серой, а poll() крутил
+  // бы прогресс задачи, которая не стартовала.
+  if (r.status === 401 || r.status === 403){
+    btn.disabled = false;
+    toast(r.status === 401 ? "Нужен вход в аккаунт" : "Только для администратора");
+    return;
+  }
+  if (!r.ok){ btn.disabled = false; toast(`Не удалось запустить (${r.status})`); return; }
   $("srcs").innerHTML = "";
   poll(); polling = setInterval(poll, 1000);
 }

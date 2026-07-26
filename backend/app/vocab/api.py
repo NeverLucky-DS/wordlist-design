@@ -56,8 +56,18 @@ def _worker(min_zipf: float) -> None:
             JOB["running"] = False
 
 
+# Admin-only, and not because a rebuild is expensive: `run_build` starts with
+# `db_path.unlink()` on the live, bind-mounted vocab.db (163 MB). One anonymous
+# POST therefore deletes the ingestion table and rebuilds it from the dictionary
+# dumps alone — dropping every row that did not come from a dump, including the
+# 19 152 words the 2026-07-19 Wiktionary intake wrote straight into it. The
+# newest backup next to it predates that intake by five days, so the loss is
+# permanent. The enrichment routes below were gated from the start; this one was
+# simply left behind, and the backend listens on 0.0.0.0 with CORS widened to the
+# LAN, so "only I can reach it" was never true.
 @router.post("/build")
-def start_build(min_zipf: float = 2.3):
+def start_build(min_zipf: float = 2.3,
+                principal: Principal = Depends(require_admin)):
     with _LOCK:
         if JOB["running"]:
             raise HTTPException(409, "job already running")
