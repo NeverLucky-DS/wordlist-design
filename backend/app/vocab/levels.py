@@ -26,6 +26,24 @@ boundary an official list actually attests: is this core vocabulary a B1 learner
 should already have, or is it beyond that. On the Goethe half of the sample the
 estimate never once called a word "core" that the list placed above it.
 
+⚠️ Not every step is equally trustworthy, and the shape is counter-intuitive.
+Measured on the 235 calibration words that are absent from the official Goethe
+list — exactly the population this file labels — precision per predicted level:
+
+    a1  5/6   83 %        b2  39/100  39 %
+    a2  8/11  73 %        c1  20/76   26 %
+    b1  4/31  13 %        c2  4/11    36 %
+
+`b1` is the dumping ground: when a rater says b1 about a word no list covers, it
+is right one time in eight. The confident calls are at the ends of the scale.
+
+**Tried and rejected: clamping a1/a2 up to b1.** The argument was that Goethe's
+A1 list is a closed published set of 673 words, so calling an unlisted word "a1"
+claims something no list says. It is a good argument and the data says no:
+clamping drops exact accuracy from 34.0 % to 28.5 % and within-one from 90.6 %
+to 88.1 %, because a1/a2 are the raters' *best* calls, not their worst. Recorded
+here because the argument will look convincing again next time.
+
 Three consequences, all deliberate:
 
   * A published level always wins. `resolve()` never runs where `goethe.py`
