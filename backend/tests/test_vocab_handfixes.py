@@ -192,3 +192,20 @@ def test_a_lowercase_noun_is_a_spelling_not_a_form(db, tmp_path, monkeypatch):
     forms.tag_forms(db)
     row = db.execute("SELECT form_kind FROM cards WHERE lemma='frieden'").fetchone()
     assert row["form_kind"] == "variant"
+
+
+def test_the_kind_can_be_named_outright_when_inference_cannot_see_it(db, tmp_path,
+                                                                     monkeypatch):
+    """`Spiele` is the plural of `das Spiel`, filed as a headword of its own.
+
+    Nothing about the two strings says "plural" rather than "some other
+    spelling", and the UI renders those differently — «форма от» against
+    «вариант написания». So the file may name the kind.
+    """
+    card(db, "Spiel", pos="noun", article="das", ru="игра")
+    card(db, "Spiele", pos="noun", article="das", ru="игра")
+    db.commit()
+    _write(monkeypatch, tmp_path, twins="Spiele\tinflection\tSpiel\t—\n")
+    forms.tag_forms(db)
+    row = db.execute("SELECT form_kind, form_of FROM cards WHERE lemma='Spiele'").fetchone()
+    assert (row["form_kind"], row["form_of"]) == ("inflection", "Spiel")

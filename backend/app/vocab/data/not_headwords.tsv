@@ -74,3 +74,8 @@ Intensivität	form	Intensität	лишнее «iv», примеры карточ�
 zwangslos	form	zwanglos	лишняя соединительная «s», примеры карточки пишут верно
 rückrufen	form	zurückrufen	глагола нет, есть существительное «der Rückruf»; примеры пишут «zurück…»
 hinzuarbeiten	form	hinarbeiten	это «hinarbeiten» в форме с zu, а не отдельная лемма
+
+# `Spiele` is the plural of `das Spiel` filed as a headword, with the singular
+# article and an example that uses the singular. Found in the same sweep.
+Spiele	inflection	Spiel	мн. ч. от das Spiel: артикль единственного числа, пример тоже в единственном
+

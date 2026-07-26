@@ -201,3 +201,22 @@ async def pg_guest_client(pg_session: AsyncSession) -> AsyncGenerator[AsyncClien
 
 
 from tests.helpers import essay_payload, seed_words_and_phrases
+
+
+@pytest.fixture(autouse=True)
+def _reset_handfix_caches():
+    """`handfixes` memoises its TSVs, and tests monkeypatch the paths.
+
+    Without this the cached fixture data outlives the test that installed it and
+    leaks into any later test that calls `forms.tag_forms` — which showed up as a
+    failure that only appeared under `pytest-randomly`'s ordering, i.e. the worst
+    kind. Cleared on both sides so a test is never handed a neighbour's data and
+    never leaves its own behind.
+    """
+    from app.vocab import handfixes
+
+    handfixes.load_twins.cache_clear()
+    handfixes.load_fixes.cache_clear()
+    yield
+    handfixes.load_twins.cache_clear()
+    handfixes.load_fixes.cache_clear()

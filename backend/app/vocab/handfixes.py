@@ -69,16 +69,22 @@ def _rows(path: Path) -> list[list[str]]:
     return out
 
 
+# `form` lets the kind be inferred from the relation; the rest name it outright,
+# for the cases inference cannot see. `Spiele` is the plural of `das Spiel`, and
+# nothing about the two strings says "plural" rather than "other spelling".
+_KINDS = ("inflection", "variant", "capitalised", "abbrev", "compound")
+
+
 @lru_cache(maxsize=1)
-def load_twins() -> tuple[dict[str, str], frozenset[str]]:
-    """(lemma -> base to point at, lemmas that must never be tagged)."""
-    tag: dict[str, str] = {}
+def load_twins() -> tuple[dict[str, tuple[str, str | None]], frozenset[str]]:
+    """(lemma -> (base, explicit kind or None), lemmas that must never be tagged)."""
+    tag: dict[str, tuple[str, str | None]] = {}
     keep: set[str] = set()
     for cols in _rows(TWINS_FILE):
         cols = (cols + ["", "", ""])[:4]
         lemma, action, base, _why = cols
-        if action == "form" and lemma and base:
-            tag[lemma] = base
+        if lemma and base and (action == "form" or action in _KINDS):
+            tag[lemma] = (base, action if action in _KINDS else None)
         elif action == "keep" and lemma:
             keep.add(lemma)
     return tag, frozenset(keep)
@@ -127,12 +133,12 @@ def extra_tags(have_card) -> list[tuple[str, str | None, str]]:
     """
     tag, _keep = load_twins()
     out = []
-    for lemma, base in tag.items():
+    for lemma, (base, explicit) in tag.items():
         if lemma not in have_card:
             continue
         case_twin = lemma.lower() == base.lower() and lemma[:1].isupper()
-        out.append(("capitalised" if case_twin else "variant",
-                    base if base in have_card else None, lemma))
+        kind = explicit or ("capitalised" if case_twin else "variant")
+        out.append((kind, base if base in have_card else None, lemma))
     return out
 
 

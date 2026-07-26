@@ -156,3 +156,22 @@ verknusen	ru_all	["переваривать (пищу, сев.-нем.)", "те�
 verrinnen	ru_all	["проходить (о времени)", "вытекать", "стекать"]	«вытекать, стекать» — два независимых глагола-синонима для второго значения
 zutreffend	ru_all	["верный", "правильный", "точный (об ответе)"]	«верный, правильный» — два независимых прилагательных-синонима одного значения
 Ölsardinen	article	die	форма мн.ч. от «die Sardine»
+
+# ── from the sweep of the 600 most frequent cards, 2026-07-26 ──
+#
+# 571 of 600 were correct. Of the rest, one class is new to the docs and is
+# the reason these four are here: German uses the ARTICLE to separate
+# homographs, and the enrichment prompt has no rule about it, so several
+# genders ended up inside one card under one article. `das Band` (лента),
+# `der Band` (том) and `die Band` (группа) are three different words.
+# Only the meanings belonging to the card's OWN article are kept here; the
+# missing genders need their own cards and are filed as A9 in info/PLANS.md.
+Band	ru_all	["лента", "тесьма", "связка"]	«том (книги)» — это der Band, другое слово; die Band (группа) вообще без карточки
+Junge	ru_all	["мальчик", "парень"]	«детёныш» — это das Junge; немецкое определение животных не упоминает вовсе
+Moment	ru_all	["момент", "миг"]	«фактор» — это das Moment, средний род
+#
+# Not a gender case: `dir` is never the polite form — that is `Ihnen`. For a
+# trainer that teaches formal writing, getting the register of address wrong
+# is not a detail.
+dir	ru_all	["тебе"]	«вам (вежл.)» неверно: вежливая форма — Ihnen, не dir
+
