@@ -23,6 +23,7 @@ import logging
 import re
 import sqlite3
 import sys
+import urllib.parse
 from collections import Counter
 from pathlib import Path
 
@@ -36,6 +37,29 @@ logger = logging.getLogger(__name__)
 _LATIN = re.compile(r"[A-Za-zÄÖÜäöüß]")
 _CYR = re.compile(r"[А-Яа-яЁё]")
 _PAREN = re.compile(r"\([^)]*\)")
+
+
+def _ro_uri(path: Path, *, immutable: bool = False) -> str:
+    """A read-only SQLite URI. The mode follows the file's WRITER, not the reader.
+
+    Both golden databases are in WAL mode, and a read-only connection to a WAL
+    database wants a `-shm` companion. `enrichment.db` always has one — the
+    worker keeps the file open. `vocab.db` has none, and from there the outcome
+    depends on the SQLite build rather than on the file (measured on this
+    machine, same file, same directory): 3.51.0 answers SQLITE_CANTOPEN, which
+    reads like data loss, while 3.53.1 opens it and *creates* `-shm` + `-wal`
+    next to an artifact that is supposed to be inert. Both outcomes are wrong
+    for a golden file, so `vocab.db` opens `immutable=1`: it sidesteps WAL on
+    every build and leaves nothing behind.
+
+    The same flag would be actively harmful on `enrichment.db` — immutable means
+    "ignore the WAL", i.e. serve a stale page image and report success.
+
+    Same two modes, and the same reasoning, as `scripts/mcp/sqlite_ro.py`.
+    Percent-encoded because this repo lives under a directory with a space.
+    """
+    query = "mode=ro&immutable=1" if immutable else "mode=ro"
+    return f"file:{urllib.parse.quote(str(path))}?{query}"
 
 
 def _packed(entry: str) -> bool:
@@ -253,8 +277,8 @@ def main() -> int:
     if args.vocab_db:
         enrich.VOCAB_DB = args.vocab_db
 
-    con = sqlite3.connect(f"file:{enrich.ENRICH_DB}?mode=ro", uri=True)
-    con.execute("ATTACH DATABASE ? AS v", (f"file:{enrich.VOCAB_DB}?mode=ro",))
+    con = sqlite3.connect(_ro_uri(enrich.ENRICH_DB), uri=True)
+    con.execute("ATTACH DATABASE ? AS v", (_ro_uri(enrich.VOCAB_DB, immutable=True),))
     try:
         rows = _load(con, args.source)
     finally:
