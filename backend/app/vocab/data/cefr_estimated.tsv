@@ -44,7 +44,7 @@
 20-Cent-Stück	a2	high
 20-Franken-Note	a2	low
 200-Franken-Note	b1	low
-21-Jährige	a2	high
+21-Jährige	a2	medium
 24-Stunden-Flug	a2	low
 24-Stunden-Rennen	a2	high
 24-Stunden-Supermarkt	a2	low
@@ -72,7 +72,7 @@
 5G-Auktion	b2	high
 6-Zimmer-Wohnung	a1	high
 7-Zimmer-Wohnung	a2	high
-8-Kilometer-Lauf	a2	high
+8-Kilometer-Lauf	a2	medium
 8-Stunden-Tag	b1	high
 9-mm-Pistole	b1	medium
 A-Auswahl	b2	low
@@ -459,7 +459,7 @@ Anleihe	b2	high
 Anliegen	b1	high
 Anmerkung	b1	high
 Anmut	c1	high
-Annahme	b2	high
+Annahme	b2	medium
 Annalen	c1	low
 Anno	c2	low
 Annäherung	b2	high
@@ -479,7 +479,7 @@ Anschaffung	b1	low
 Anschaffungskosten	b2	high
 Anschauung	b2	low
 Anschein	b2	high
-Anschlag	b2	high
+Anschlag	b2	medium
 Anschluss	b1	high
 Anschlussstelle	b1	low
 Anschlusstreffer	b2	medium
@@ -519,7 +519,7 @@ Anti-Terror-Mission	c1	low
 Anti-Utopie	b2	high
 Antifa	c1	low
 Antifaschismus	b2	medium
-Antike	b1	high
+Antike	b1	medium
 Antiquitäten	b1	medium
 Antisemitismus	b2	high
 Antlitz	c1	low
@@ -601,7 +601,7 @@ Arbeitszimmer	a1	high
 Arche	b2	low
 Architekt	a2	high
 Architektin	a2	high
-Architektur	b1	high
+Architektur	b1	medium
 Architekturbüro	b1	high
 Archäologie	b1	high
 Areal	b2	medium
@@ -751,12 +751,12 @@ Aufsichtsbehörde	b2	high
 Aufsichtsrat	c1	low
 Aufsichtsratsvorsitzender	c1	high
 Aufspüren	b2	high
-Aufstand	b2	high
+Aufstand	b2	medium
 Aufsteiger	b1	low
 Aufstockung	b2	high
 Auftakt	b2	low
 Aufteilung	b1	high
-Auftraggeber	b2	high
+Auftraggeber	b1	medium
 Auftrieb	b2	low
 Auftritt	b1	high
 Aufwand	b1	high
@@ -979,7 +979,7 @@ Barren	b2	low
 Barriere	b1	high
 Barrierefreiheit	b2	high
 Basar	b1	medium
-Base	c1	low
+Base	b1	low
 Baseball	a2	high
 Baseball-Cap	a2	high
 Baseballschläger	a2	low
@@ -988,7 +988,7 @@ Basics	b1	high
 Basilika	b1	high
 Basilikum	b1	high
 Basis	b1	high
-Basketball-EM	b1	medium
+Basketball-EM	a2	medium
 Basketball-WM	a2	high
 Bass	a2	high
 Bassist	a2	high
@@ -1076,7 +1076,7 @@ Befristung	b2	low
 Befruchtung	b2	low
 Befugnis	b2	low
 Befähigung	b2	medium
-Beförderung	b2	medium
+Beförderung	b1	medium
 Befürchtung	b1	high
 Befürworter	b2	high
 Begabung	b1	high
@@ -1105,7 +1105,7 @@ Beibehaltung	b2	high
 Beichte	b2	medium
 Beifahrer	a2	high
 Beifahrersitz	a2	high
-Beifall	b1	high
+Beifall	b1	medium
 Beigeschmack	b1	low
 Beihilfe	b2	high
 Beil	b1	low
@@ -1138,7 +1138,7 @@ Belebung	b2	high
 Belegschaft	b2	low
 Belegung	b2	high
 Belehrung	b1	low
-Beleidigung	b1	high
+Beleidigung	b1	medium
 Beleuchtung	b1	high
 Belieben	b2	low
 Beliebtheit	b1	high
@@ -1201,7 +1201,7 @@ Bescheidenheit	b1	medium
 Beschilderung	b1	high
 Beschlagnahme	b2	high
 Beschleunigung	b2	high
-Beschluss	b2	high
+Beschluss	b2	medium
 Beschlussfassung	c1	high
 Beschluß	b2	high
 Beschneidung	b2	high
@@ -1391,7 +1391,7 @@ Blackbox	b2	low
 Blackout	b1	low
 Blamage	b2	high
 Blas	c2	low
-Blase	b1	high
+Blase	a2	medium
 Blasmusik	b1	high
 Blasorchester	b1	high
 Blasphemie	b2	low
@@ -1478,7 +1478,7 @@ Boutique	a2	high
 Boutique-Hotel	b1	low
 Bowling	a2	low
 Box	a1	high
-Boxen	a2	high
+Boxen	a2	medium
 Boxer	a2	high
 Boykott	b1	low
 Branche	b2	low
@@ -1637,6 +1637,7 @@ Bürogebäude	a2	high
 Büste	b1	high
 Büßen	c1	high
 C-Jugend	c2	low
+C-Partei	c1	medium
 C4-Pflanze	c2	high
 CB-Funk	b2	high
 CD-Brenner	b1	high
@@ -1793,7 +1794,7 @@ Comedian	b1	low
 Comedy	a2	high
 Comic	a2	high
 Comic-Adaption	b1	low
-Comic-Held	a2	high
+Comic-Held	a2	medium
 Coming-out	b1	high
 Community	b1	high
 Community-Maske	b2	low
@@ -1899,7 +1900,7 @@ Dada	c1	low
 Daddy	b1	medium
 Damen-T-Shirt	a1	high
 Damm	b1	low
-Dampf	a2	high
+Dampf	a2	medium
 Dampfer	b1	high
 Dampfmaschine	b1	high
 Dance-Pop	b1	low
@@ -1979,7 +1980,7 @@ Depot	b1	low
 Depp	b1	low
 Des-Dur	c2	high
 Desaster	b1	high
-Design	b1	high
+Design	a2	medium
 Designerin	b1	high
 Desinteresse	b1	high
 Desktop	a2	high
@@ -2067,7 +2068,7 @@ Diskretion	b2	high
 Diskurs	c1	high
 Diskus	b1	low
 Diskussionsrunde	b1	high
-Display	a2	high
+Display	a2	medium
 Disposition	c1	medium
 Distanzierung	b2	high
 Distribution	b2	medium
@@ -2121,7 +2122,7 @@ Download	a2	high
 Downtown	b1	medium
 Dozentin	b1	low
 Drache	a2	high
-Drachen	a2	high
+Drachen	a2	medium
 Draft	b2	low
 Draht	a2	high
 Drahtzieher	c1	low
@@ -2146,6 +2147,7 @@ Drei-Stopp-Strategie	c2	high
 Dreieck	a1	high
 Dreier-Koalition	b2	low
 Dreifache	b1	high
+Dresdner	a2	medium
 Dressing	a2	high
 Dressur	b2	low
 Drift	b2	high
@@ -2620,7 +2622,7 @@ Erlösung	b2	high
 Ermessen	b2	low
 Ermittler	b1	low
 Ermittlungsverfahren	b2	high
-Ermordung	b2	high
+Ermordung	b2	medium
 Ermächtigung	c1	low
 Ernennung	b2	low
 Erneuerbare	b2	high
@@ -3027,7 +3029,7 @@ Flossen	b1	high
 Flotte	b1	high
 Flow	b2	medium
 Floß	a2	high
-Fluch	b1	high
+Fluch	b1	medium
 Flugblatt	b1	high
 Fluggesellschaft	b1	high
 Fluglärm	b1	high
@@ -3244,7 +3246,7 @@ Füller	a2	high
 Füllung	b1	high
 Fünf-Euro-Münze	a2	high
 Fünf-Euro-Schein	a1	high
-Fünf-Finger-Rabatt	c1	low
+Fünf-Finger-Rabatt	b2	low
 Fünf-Prozent-Hürde	c1	high
 Fünf-Sterne-Restaurant	a2	high
 Fünftel	b1	low
@@ -3351,7 +3353,7 @@ Geflügel	a2	high
 Gefolge	c1	low
 Gefolgschaft	b2	high
 Gefährder	c1	low
-Gefährdung	b2	high
+Gefährdung	b1	medium
 Gefährlichkeit	b1	high
 Gefährt	c1	low
 Gefährte	b2	low
@@ -3448,7 +3450,7 @@ Gender-Gap	b2	low
 Gender-Gegner	b2	high
 Gender-Ideologie	b2	low
 Gender-Pay-Gap	b2	high
-Gender-Sprache	b2	high
+Gender-Sprache	b2	medium
 Genealogie	c1	medium
 General	b1	high
 Generalprobe	b1	low
@@ -3549,7 +3551,7 @@ Gesellschaftsordnung	b2	high
 Gesetzbuch	b2	high
 Gesetzentwurf	b2	high
 Gesetzesentwurf	b2	low
-Gesetzgeber	b2	high
+Gesetzgeber	b2	medium
 Gesichtsausdruck	b1	high
 Gesichtserkennung	b2	high
 Gesichtspunkt	b1	high
@@ -4100,7 +4102,7 @@ Hierarchie	b2	high
 High-Society	b1	low
 High-Tech	b1	low
 High-Tech-Gerät	b1	low
-Highlight	a2	high
+Highlight	a2	medium
 Highschool	b1	high
 Hightech	b2	low
 Hilfeleistung	b2	high
@@ -4179,7 +4181,7 @@ Hoffnungsträger	b2	low
 Hoheit	c1	high
 Hoheitsgebiet	c1	medium
 Hohn	b2	low
-Hole	c2	low
+Hole	c1	low
 Hole-in-one	c1	medium
 Hollywood-Film	a2	low
 Hollywood-Western	b1	low
@@ -4190,7 +4192,7 @@ Holzkohle	a2	high
 Homeoffice	b1	high
 Homepage	a2	high
 Hommage	c1	high
-Homo-Ehe	b2	high
+Homo-Ehe	b1	medium
 Homophobie	b2	high
 Homosexualität	b1	high
 Homosexueller	b1	high
@@ -4460,7 +4462,7 @@ Intrige	b2	high
 Intrigen	b2	high
 Intro	a2	high
 Intuition	b1	high
-Invasion	b2	medium
+Invasion	b1	medium
 Inventar	b2	low
 Investition	b2	low
 Investment	b2	high
@@ -4560,7 +4562,7 @@ Junta	b2	high
 Jura-Studium	b1	low
 Jurist	b1	high
 Juristin	b1	low
-Justiz	b2	high
+Justiz	b2	medium
 Justizminister	b1	high
 Justizvollzugsanstalt	c1	high
 Juwel	b1	low
@@ -4568,7 +4570,7 @@ Juwelier	a2	high
 Jäger	b1	low
 Jüngste	b1	low
 Jüngster	a2	high
-K-Pop	a2	high
+K-Pop	a2	medium
 K.-o.-Niederlage	c1	low
 K.-o.-Sieg	b2	low
 K.-o.-System	b2	low
@@ -4901,7 +4903,7 @@ Kolben	c2	low
 Kollaboration	b2	medium
 Kollaps	b2	high
 Kollegium	b1	low
-Kollektion	b1	medium
+Kollektion	a2	medium
 Kollektiv	b2	high
 Koller	b2	high
 Kollision	b1	high
@@ -4920,7 +4922,7 @@ Komitee	b1	low
 Komma	a1	high
 Kommandant	b2	high
 Kommandeur	b2	low
-Kommando	b1	high
+Kommando	b1	medium
 Kommentar	b1	high
 Kommentator	b1	high
 Kommerz	b2	low
@@ -5001,7 +5003,7 @@ Konversion	b2	high
 Konvoi	b1	low
 Konzentrationslager	b1	low
 Konzept	b1	high
-Konzeption	b2	high
+Konzeption	b2	medium
 Konzerthaus	a2	high
 Konzertsaal	a2	high
 Konzession	b2	high
@@ -5145,7 +5147,7 @@ Kunstsammlung	a2	high
 Kunstschule	a2	high
 Kunststück	b1	high
 Kunstwerk	b1	medium
-Kupfer	a2	high
+Kupfer	a2	medium
 Kuppel	b2	high
 Kupplung	b2	low
 Kur	b1	medium
@@ -5153,7 +5155,7 @@ Kurator	b2	low
 Kuratorium	c1	high
 Kurbel	b2	low
 Kurhaus	b2	medium
-Kurier	b1	high
+Kurier	a2	medium
 Kurort	b1	high
 Kurpark	b1	low
 Kurswechsel	b2	high
@@ -5285,7 +5287,7 @@ Lauch	a2	high
 Laudatio	c1	high
 Lauf	a2	high
 Lauf-ABC	b2	medium
-Laufbahn	b1	high
+Laufbahn	b1	medium
 Laufband	a2	high
 Laufsteg	b1	low
 Laufzeit	b2	high
@@ -5463,7 +5465,7 @@ Limousine	b1	high
 Linde	b1	low
 Linderung	b2	high
 Linguistik	b2	low
-Link	a2	high
+Link	a2	medium
 Linke	a2	low
 Linkshänder	a2	high
 Linse	b1	high
@@ -5653,7 +5655,7 @@ Marsch	b1	low
 Martyrium	b2	low
 Marzipan	a2	high
 Masche	b1	low
-Maschinenbau	b1	high
+Maschinenbau	b1	medium
 Maschinenfabrik	b1	low
 Maschinengewehr	b1	high
 Masern	b1	medium
@@ -5676,7 +5678,7 @@ Mate	b2	medium
 Materialismus	b2	high
 Materie	b2	medium
 Mathe	a1	high
-Mathematik	a2	high
+Mathematik	a2	medium
 Mathematik-Olympiade	b1	high
 Mathematiker	a2	high
 Matratze	a2	high
@@ -5968,7 +5970,7 @@ Mund-Nasen-Schutz	b1	medium
 Mund-zu-Mund-Propaganda	b1	low
 Mundart	b1	low
 Mundharmonika	a2	high
-Munition	b1	high
+Munition	b1	medium
 Murmeln	b1	low
 Mus	b1	high
 Muschel	a2	high
@@ -6075,7 +6077,7 @@ Nachttisch	a1	high
 Nachtwächter	b1	low
 Nachwelt	b2	medium
 Nachwort	b1	low
-Nacken	a2	high
+Nacken	a2	medium
 Nackte	b1	low
 Nackter	a2	low
 Nacktheit	b1	low
@@ -6196,7 +6198,7 @@ Neuzugang	b1	medium
 Neuzugänge	b1	low
 Newcomer	b1	high
 News	b1	medium
-Newsletter	a2	high
+Newsletter	a2	medium
 Newton	b2	medium
 Nexus	c1	medium
 Nice-to-have	c1	medium
@@ -6231,7 +6233,7 @@ Nom-Schrift	c2	high
 Nomen	b2	low
 Nominierung	b1	high
 Nonne	a2	high
-Nord	a1	high
+Nord	a1	medium
 Nord-Süd-Achse	b2	low
 Nord-Süd-Ausdehnung	b2	low
 Nord-Süd-Richtung	b1	high
@@ -6266,7 +6268,7 @@ Novelle	b2	low
 Novum	c1	low
 Nu	c1	low
 Nude	b2	low
-Null	a1	high
+Null	a1	low
 Null-Null	b2	low
 Null-Nummer	c2	low
 Null-Toleranz-Politik	b2	low
@@ -6326,7 +6328,7 @@ Oberstufe	b1	high
 Oberteil	a2	high
 Oberverwaltungsgericht	c1	high
 Obhut	c1	high
-Objekt	b1	high
+Objekt	b1	medium
 Objektiv	b2	low
 Obmann	b2	low
 Oboe	a2	high
@@ -6339,7 +6341,7 @@ Off-Stimme	b2	low
 Offenbarung	c1	high
 Offenheit	b2	medium
 Offense	c1	low
-Offensive	b2	medium
+Offensive	b1	medium
 Offerte	b2	medium
 Offizier	b1	medium
 Offline-Medium	b2	low
@@ -6371,7 +6373,7 @@ Online-Enzyklopädie	b1	low
 Online-Gaming	b1	high
 Online-Kritiker	b1	high
 Online-Kurs	b1	high
-Online-Magazin	a2	high
+Online-Magazin	a2	medium
 Online-Netzwerk	b1	high
 Online-Schach	a2	high
 Online-Shop	a2	high
@@ -6429,7 +6431,7 @@ Ortung	b2	low
 Ossi	b2	low
 Ost	a2	low
 Ost-West-Ausdehnung	b2	low
-Ost-West-Richtung	a2	high
+Ost-West-Richtung	a2	medium
 Osterferien	a1	high
 Osterfest	a2	high
 Osterfeuer	a2	medium
@@ -6815,7 +6817,7 @@ Preisverleihung	b1	high
 Premierminister	b1	high
 Premierministerin	b1	high
 Pressefreiheit	b2	high
-Pressekonferenz	b1	high
+Pressekonferenz	b1	medium
 Pressemeldung	b1	high
 Pressemitteilung	b2	high
 Pressesprecher	b1	high
@@ -7207,7 +7209,7 @@ Reiche	b1	high
 Reicher	b1	high
 Reichsbürger	c1	low
 Reichsstadt	c1	low
-Reichstag	c1	low
+Reichstag	b1	low
 Reichtum	b1	high
 Reigen	c1	low
 Reim	b1	high
@@ -7260,7 +7262,7 @@ Repression	c1	high
 Reproduktion	b2	medium
 Repräsentant	b1	high
 Repräsentation	b2	high
-Republik	b1	high
+Republik	b1	medium
 Republikaner	b1	low
 Reputation	b2	high
 Requiem	c1	low
@@ -7427,7 +7429,7 @@ Rückreise	a2	high
 Rückruf	b1	low
 Rückschlag	b2	high
 Rückschritt	b1	low
-Rückseite	a2	high
+Rückseite	a2	medium
 Rücksichtnahme	b2	low
 Rückspiegel	a2	high
 Rückspiel	b1	medium
@@ -7717,7 +7719,7 @@ Schotter	b1	high
 Schoß	b1	low
 Schranke	b1	high
 Schraube	a2	high
-Schrecken	b1	high
+Schrecken	b1	medium
 Schrei	b1	high
 Schreiber	b2	low
 Schreibfehler	a2	high
@@ -7810,7 +7812,7 @@ Schwere	b2	low
 Schwergewicht	b1	low
 Schwerkraft	b1	high
 Schwerpunkt	b2	high
-Schwert	a2	high
+Schwert	a2	medium
 Schwiegereltern	a2	high
 Schwiegermutter	a2	high
 Schwiegersohn	b1	low
@@ -8220,6 +8222,7 @@ Spielball	b2	low
 Spielbetrieb	b2	low
 Spielchen	b1	high
 Spieldauer	a2	high
+Spiele	a1	high
 Spielerei	b1	high
 Spielertrainer	b1	low
 Spielfeld	a2	high
@@ -8361,10 +8364,10 @@ Stadtwald	a2	high
 Stadtzentrum	a2	high
 Staffel	b1	low
 Stagnation	b2	high
-Stahl	b1	high
+Stahl	a2	medium
 Stalinismus	b2	high
 Stalker	b2	high
-Stall	a2	high
+Stall	a2	medium
 Stamm	b1	high
 Stammbaum	b1	high
 Stammplatz	b1	high
@@ -8494,7 +8497,7 @@ Strang	b1	high
 Strass	b1	low
 Strasser	c2	high
 Strauch	a2	high
-Strauß	b1	medium
+Strauß	a2	medium
 Straß	c2	low
 Straße-Schiene-Verkehr	c1	low
 Straßenbau	b1	medium
@@ -8599,7 +8602,7 @@ Symbiose	b2	low
 Symbolbild	b2	low
 Symbolik	b2	high
 Symmetrie	b2	high
-Sympathie	b1	high
+Sympathie	b1	medium
 Symposium	c1	high
 Synagoge	b1	medium
 Synchronisation	b1	low
@@ -8734,7 +8737,7 @@ Teenager	a2	high
 Teenager-Sprache	b1	low
 Teenie	a2	high
 Teer	b1	high
-Teich	a2	high
+Teich	a2	medium
 Teig	a2	high
 Teilbereich	b1	high
 Teilchen	b1	low
@@ -8755,14 +8758,14 @@ Telekommunikation	b2	high
 Teleskop	a2	high
 Tell	c2	high
 Tellerrand	b1	high
-Tempel	a2	high
+Tempel	a2	medium
 Temperament	b1	high
 Tempo-30-Zone	a2	low
 Tempolimit	b1	low
 Tendenz	b2	medium
 Tenor	b2	low
 Tequila	a1	high
-Terminal	a2	high
+Terminal	a2	medium
 Terminologie	b2	low
 Terminus	c1	high
 Terrain	b1	high
@@ -8792,7 +8795,7 @@ Thai-Restaurant	a1	high
 Theatergruppe	a2	high
 Theaterstück	a2	high
 Theke	a2	high
-Thematik	b2	high
+Thematik	b2	medium
 Theologe	b2	low
 Theoretiker	b2	medium
 Therapeut	a2	high
@@ -8810,7 +8813,7 @@ Tick	b1	medium
 Ticken	b1	low
 Ticker	b1	low
 Tiefbau	b2	low
-Tiefe	b1	high
+Tiefe	b1	medium
 Tiefgang	c1	medium
 Tiefgarage	b1	high
 Tiefpunkt	b1	low
@@ -9008,7 +9011,7 @@ Täter-Opfer-Umkehr	c1	low
 Täuschung	b2	low
 Töpfer	b1	high
 Tötung	b2	low
-Tür-und-Angel-Gespräch	c1	low
+Tür-und-Angel-Gespräch	b2	low
 Türkis	a2	high
 Türkisch	a1	high
 Türsteher	b1	high
@@ -9098,7 +9101,7 @@ Umschreibung	b2	high
 Umschulung	b1	high
 Umsiedlung	b2	high
 Umstand	b2	high
-Umstellung	b2	medium
+Umstellung	b1	medium
 Umstieg	b1	low
 Umstrukturierung	b2	high
 Umsturz	b1	high
@@ -9214,7 +9217,7 @@ Unwesen	b2	low
 Unwetter	b1	low
 Unwissenheit	b1	low
 Unzufriedenheit	b2	high
-Update	a2	high
+Update	a2	medium
 Upgrade	b1	high
 Upload	b1	high
 Upper	b2	low
@@ -9423,7 +9426,7 @@ Verschwörung	b1	high
 Verschwörungstheoretiker	b2	high
 Verschwörungstheorie	b1	high
 Verschärfung	b2	low
-Versehen	b1	high
+Versehen	b1	medium
 Versenkung	b2	high
 Versetzung	b1	high
 Versicherer	b2	high
@@ -9431,7 +9434,7 @@ Versicherungsschutz	b2	low
 Versicherungsunternehmen	b1	high
 Version	b1	low
 Versorger	b1	high
-Versorgung	b1	high
+Versorgung	b1	medium
 Verstaatlichung	b2	high
 Versteck	a2	high
 Versteigerung	b1	low
@@ -9445,7 +9448,7 @@ Verstärkung	b1	low
 Versuchs-und-Irrtum-Methode	b2	high
 Versuchung	b1	low
 Versöhnung	b2	low
-Verteidiger	b1	high
+Verteidiger	b1	medium
 Verteidigung	b1	high
 Verteidigungsministerin	b1	medium
 Verteidigungsministerium	b1	high
@@ -9488,7 +9491,7 @@ Verwendung	b1	high
 Verwendungszweck	b1	low
 Verwertung	b2	high
 Verwirklichung	b2	low
-Verwirrung	b1	high
+Verwirrung	b1	medium
 Verwunderung	b1	high
 Verwundete	b1	low
 Verwüstung	b2	high
@@ -9747,7 +9750,7 @@ Warteschlange	a2	high
 Wartezeit	a2	high
 Wartezimmer	a2	high
 Wartung	b2	medium
-Warum	b2	low
+Warum	b1	low
 Waschbecken	a2	high
 Waschbär	a2	high
 Waschlappen	a2	high
@@ -9854,7 +9857,7 @@ Welthandel	b1	high
 Weltherrschaft	b2	low
 Weltkarte	a1	high
 Weltklasse	b1	high
-Weltkrieg	a2	high
+Weltkrieg	a2	medium
 Weltkulturerbe	b1	high
 Weltliteratur	b2	medium
 Weltmacht	b2	high
@@ -9922,7 +9925,7 @@ Wichtigkeit	b1	high
 Widder	b1	high
 Widerruf	b2	high
 Widersacher	c1	high
-Widerstand	b1	high
+Widerstand	b1	medium
 Widerstandskämpfer	b2	low
 Widmung	b1	high
 Wiederaufbau	b1	high
@@ -9936,7 +9939,7 @@ Wiedergeburt	b2	medium
 Wiedergutmachung	b2	high
 Wiederherstellung	b2	low
 Wiederkehr	b2	low
-Wiedervereinigung	b1	high
+Wiedervereinigung	b1	medium
 Wiederwahl	b1	high
 Wiege	b2	low
 Wiesn	b2	low
@@ -9995,7 +9998,7 @@ Wisch	b1	low
 Wissensstand	b1	low
 Wissenswertes	b1	high
 Witterung	b2	low
-Witwe	b1	high
+Witwe	b1	medium
 Witwer	b1	medium
 Witz-Erzähler	b1	low
 Witz-Sammlung	b1	low
@@ -10448,7 +10451,7 @@ amüsant	b1	high
 amüsieren	b1	high
 amüsiert	a2	high
 anal	c1	low
-analog	b1	high
+analog	b1	medium
 analytisch	b2	high
 anatomisch	c1	low
 anbauen	a2	high
@@ -10465,7 +10468,7 @@ andernorts	c1	high
 andersherum	b1	high
 andersrum	b1	high
 anderswo	a2	high
-anderthalb	a2	high
+anderthalb	a2	medium
 anderweitig	b2	low
 andeuten	b1	high
 aneignen	b1	high
@@ -10812,7 +10815,7 @@ beisteuern	b1	high
 beitragen	b1	high
 beitreten	b1	high
 bekanntermaßen	b2	low
-bekanntlich	b2	high
+bekanntlich	b2	medium
 bekanntwerden	b1	medium
 bekehren	b2	low
 bekennen	b2	low
@@ -10900,7 +10903,7 @@ beteiligt	b1	high
 beten	a2	high
 betonen	b1	high
 betrachten	b1	high
-betragen	b2	high
+betragen	b1	medium
 betreffen	b1	low
 betreiben	b2	high
 betreten	a2	high
@@ -10931,7 +10934,7 @@ bezeichnen	b1	high
 bezeugen	c1	high
 bezeugt	b2	low
 beziehungsweise	b2	high
-bezogen	b1	high
+bezogen	b1	medium
 bezweifeln	b1	high
 bezwingen	b2	high
 bezüglich	c1	high
@@ -10943,7 +10946,7 @@ billigen	b2	high
 binden	b1	low
 bingen	b1	low
 bislang	b1	high
-bisweilen	c1	high
+bisweilen	c1	medium
 bitteschön	a1	high
 bizarr	b1	high
 blamieren	b1	high
@@ -10970,7 +10973,7 @@ booten	a2	high
 bordeaux	b1	high
 boxen	a2	high
 boykottieren	b2	low
-brach	c2	low
+brach	c1	low
 brauchbar	b1	high
 brauen	b1	high
 brav	a2	high
@@ -10993,7 +10996,7 @@ buchten	c2	low
 bummeln	b1	high
 bums	a2	low
 bumsen	b1	low
-bundesweit	b1	high
+bundesweit	b1	medium
 bändigen	b2	high
 bäumen	c1	low
 bösartig	b2	high
@@ -11006,7 +11009,7 @@ bürgerlich-demokratisch	b2	low
 bürsten	a2	high
 büßen	b2	high
 campen	a2	high
-cash	a2	high
+cash	a2	medium
 ch-Laut	c1	low
 chancenlos	b1	high
 chaotisch	b1	high
@@ -11030,17 +11033,17 @@ clean	b1	low
 clever	a2	high
 containern	b2	low
 contra	b1	low
-cool	a2	high
+cool	a2	medium
 cringe	b1	low
 dB-Killer	c2	low
 dadurch	b1	low
 daheim	a2	high
-dahinter	a2	high
+dahinter	a2	medium
 dampfen	a2	high
 daran	a2	low
 darauf	a2	low
 daraufhin	b2	low
-daraus	a2	high
+daraus	a2	medium
 darin	a2	low
 darlegen	b2	high
 darren	c2	high
@@ -11331,7 +11334,7 @@ entgegennehmen	b1	high
 entgegenstehen	b2	high
 entgegentreten	b2	high
 entgegenwirken	b2	high
-entgehen	b2	medium
+entgehen	b1	medium
 enthüllen	b1	high
 entkommen	b1	high
 entkräften	b2	high
@@ -11352,7 +11355,7 @@ entsenden	b2	low
 entsetzen	b2	medium
 entsetzlich	b1	high
 entspannen	a2	high
-entsprechen	b2	high
+entsprechen	b1	high
 entspringen	b2	low
 entstammen	b2	medium
 entweder	a2	low
@@ -11485,7 +11488,7 @@ erwählt	c1	low
 erwähnen	b1	high
 erwähnenswert	b1	low
 erwärmen	b1	high
-erwünscht	b1	high
+erwünscht	b1	medium
 erzeugen	b2	low
 erziehen	b1	high
 erzwingen	b2	high
@@ -11503,7 +11506,7 @@ euphorisch	b1	high
 europaweit	b1	low
 europäisch	a2	high
 evangelisch	b1	high
-exakt	a2	high
+exakt	a2	medium
 existent	b2	low
 existieren	b1	high
 exklusiv	b1	low
@@ -11557,7 +11560,7 @@ fern	a2	high
 fernab	c1	low
 ferner	b2	low
 fernhalten	b1	high
-fertigen	c1	medium
+fertigen	b2	medium
 fesseln	b2	low
 feste	b1	low
 festigen	b1	high
@@ -11570,7 +11573,7 @@ feuchten	b2	low
 feuern	b1	low
 fidel	b2	low
 fies	b1	high
-filmen	a2	high
+filmen	a2	medium
 filtern	b1	low
 final	b1	high
 finanziert	b2	low
@@ -11622,7 +11625,7 @@ fortführen	b1	high
 fossil	b1	high
 fraglich	b1	high
 fragwürdig	b2	high
-frank	c2	low
+frank	c1	low
 französisch	a1	high
 freiberuflich	b1	high
 freigeben	b1	low
@@ -11738,7 +11741,7 @@ gepaart	b2	low
 geprägt	b2	low
 geradewegs	b1	high
 geradlinig	b1	high
-geraten	b1	high
+geraten	b1	medium
 gereinigt	a2	high
 gerichtlich	b1	low
 geringfügig	b2	high
@@ -11847,13 +11850,13 @@ grünen	c1	high
 gurken	b1	low
 guthaben	b2	low
 gänzlich	b2	high
-gönnen	b1	high
+gönnen	b1	medium
 göttlich	b1	high
 gütig	b1	high
 h-Index	c2	high
 haaren	b2	low
 hacke	b1	low
-hacken	b1	medium
+hacken	a2	medium
 haftbar	c1	high
 haften	b2	low
 hager	b2	medium
@@ -11940,11 +11943,11 @@ hieran	b2	medium
 hierauf	c1	low
 hieraus	b2	high
 hierbei	b2	high
-hierdurch	c1	high
+hierdurch	b1	medium
 hierfür	a2	high
 hierhin	a1	high
 hierin	c1	high
-hiermit	c1	high
+hiermit	b1	medium
 hiernach	c1	high
 hiervon	b1	low
 hierzu	b2	high
@@ -12471,7 +12474,7 @@ medium	a2	high
 medizinisch	a2	high
 mehren	c1	high
 mehrfach	a2	high
-mehrheitlich	b2	high
+mehrheitlich	b2	medium
 mehrmals	a2	high
 meiden	b1	high
 meilenweit	b1	medium
@@ -12540,7 +12543,7 @@ mitverantwortlich	b2	medium
 mitwirken	b1	high
 mißachten	b2	low
 mißbrauchen	b1	low
-mobil	a2	high
+mobil	a2	medium
 mobilisieren	b2	high
 moderat	b1	low
 moderieren	b1	high
@@ -12667,7 +12670,7 @@ null	a1	high
 null-acht-fünfzehn	b2	low
 nutzbar	b1	low
 nutze	c2	low
-nutzlos	a2	high
+nutzlos	a2	medium
 nähern	b1	high
 nähren	b2	high
 nötigen	b2	low
@@ -12694,7 +12697,7 @@ offshore	b2	high
 oftmals	b1	low
 oh	a1	high
 oha	b1	low
-ohnehin	b2	medium
+ohnehin	b1	medium
 ohnmächtig	b1	high
 oho	a2	high
 oje	a2	high
@@ -12799,7 +12802,7 @@ predigen	b1	low
 preisgeben	b2	high
 preislich	b1	high
 prekär	b2	high
-premium	b1	medium
+premium	a2	medium
 pressen	b1	high
 preußisch	b1	low
 primitiv	b1	high
@@ -12913,7 +12916,7 @@ reinstecken	b1	high
 reinziehen	b1	low
 reizen	b1	high
 reizvoll	b1	high
-reißen	a2	high
+reißen	a2	medium
 rekonstruieren	b2	high
 rekrutieren	b2	high
 relaxen	a2	high
@@ -13158,7 +13161,7 @@ seither	b2	medium
 seitlich	a2	high
 seitwärts	a2	high
 sekundär	b2	high
-selber	a2	high
+selber	a2	medium
 selbstbestimmt	b2	low
 selbstkritisch	b1	high
 selbstredend	c1	high
@@ -13216,7 +13219,7 @@ solar	b2	low
 solid	b1	low
 solidarisch	b1	high
 solide	b1	high
-solo	a2	high
+solo	a2	medium
 sommerfest	b2	low
 sommers	c1	medium
 sonder	c2	high
@@ -13229,7 +13232,7 @@ sorglos	b1	low
 sorgsam	b1	high
 sortieren	a2	high
 soso	b1	high
-souverän	b2	high
+souverän	b2	medium
 soweit	b1	low
 sowie	b1	high
 sowohl	b1	high
@@ -13262,7 +13265,7 @@ sprachlich	b1	high
 sprachlos	b1	high
 sprengen	b1	high
 sprichwörtlich	b2	high
-spritzen	b1	high
+spritzen	a2	medium
 sprunghaft	b2	high
 sprühen	b1	low
 spucken	b1	medium
@@ -13270,7 +13273,7 @@ spulen	b1	low
 spuren	b2	low
 spurlos	b1	low
 spärlich	b1	low
-spürbar	b2	high
+spürbar	b1	medium
 staatlich	b1	high
 stabilisieren	b2	high
 stacheln	b2	low
@@ -13380,7 +13383,7 @@ söhnen	c2	low
 südwestlich	a2	high
 südöstlich	a2	high
 süß-sauer	a2	high
-süßen	a2	high
+süßen	a2	medium
 tabu	b1	high
 tadellos	b1	low
 tafeln	c2	low
@@ -13405,7 +13408,7 @@ tausendfach	b1	medium
 tausendmal	a2	low
 technologisch	b1	high
 teilhaben	b2	high
-teils	b1	high
+teils	a2	medium
 teilweise	b1	high
 telefonisch	b1	high
 temporär	b1	high
@@ -13608,7 +13611,7 @@ unheilbar	b2	high
 unhöflich	a2	high
 uninteressant	a2	high
 unisex	b1	high
-universal	b1	high
+universal	b1	medium
 universell	b1	high
 unklar	a2	low
 unklug	b1	high
@@ -13631,7 +13634,7 @@ unpraktisch	a2	high
 unproblematisch	b1	high
 unprofessionell	b1	low
 unrealistisch	b1	high
-unrecht	b1	high
+unrecht	b1	medium
 unrechtmäßig	b2	low
 unregelmäßig	b1	high
 unruhig	a2	high
@@ -13732,7 +13735,7 @@ unübersichtlich	b2	high
 unüblich	b1	high
 updaten	a2	high
 uralt	a2	high
-urban	b2	medium
+urban	b1	medium
 urheberrechtlich	b2	high
 urkundlich	c1	low
 urplötzlich	b1	low
@@ -13821,7 +13824,7 @@ verharren	b2	low
 verheimlichen	b1	high
 verhelfen	b2	high
 verhungern	b1	high
-verhältnismäßig	b2	high
+verhältnismäßig	b2	medium
 verhängen	b2	low
 verifiziert	b2	high
 verkackt	b1	medium
@@ -13902,7 +13905,7 @@ verschwenden	b1	high
 verschärfen	b1	high
 verschönern	a2	high
 versehen	b2	low
-versehentlich	b1	high
+versehentlich	b1	medium
 versenden	b1	high
 versenken	b1	high
 versetzen	b1	low
@@ -13973,7 +13976,7 @@ via	b1	low
 vielerlei	b2	low
 vielerorts	b2	high
 vielfach	b2	medium
-vielfältig	b1	high
+vielfältig	b1	medium
 vielmals	b1	high
 vielmehr	b2	low
 vielseitig	b1	high
@@ -14144,7 +14147,7 @@ widerspiegeln	b2	high
 widerstehen	b1	low
 widerwillig	b2	high
 widerwärtig	b2	low
-widmen	b1	high
+widmen	b1	medium
 wiedererkennen	a2	high
 wiederfinden	b1	high
 wiedergeben	b2	high
@@ -14182,7 +14185,7 @@ wohlfühlen	a2	high
 wohlhabend	b2	high
 wohnhaft	b2	low
 womit	b1	medium
-womöglich	b2	high
+womöglich	b1	medium
 wonach	b2	low
 woran	b1	high
 worauf	b2	low
@@ -14219,7 +14222,7 @@ wüst	b1	low
 x-beliebig	b2	low
 x-fach	b1	low
 x-mal	b1	high
-x-te	b2	low
+x-te	b1	low
 y-Achse	b2	low
 zaghaft	b2	low
 zahlenmäßig	b2	high
@@ -14285,7 +14288,7 @@ zulassen	b1	low
 zulegen	b1	low
 zuliebe	b2	high
 zulässig	b2	high
-zumeist	b1	high
+zumeist	b1	medium
 zumutbar	b2	low
 zumuten	b2	low
 zunichte	c1	low
@@ -14368,7 +14371,7 @@ zweimal	a1	high
 zweitbeste	b1	medium
 zweite	a1	high
 zweitrangig	b2	high
-zwiebeln	c1	low
+zwiebeln	b2	low
 zwischendurch	b1	high
 zwischenzeitlich	b2	low
 zwitschern	b1	medium
@@ -14400,7 +14403,7 @@ zünden	b1	high
 Äußeres	b2	medium
 Äußern	b2	low
 Äußerste	b1	high
-Äußerung	b1	high
+Äußerung	b1	medium
 Öde	b2	high
 Öffentlichkeitsarbeit	b2	high
 Öffnung	b1	high
@@ -14516,7 +14519,7 @@ zünden	b1	high
 überreichen	b1	low
 überschaubar	b2	high
 überschlagen	b1	low
-überschreiten	b2	high
+überschreiten	b2	medium
 überschätzen	b1	high
 übersehen	b1	low
 übersichtlich	b1	high
