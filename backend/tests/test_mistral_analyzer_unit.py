@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services import mistral_analyzer as ma
-
 
 SAMPLE_ESSAY = (
     "Einleitung:\nTechnologie ist wichtig.\n\n"

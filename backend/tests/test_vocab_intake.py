@@ -13,7 +13,6 @@ import json
 import sqlite3
 
 import pytest
-
 from app.vocab import funcwords, intake
 
 
@@ -38,7 +37,7 @@ def _vocab(path, lemmas=()):
         forms TEXT, translations TEXT, examples TEXT, synonyms TEXT,
         collocations TEXT, idioms TEXT, sources TEXT, by_source TEXT,
         zipf REAL, freq_rank INTEGER, level TEXT, enriched INTEGER DEFAULT 0)""")
-    con.executemany("INSERT INTO words(lemma) VALUES(?)", [(l,) for l in lemmas])
+    con.executemany("INSERT INTO words(lemma) VALUES(?)", [(lemma,) for lemma in lemmas])
     con.commit()
     con.close()
     return path

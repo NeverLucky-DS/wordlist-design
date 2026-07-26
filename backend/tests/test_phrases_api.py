@@ -12,9 +12,8 @@
 """
 from __future__ import annotations
 
-from sqlalchemy import select
-
 from app.db.models import Phrase
+from sqlalchemy import select
 
 
 def _phrase(

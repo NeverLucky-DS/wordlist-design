@@ -6,7 +6,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
+import requests
 from app.services import mistral_http
 
 
@@ -22,7 +22,9 @@ def _resp(status: int, content: dict | None = None, retry_after: str | None = No
         r.json.return_value = envelope
         r.raise_for_status.return_value = None
     else:
-        r.raise_for_status.side_effect = Exception(f"HTTP {status}")
+        # Тот же тип, что кидает настоящий requests — иначе тест на исчерпание
+        # ретраев ловит собственную заглушку и проходит при любом поведении кода.
+        r.raise_for_status.side_effect = requests.HTTPError(f"HTTP {status}")
     return r
 
 
@@ -164,7 +166,7 @@ def test_raises_after_exhausted_retries():
         patch.object(mistral_http.time, "sleep"),
     ):
         mistral_http._cooldowns.clear()
-        with pytest.raises(Exception):
+        with pytest.raises(requests.HTTPError, match="HTTP 429"):
             mistral_http.post_mistral_json(
                 [{"role": "user", "content": "hi"}], "key", "model", delays=[1, 2],
             )

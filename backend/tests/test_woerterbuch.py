@@ -13,9 +13,9 @@ import time
 from pathlib import Path
 
 import pytest
-
 from app.db.models import UserWordList, VocabCard, VocabCardTranslation
-from app.vocab import mirror, norm, search as search_mod
+from app.vocab import mirror, norm
+from app.vocab import search as search_mod
 
 
 # ── pure normalization ───────────────────────────────────────────────────────

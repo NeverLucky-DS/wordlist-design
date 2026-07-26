@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from app.vocab import funcwords, norm
-from app.vocab.topics import GENERAL_TOPIC, TOPICS, TOPIC_SLUGS
+from app.vocab.topics import GENERAL_TOPIC, TOPIC_SLUGS, TOPICS
 
 log = logging.getLogger(__name__)
 
@@ -1086,9 +1086,9 @@ def plan_repairs() -> dict:
                                    AND w.zipf IS NOT NULL)""").rowcount
         untagged = f"COALESCE(phase,'{BACKFILL}') = '{BACKFILL}'"
         victims = [
-            l for l in _case_collision_victims(con)
+            lemma for lemma in _case_collision_victims(con)
             if con.execute(
-                f"SELECT 1 FROM word_status WHERE lemma=? AND {untagged}", (l,)
+                f"SELECT 1 FROM word_status WHERE lemma=? AND {untagged}", (lemma,)
             ).fetchone()
         ]
         broken = [r[0] for r in con.execute(
@@ -1099,19 +1099,19 @@ def plan_repairs() -> dict:
         # tag is fresh, so nothing holds it yet, every victim is tagged once, and
         # the second run finds none — including the ones the model buries again.
         killed = [
-            l for l in _annihilated_victims(con)
+            lemma for lemma in _annihilated_victims(con)
             if con.execute(
                 f"SELECT 1 FROM word_status WHERE lemma=? "
-                f"AND COALESCE(phase,'') != '{PAIRS}'", (l,)).fetchone()
+                f"AND COALESCE(phase,'') != '{PAIRS}'", (lemma,)).fetchone()
         ]
         # Same own-tag self-limit as PAIRS, and for the same reason: these cards
         # were written by earlier passes that already tagged them, so `untagged`
         # would skip every one of them.
         crammed = [
-            l for l in _crammed_victims(con)
+            lemma for lemma in _crammed_victims(con)
             if con.execute(
                 f"SELECT 1 FROM word_status WHERE lemma=? "
-                f"AND COALESCE(phase,'') != '{SPLIT}'", (l,)).fetchone()
+                f"AND COALESCE(phase,'') != '{SPLIT}'", (lemma,)).fetchone()
         ]
         con.commit()
         # Which cards are word forms rather than headwords. Deterministic like

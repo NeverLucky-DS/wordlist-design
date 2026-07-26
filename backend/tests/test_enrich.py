@@ -5,7 +5,6 @@ from __future__ import annotations
 import sqlite3
 
 import pytest
-
 from app.vocab import enrich
 
 _COLS = ("lemma", "article", "pos", "forms", "translations", "examples",

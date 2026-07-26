@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Shared Mistral HTTP helper — one place for retries, 429 handling, JSON parsing.
 
 Used by essay analysis and vocab enrichment. Stability features:
@@ -18,13 +16,14 @@ Used by essay analysis and vocab enrichment. Stability features:
 Sync (`requests`) by design — wrapped in `asyncio.to_thread` by callers,
 because Python 3.9 / LibreSSL builds break httpx async TLS.
 """
+from __future__ import annotations
 
 import hashlib
 import json
 import logging
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import requests as _requests
 

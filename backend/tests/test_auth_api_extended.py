@@ -121,9 +121,8 @@ async def test_logout_clears_session(guest_client):
 
 
 async def test_phrase_known_requires_auth(guest_client, db_session):
-    from sqlalchemy import select
-
     from app.db.models import Phrase
+    from sqlalchemy import select
 
     await seed_words_and_phrases(db_session)
     # id берётся из БД, а не из ручки: `GET /api/phrases` удалён 2026-07-26

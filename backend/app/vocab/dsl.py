@@ -12,10 +12,9 @@ from __future__ import annotations
 
 import gzip
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
-
 
 # --- low-level: open a .dsl / .dsl.dz as decoded text lines ------------------
 

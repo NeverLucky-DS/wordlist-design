@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import atexit
+import hashlib
 import os
 import sys
-import hashlib
 from collections.abc import AsyncGenerator, Generator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -50,8 +50,11 @@ os.environ["MISTRAL_KEY_SECRET"] = "test-only-secret-not-used-anywhere-real"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.models import Base  # noqa: E402
-from app.db.models import AuthSession, User  # noqa: E402
+from app.db.models import (  # noqa: E402
+    AuthSession,
+    Base,  # noqa: E402
+    User,
+)
 from app.db.session import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -95,7 +98,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         AuthSession(
             user_id=user.id,
             token_hash=hashlib.sha256(token.encode()).hexdigest(),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+            expires_at=datetime.now(UTC) + timedelta(days=1),
         )
     )
     await db_session.commit()
@@ -209,7 +212,7 @@ async def pg_client(pg_session: AsyncSession) -> AsyncGenerator[AsyncClient, Non
         AuthSession(
             user_id=user.id,
             token_hash=hashlib.sha256(token.encode()).hexdigest(),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+            expires_at=datetime.now(UTC) + timedelta(days=1),
         )
     )
     await pg_session.commit()

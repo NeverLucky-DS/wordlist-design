@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import html
 import re
-from typing import Iterator
+from collections.abc import Iterator
 
 from app.vocab import dsl
 from app.vocab.sources import Source
@@ -75,19 +75,20 @@ def _iter_dsl(source: Source) -> Iterator[tuple[str, dict]]:
                 "pos": p.pos,
             }
         elif source.role == "synonyms":
-            syn = [dsl.strip_markup(l).lstrip("•* ")
-                   for l in entry.body_lines if "•" in l]
+            syn = [dsl.strip_markup(line).lstrip("•* ")
+                   for line in entry.body_lines if "•" in line]
             if syn:
                 yield head, {"synonyms": syn[:15]}
         elif source.role == "collocations":
             key = _last_token(head)
             if key:
-                meaning = " ".join(dsl.strip_markup(l) for l in entry.body_lines)
+                meaning = " ".join(dsl.strip_markup(line) for line in entry.body_lines)
                 yield key, {"collocations": [f"{head} — {meaning}"[:200]]}
 
 
 def _iter_pyglossary(source: Source) -> Iterator[tuple[str, dict]]:
     import logging
+
     from pyglossary import Glossary
     Glossary.init()
     logging.getLogger("pyglossary").setLevel(logging.ERROR)

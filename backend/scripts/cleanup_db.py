@@ -19,10 +19,9 @@ import os
 import sys
 from collections import defaultdict
 
+from app.db.models import Phrase, Word, WordTopic
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-from app.db.models import Phrase, Word, WordTopic
 
 MERGES = {
     "migrationspolitik": "migration",

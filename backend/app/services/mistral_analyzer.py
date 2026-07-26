@@ -6,10 +6,8 @@ import logging
 import re
 import time
 
-
 from app.config import settings
 from app.services.mistral_http import post_mistral_json
-
 
 logger = logging.getLogger(__name__)
 

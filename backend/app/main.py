@@ -6,11 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import auth, essays, health, phrases
 from app.auth import cleanup_expired_sessions
-from app.vocab.api import router as vocab_router
-from app.vocab.dict_api import router as woerterbuch_router
 from app.config import settings
 from app.db.init_data import ensure_seed_data
 from app.db.session import SessionLocal
+from app.vocab.api import router as vocab_router
+from app.vocab.dict_api import router as woerterbuch_router
 
 
 def _configure_app_logging() -> None:

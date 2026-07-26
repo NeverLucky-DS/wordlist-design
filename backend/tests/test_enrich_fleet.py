@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.db.models import User
 
 ADMIN_EMAIL = "regular@example.com"   # the non_admin_client fixture's account
@@ -27,9 +26,8 @@ def _as_admin(monkeypatch):
 
 
 async def _attach_key(db_session, email: str, key: str = "sk-test-key") -> User:
-    from sqlalchemy import select
-
     from app.services import crypto
+    from sqlalchemy import select
 
     user = (await db_session.execute(
         select(User).where(User.email == email))).scalars().one()

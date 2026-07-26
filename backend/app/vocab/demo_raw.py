@@ -34,7 +34,7 @@ def build_payload(word: str, hits: dict[str, tuple[Source, dsl.RawEntry]]) -> di
     synonyms_de: list[str] = []
     collocations: list[str] = []
 
-    for key, (src, entry) in hits.items():
+    for _key, (src, entry) in hits.items():
         p = dsl.parse_entry(entry)
         if src.role == "general":
             article = article or p.article
@@ -51,10 +51,10 @@ def build_payload(word: str, hits: dict[str, tuple[Source, dsl.RawEntry]]) -> di
                 if e not in examples:
                     examples.append(e)
         elif src.role == "synonyms":
-            synonyms_de += [dsl.strip_markup(l).lstrip("•* ")
-                            for l in entry.body_lines if "•" in l]
+            synonyms_de += [dsl.strip_markup(line).lstrip("•* ")
+                            for line in entry.body_lines if "•" in line]
         elif src.role == "collocations":
-            collocations += [dsl.strip_markup(l) for l in entry.body_lines]
+            collocations += [dsl.strip_markup(line) for line in entry.body_lines]
 
     return {
         "word": word,

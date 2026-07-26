@@ -23,17 +23,22 @@ def _c(con, where=""):
 
 def stats(con) -> None:
     total = _c(con)
-    print("╭─ vocab.db — %d lemmas ─────────────────────────" % total)
-    levels = " ".join(
-        "%s=%d" % (lvl, _c(con, "WHERE level='%s'" % lvl))
-        for lvl in ("a1", "a2", "b1", "b2", "c1", "c2", "unlisted"))
-    print("│ levels:  " + levels)
-    print("│ obligatory (Goethe A1–B1): %d"
-          % _c(con, "WHERE level IN ('a1','a2','b1')"))
-    print("│ fields:  article=%d  examples=%d  synonyms=%d  idioms=%d  collocations=%d" % (
-        _c(con, "WHERE article IS NOT NULL"), _c(con, "WHERE examples!='[]'"),
-        _c(con, "WHERE synonyms!='[]'"), _c(con, "WHERE idioms!='[]'"),
-        _c(con, "WHERE collocations!='[]'")))
+    print(f"╭─ vocab.db — {total} lemmas ─────────────────────────")
+    counts = {
+        lvl: _c(con, f"WHERE level={lvl!r}")
+        for lvl in ("a1", "a2", "b1", "b2", "c1", "c2", "unlisted")
+    }
+    print("│ levels:  " + " ".join(f"{lvl}={n}" for lvl, n in counts.items()))
+    obligatory = _c(con, "WHERE level IN ('a1','a2','b1')")
+    print(f"│ obligatory (Goethe A1–B1): {obligatory}")
+    fields = {
+        "article": _c(con, "WHERE article IS NOT NULL"),
+        "examples": _c(con, "WHERE examples!='[]'"),
+        "synonyms": _c(con, "WHERE synonyms!='[]'"),
+        "idioms": _c(con, "WHERE idioms!='[]'"),
+        "collocations": _c(con, "WHERE collocations!='[]'"),
+    }
+    print("│ fields:  " + "  ".join(f"{k}={v}" for k, v in fields.items()))
     print("╰────────────────────────────────────────────────────")
 
 
@@ -43,7 +48,7 @@ def card(con, lemma: str) -> None:
     if not row:
         print(f"\n'{lemma}' — not in coverage")
         return
-    r = dict(zip([d[0] for d in cur.description], row))
+    r = dict(zip([d[0] for d in cur.description], row, strict=True))
     art = (r["article"] + " ") if r["article"] else ""
     print(f"\n┏━ {art}{r['lemma']}  ·  {r['level']}  ·  rank #{r['freq_rank']}  ·  zipf {r['zipf']:.2f}")
     pos = ", ".join(json.loads(r["pos"])) or "—"

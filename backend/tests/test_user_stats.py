@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from app.services.user_stats_service import LEARNED_SCORE_THRESHOLD, next_streak, record_activity
 from app.db.models import User, UserWordProgress
+from app.services.user_stats_service import LEARNED_SCORE_THRESHOLD, next_streak, record_activity
 
 
 def test_next_streak_first_day():

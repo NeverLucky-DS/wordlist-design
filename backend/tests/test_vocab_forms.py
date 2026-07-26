@@ -12,7 +12,6 @@ import json
 import sqlite3
 
 import pytest
-
 from app.vocab import enrich, forms
 
 
@@ -20,7 +19,7 @@ def _make_vocab(path, entries):
     con = sqlite3.connect(path)
     con.execute("CREATE TABLE words(lemma TEXT UNIQUE, translations TEXT)")
     con.executemany("INSERT INTO words(lemma,translations) VALUES(?,?)",
-                    [(l, json.dumps(t)) for l, t in entries])
+                    [(lemma, json.dumps(t)) for lemma, t in entries])
     con.commit()
     con.close()
 

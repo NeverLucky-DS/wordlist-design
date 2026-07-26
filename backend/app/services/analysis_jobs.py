@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import update
 
@@ -17,7 +17,7 @@ _tasks: dict[int, asyncio.Task] = {}
 
 def _now() -> datetime:
     # EssayAnalysis timestamps are naive UTC (DateTime without timezone=True).
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def start_analysis_job(analysis_id: int) -> None:

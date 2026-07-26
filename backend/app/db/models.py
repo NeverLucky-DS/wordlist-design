@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Date,
@@ -12,7 +12,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -43,13 +42,13 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     # Per-user Mistral API key, encrypted at rest (Fernet). NULL = not attached.
     # Used by the server-side vocab enrichment worker; never returned to clients.
-    mistral_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    mistral_key_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    sessions: Mapped[list["AuthSession"]] = relationship(
+    sessions: Mapped[list[AuthSession]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
-    essays: Mapped[list["Essay"]] = relationship(
+    essays: Mapped[list[Essay]] = relationship(
         back_populates="user", passive_deletes=True
     )
 
@@ -66,7 +65,7 @@ class AuthSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="sessions")
+    user: Mapped[User] = relationship(back_populates="sessions")
 
 
 class GuestSession(Base):
@@ -83,7 +82,7 @@ class GuestSession(Base):
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    essays: Mapped[list["Essay"]] = relationship(
+    essays: Mapped[list[Essay]] = relationship(
         back_populates="guest_session", passive_deletes=True
     )
 
@@ -101,10 +100,10 @@ class Essay(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[Optional[int]] = mapped_column(
+    user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
-    guest_session_id: Mapped[Optional[int]] = mapped_column(
+    guest_session_id: Mapped[int | None] = mapped_column(
         ForeignKey("guest_sessions.id", ondelete="CASCADE"), nullable=True
     )
     title: Mapped[str] = mapped_column(String(255), default="")
@@ -119,14 +118,14 @@ class Essay(Base):
         onupdate=func.now(),
     )
 
-    user: Mapped[Optional["User"]] = relationship(back_populates="essays")
-    guest_session: Mapped[Optional["GuestSession"]] = relationship(
+    user: Mapped[User | None] = relationship(back_populates="essays")
+    guest_session: Mapped[GuestSession | None] = relationship(
         back_populates="essays"
     )
-    versions: Mapped[list["EssayVersion"]] = relationship(
+    versions: Mapped[list[EssayVersion]] = relationship(
         back_populates="essay", cascade="all, delete-orphan"
     )
-    analyses: Mapped[list["EssayAnalysis"]] = relationship(
+    analyses: Mapped[list[EssayAnalysis]] = relationship(
         back_populates="essay", cascade="all, delete-orphan"
     )
 
@@ -143,8 +142,8 @@ class EssayVersion(Base):
     reason: Mapped[str] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    essay: Mapped["Essay"] = relationship(back_populates="versions")
-    analyses: Mapped[list["EssayAnalysis"]] = relationship(back_populates="version")
+    essay: Mapped[Essay] = relationship(back_populates="versions")
+    analyses: Mapped[list[EssayAnalysis]] = relationship(back_populates="version")
 
 
 class EssayAnalysis(Base):
@@ -155,31 +154,31 @@ class EssayAnalysis(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     essay_id: Mapped[int] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"))
-    version_id: Mapped[Optional[int]] = mapped_column(
+    version_id: Mapped[int | None] = mapped_column(
         ForeignKey("essay_versions.id", ondelete="CASCADE"), nullable=True
     )
     scope: Mapped[str] = mapped_column(String(16), default="full")
-    part: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    part: Mapped[str | None] = mapped_column(String(32), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="queued")
     progress_step: Mapped[str] = mapped_column(String(32), default="queued")
     cancellation_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     errors_json: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
     warnings_json: Mapped[list] = mapped_column(JSON_TYPE, default=list)
-    overall_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    grade: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
-    text_snapshot: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    overall_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    grade: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    text_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     part_reports_json: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
     final_summary_json: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
-    model: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     schema_version: Mapped[int] = mapped_column(Integer, default=1)
     prompt_version: Mapped[str] = mapped_column(String(32), default="2026-07-13")
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    started_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    finished_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    essay: Mapped["Essay"] = relationship(back_populates="analyses")
-    version: Mapped[Optional["EssayVersion"]] = relationship(back_populates="analyses")
+    essay: Mapped[Essay] = relationship(back_populates="analyses")
+    version: Mapped[EssayVersion | None] = relationship(back_populates="analyses")
 
 
 class Word(Base):
@@ -187,16 +186,16 @@ class Word(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     german: Mapped[str] = mapped_column(String(255))
-    article: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    article: Mapped[str | None] = mapped_column(String(16), nullable=True)
     word_type: Mapped[str] = mapped_column(String(32))
     translation_ru: Mapped[str] = mapped_column(Text)
     level: Mapped[str] = mapped_column(String(8), default="B1")
-    grammar_data: Mapped[Optional[dict]] = mapped_column(JSON_TYPE, nullable=True)
+    grammar_data: Mapped[dict | None] = mapped_column(JSON_TYPE, nullable=True)
     examples: Mapped[list] = mapped_column(JSON_TYPE, default=list)
     source: Mapped[str] = mapped_column(String(128), default="seed_csv")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    topics: Mapped[list["WordTopic"]] = relationship(back_populates="word")
+    topics: Mapped[list[WordTopic]] = relationship(back_populates="word")
 
 
 class WordTopic(Base):
@@ -207,7 +206,7 @@ class WordTopic(Base):
     word_id: Mapped[int] = mapped_column(ForeignKey("words.id", ondelete="CASCADE"))
     topic: Mapped[str] = mapped_column(String(64))
 
-    word: Mapped["Word"] = relationship(back_populates="topics")
+    word: Mapped[Word] = relationship(back_populates="topics")
 
 
 class UserWordProgress(Base):
@@ -218,7 +217,7 @@ class UserWordProgress(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     word_id: Mapped[int] = mapped_column(ForeignKey("words.id", ondelete="CASCADE"))
     score: Mapped[int] = mapped_column(Integer, default=0)
-    last_seen: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    last_seen: Mapped[datetime | None] = mapped_column(nullable=True)
     times_correct: Mapped[int] = mapped_column(Integer, default=0)
     times_wrong: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -231,7 +230,7 @@ class Phrase(Base):
     text_de: Mapped[str] = mapped_column(Text)
     translation_ru: Mapped[str] = mapped_column(Text, default="")
     essay_part: Mapped[str] = mapped_column(String(64), default="")
-    topic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(64), nullable=True)
     level: Mapped[str] = mapped_column(String(8), default="B1")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
@@ -255,7 +254,7 @@ class UserStats(Base):
         ForeignKey("users.id", ondelete="CASCADE"), unique=True
     )
     streak_current: Mapped[int] = mapped_column(Integer, default=0)
-    streak_last_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    streak_last_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     total_words_learned: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
@@ -311,19 +310,19 @@ class VocabCard(Base):
     level: Mapped[str] = mapped_column(String(16), default="unlisted")
     # Display band, clamped to the B1–C1 brush set (see LEVEL_BAND).
     band: Mapped[str] = mapped_column(String(4), default="C1")
-    topic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(64), nullable=True)
     pos: Mapped[str] = mapped_column(String(16), default="other")
-    article: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    article: Mapped[str | None] = mapped_column(String(8), nullable=True)
     ru: Mapped[str] = mapped_column(Text, default="")
     confidence: Mapped[str] = mapped_column(String(8), default="high")
-    register: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    register: Mapped[str | None] = mapped_column(String(32), nullable=True)
     data: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
     # Zipf frequency (wordfreq, ~1–7) carried over from vocab.db. Search needs a
     # tie-break: every exact hit for "быстрый" scores identically, so the order
     # fell to lemma length and put `schnell` — the 354th most common word in
     # German — BELOW fix, rasch, prompt, rapide and zügig. NULL sorts last, which
     # is what we want for the few cards with no source row (renamed spellings).
-    zipf: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    zipf: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Set when the source dictionary listed this entry as a form rather than a
     # headword (see vocab/forms.py): `form_kind` is what kind — inflection,
     # compound, abbrev, variant, capitalised — and `form_of` the base lemma when
@@ -333,8 +332,8 @@ class VocabCard(Base):
     # has to, because `wordfreq` folds case and counts surface forms, so exactly
     # these entries carry inflated frequency: `Schnell` wears the zipf of
     # `schnell`, and ranking reads zipf immediately after the match score.
-    form_kind: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
-    form_of: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    form_kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    form_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Full inflection paradigm from a Wiktionary dump (see vocab/morph.py): the
     # six present-tense persons, imperative and Konjunktiv II for verbs, all four
     # cases in both numbers for nouns. The model-written `data["grammar"]` keeps
@@ -348,7 +347,7 @@ class VocabCard(Base):
     # NOT NULL` counted all 76 332 cards as having a paradigm. Reads happened to
     # survive (JSON null decodes back to None), which is exactly what makes it
     # worth pinning down — it lies to every query rather than to the API.
-    morphology: Mapped[Optional[dict]] = mapped_column(
+    morphology: Mapped[dict | None] = mapped_column(
         JSON(none_as_null=True).with_variant(JSONB(none_as_null=True), "postgresql"),
         nullable=True,
     )
@@ -356,7 +355,7 @@ class VocabCard(Base):
     source_created_at: Mapped[float] = mapped_column(Float, default=0.0, index=True)
     synced_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    translations: Mapped[list["VocabCardTranslation"]] = relationship(
+    translations: Mapped[list[VocabCardTranslation]] = relationship(
         back_populates="card", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -386,7 +385,7 @@ class VocabCardTranslation(Base):
     ru: Mapped[str] = mapped_column(String(255))
     ru_norm: Mapped[str] = mapped_column(String(255))  # GIN trigram index in migration
 
-    card: Mapped["VocabCard"] = relationship(back_populates="translations")
+    card: Mapped[VocabCard] = relationship(back_populates="translations")
 
 
 class UserWordList(Base):
@@ -414,7 +413,7 @@ class UserWordList(Base):
     level: Mapped[str] = mapped_column(String(16), default="unlisted")
     band: Mapped[str] = mapped_column(String(4), default="C1")
     pos: Mapped[str] = mapped_column(String(16), default="other")
-    article: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
-    topic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    article: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="learning")
     added_at: Mapped[datetime] = mapped_column(server_default=func.now())

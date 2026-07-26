@@ -30,6 +30,8 @@ import os
 
 import pytest
 import schemathesis
+from app.db.models import Base
+from app.main import app
 from hypothesis import HealthCheck, settings
 from schemathesis.checks import not_a_server_error
 from schemathesis.specs.openapi.checks import (
@@ -38,9 +40,6 @@ from schemathesis.specs.openapi.checks import (
     status_code_conformance,
 )
 from sqlalchemy.ext.asyncio import create_async_engine
-
-from app.db.models import Base
-from app.main import app
 
 # Сколько запросов на ручку. 20 — компромисс: набор ручек невелик, а весь
 # смысл в том, чтобы прогон помещался в обычный `make test`, иначе его начнут

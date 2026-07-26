@@ -19,7 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import Principal, get_optional_user, require_admin, require_user
 from app.db.models import UserWordList, VocabCard
 from app.db.session import get_db
-from app.vocab import mirror, norm, search as search_mod
+from app.vocab import mirror, norm
+from app.vocab import search as search_mod
 
 router = APIRouter(prefix="/api/vocab", tags=["woerterbuch"])
 

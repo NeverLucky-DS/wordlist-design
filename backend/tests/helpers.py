@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db.models import Phrase, Word, WordTopic
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def essay_payload(**overrides) -> dict:

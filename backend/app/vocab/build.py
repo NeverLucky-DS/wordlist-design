@@ -159,11 +159,11 @@ def run_build(min_zipf: float = 0.0, db_path: Path = DB_PATH, progress=None) -> 
 
     def c(where=""):
         return con.execute("SELECT COUNT(*) FROM words " + where).fetchone()[0]
+    obligatory = ",".join(f"'{lvl}'" for lvl in goethe.OBLIGATORY)
     summary = {
         "total": c(), "secs": round(time.time() - t0, 1),
-        "levels": {lvl: c("WHERE level='%s'" % lvl) for lvl in goethe.ALL_LEVELS},
-        "obligatory": c("WHERE level IN (%s)"
-                        % ",".join("'%s'" % l for l in goethe.OBLIGATORY)),
+        "levels": {lvl: c(f"WHERE level='{lvl}'") for lvl in goethe.ALL_LEVELS},
+        "obligatory": c(f"WHERE level IN ({obligatory})"),
         "with_article": c("WHERE article IS NOT NULL"),
         "with_examples": c("WHERE examples!='[]'"),
         "with_synonyms": c("WHERE synonyms!='[]'"),
@@ -178,8 +178,8 @@ def main() -> None:
     def show(e):
         print("  " + json.dumps(e, ensure_ascii=False)[:160])
     summary = run_build(float(os.environ.get("MIN_ZIPF", "0")), progress=show)
-    print("\n=== STORED %d in %.1fs | obligatory=%d ===" % (
-        summary["total"], summary["secs"], summary["obligatory"]))
+    print(f"\n=== STORED {summary['total']} in {summary['secs']:.1f}s "
+          f"| obligatory={summary['obligatory']} ===")
 
 
 if __name__ == "__main__":

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from sqlalchemy import select
+from datetime import UTC, datetime
 
 from app.auth import Principal
 from app.db.models import EssayAnalysis, User
 from app.services import analysis_jobs
 from app.services.essays_repo import create_analysis_run, create_essay, create_version
+from sqlalchemy import select
+
 from tests.helpers import essay_payload
 
 
@@ -63,7 +63,7 @@ async def test_mark_interrupted_leaves_completed_alone(db_session, monkeypatch):
     version = await create_version(db_session, essay, reason="analysis")
     done = await create_analysis_run(db_session, essay=essay, version=version, part=None)
     done.status = "completed"
-    done.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    done.finished_at = datetime.now(UTC).replace(tzinfo=None)
     await db_session.commit()
 
     await analysis_jobs.mark_interrupted_analyses()
