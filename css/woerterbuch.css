@@ -92,6 +92,16 @@ button{font-family:inherit}
 .wb-est span{font-size:11px;color:var(--soft)}
 .wb-freq{display:inline-flex;align-items:center;gap:6px}
 .wb-freq b{font-size:11.5px;font-weight:500;color:var(--ink-soft)}
+/* Register and topic — unboxed for the same reason as `.wb-est`. Only
+   `umgangssprachlich` takes the accent ink: of the three it is the one that
+   costs marks in an exam essay, so it is the one worth interrupting for.
+   `fachsprachlich` (23 366 cards) stays quiet — at that volume an accent on it
+   would repaint a quarter of the dictionary and stop meaning anything.
+   12px, not the 10–11px this line used to reach for: these are read, not
+   furniture, and the page floor is being raised, not lowered. */
+.wb-reg{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--soft)}
+.wb-reg.is-umgangssprachlich{color:var(--rose-ink)}
+.wb-topic{font-size:12px;color:var(--soft)}
 
 .wb-word{font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;font-weight:600;
   line-height:1.04;letter-spacing:-.4px;color:var(--ink);display:flex;align-items:baseline;

@@ -76,6 +76,13 @@ const POS_RU = { noun: 'существительное', verb: 'глагол', a
    never be readable as one: measured on the 4 023 cards that do carry a Goethe
    level, zipf cannot separate B1 from B2 at all (medians 4.16 vs 4.15). */
 const FREQ_RU = { haeufig: 'частое', mittel: 'средней частоты', selten: 'редкое' };
+/* Register was reaching the browser in `card_out` and being dropped on the
+   floor: measured 2026-07-26, 30 446 of 92 090 cards (33.1%) carry a
+   non-neutral register — fachsprachlich 23 366, umgangssprachlich 4 365,
+   gehoben 2 715 — and `register` appeared ZERO times in this file.
+   `neutral` is deliberately absent from the map: it is the default, and a
+   label that says "nothing special about this word" is noise. */
+const REGISTER_RU = { umgangssprachlich: 'разг.', fachsprachlich: 'спец.', gehoben: 'высок.' };
 
 /* ---------------------------------------------------------------------
    The grammar model — one layer above the drawing, carried over unchanged
@@ -148,8 +155,13 @@ function grammarModel(card) {
         .filter(k => praesens[k])
         .map(k => ({ person: PERSONS[k], form: praesens[k] })) : null,
       stemChange: praesens ? stemChanges(card.lemma, praesens) : false,
+      // Both imperatives, not one. `imperativ_ihr` sits in 8 205 of 9 358 verb
+      // paradigms (87.6%) and was never read, so the block taught "Imperativ:
+      // gib!" as if the plural did not exist. Once there are two forms the bare
+      // label stops being true, hence "du"/"ihr" in the caption.
       extra: [
-        m && m.imperativ_du ? { lab: 'Imperativ', val: m.imperativ_du + '!' } : null,
+        m && m.imperativ_du ? { lab: 'Imperativ du', val: m.imperativ_du + '!' } : null,
+        m && m.imperativ_ihr ? { lab: 'Imperativ ihr', val: m.imperativ_ihr + '!' } : null,
         m && m.konjunktiv2 ? { lab: 'Konjunktiv II', val: m.konjunktiv2 } : null,
       ].filter(Boolean),
       informative: !!praesens,
@@ -265,6 +277,18 @@ function metaLine(card) {
     bits.push(`<span class="wb-freq" title="Частотность по корпусу. Это НЕ уровень CEFR — по частоте B1 и B2 не различаются.">
       ${slot('freq-' + card.freq, 58, 14, 'Häufigkeitsskala, 3 Zustände')}
       <b>${esc(FREQ_RU[card.freq] || '')}</b></span>`);
+  }
+  /* Register and topic are the last two facts `card_out` was already sending
+     and nobody drew. Both stay UNBOXED: in this page a box means "quoted from
+     a published list", and these are the model's reading of the word, same
+     standing as the frequency band above. */
+  const reg = REGISTER_RU[card.register];
+  if (reg) {
+    bits.push(`<span class="wb-reg is-${esc(card.register)}"
+      title="Регистр — где это слово уместно. Оценка модели, а не список.">${reg}</span>`);
+  }
+  if (card.topic_de) {
+    bits.push(`<span class="wb-topic">${esc(card.topic_de)}</span>`);
   }
   return bits.join('');
 }
