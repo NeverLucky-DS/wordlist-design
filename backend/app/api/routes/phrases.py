@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.params import DbId
 from app.auth import Principal, get_principal, require_user
 from app.db.session import get_db
 from app.schemas import PhraseKnownUpdate, PhraseOut
@@ -46,7 +47,7 @@ async def list_templates(
 
 @router.post("/{phrase_id}/known")
 async def set_known(
-    phrase_id: int,
+    phrase_id: DbId,
     body: PhraseKnownUpdate,
     principal: Principal = Depends(require_user),
     db: AsyncSession = Depends(get_db),

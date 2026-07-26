@@ -48,3 +48,16 @@ def decrypt(token: str) -> str | None:
         return _fernet().decrypt(token.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError, KeyStorageDisabled):
         return None
+
+
+def has_usable_key(token: str | None) -> bool:
+    """Есть ли ключ, которым РЕАЛЬНО можно воспользоваться.
+
+    Не то же самое, что `token is not None`. `decrypt` намеренно возвращает
+    None после ротации `MISTRAL_KEY_SECRET` — колонка при этом остаётся
+    заполненной. Оба потребителя (`/api/auth/me` и панель флота) раньше
+    проверяли именно NOT NULL, поэтому после смены секрета интерфейс всех
+    17 аккаунтов продолжал показывать «ключ привязан», а первый же запуск
+    воркера отвечал `400 no Mistral key attached`.
+    """
+    return bool(token) and decrypt(token) is not None

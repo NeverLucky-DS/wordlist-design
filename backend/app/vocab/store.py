@@ -15,10 +15,27 @@ _JSON_FIELDS = ("pos", "forms", "translations", "examples",
 
 
 def _conn(db_path: Path) -> sqlite3.Connection | None:
+    """Соединение с `vocab.db` — или None, если базы фактически нет.
+
+    «Фактически» — это не только отсутствие файла. Рядом с боевыми БД в
+    `app/vocab/vocab_data/` лежат пустышки `app/vocab/vocab.db`, и путь по
+    умолчанию (вне контейнера `VOCAB_DB` не задан никогда) резолвится именно в
+    них — ловушка, уже описанная в CRITICAL-LINKS §6a. Файл при этом
+    существует, а таблицы `words` в нём нет, и `stats`/`search`/`get` роняли
+    наружу `sqlite3.OperationalError: no such table: words` — то есть 500 там,
+    где задумано `{"exists": false}` / `[]` / `None`. Воспроизведено
+    Schemathesis 2026-07-26 на `/api/vocab/words`, `/word/{lemma}`, `/stats`.
+    """
     if not Path(db_path).exists():
         return None
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
+    has_words = con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='words'"
+    ).fetchone()
+    if not has_words:
+        con.close()
+        return None
     return con
 
 

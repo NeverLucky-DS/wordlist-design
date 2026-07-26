@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import os
 import sys
 import hashlib
@@ -13,8 +14,28 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-TEST_DB_PATH = BACKEND_ROOT / "data" / "test.db"
+
+# ── прогон изолирован от соседнего прогона ───────────────────────────────────
+# Фикстуры ниже делают drop_all/create_all по ФИКСИРОВАННОМУ адресу: один файл
+# `backend/data/test.db` и одна база `wordlist_test`. Пока прогон на машине
+# один, это работает. Два одновременных (два агента, второе окно рядом) бьют
+# друг другу по живым транзакциям, и симптом неотличим от настоящей поломки:
+# случайные `F` без причины, а если у соседа в ветке есть таблица, которой нет
+# у тебя, — ещё и `cannot drop table vocab_cards because other objects depend
+# on it`. Напоролись 2026-07-26: семь ошибок в test_woerterbuch.py, ни одна не
+# про код. PID в имени разводит прогоны и стоит одну строку.
+_RUN = os.getpid()
+TEST_DB_PATH = BACKEND_ROOT / "data" / f"test-{_RUN}.db"
 TEST_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+
+@atexit.register
+def _drop_run_sqlite() -> None:
+    """Файл прогона живёт ровно столько, сколько прогон."""
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(TEST_DB_PATH) + suffix).unlink(missing_ok=True)
+
+
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 os.environ["MISTRAL_API_KEY"] = ""
 os.environ["CORS_ORIGINS"] = "http://127.0.0.1:8753"
@@ -133,23 +154,35 @@ if not PG_TEST_URL.rsplit("/", 1)[-1].split("?")[0].endswith("_test"):
     )
 
 
+# Своя схема на процесс — та же изоляция, что и PID в имени sqlite-файла, но
+# для Postgres. Таблицы создаются в ней (она первая в search_path), а `public`
+# остаётся видимой ради `pg_trgm`: `similarity()` и `gin_trgm_ops` живут там.
+PG_SCHEMA = f"run_{_RUN}"
+
+
 @pytest_asyncio.fixture
 async def pg_engine() -> AsyncGenerator:
     from sqlalchemy import text as _text
 
-    engine = create_async_engine(PG_TEST_URL, echo=False)
+    engine = create_async_engine(
+        PG_TEST_URL,
+        echo=False,
+        connect_args={"server_settings": {"search_path": f"{PG_SCHEMA},public"}},
+    )
     try:
         async with engine.begin() as conn:
-            await conn.execute(_text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            await conn.execute(_text("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA public"))
+            await conn.execute(_text(f'CREATE SCHEMA IF NOT EXISTS "{PG_SCHEMA}"'))
     except Exception as exc:  # noqa: BLE001 — no Postgres here; that's allowed
         await engine.dispose()
         pytest.skip(f"Postgres unavailable at {PG_TEST_URL}: {exc}")
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
+    # DROP SCHEMA CASCADE, а не drop_all: сносит и то, чего нет в моделях этой
+    # ветки — иначе чужой остаток блокирует уборку своим внешним ключом.
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(_text(f'DROP SCHEMA IF EXISTS "{PG_SCHEMA}" CASCADE'))
     await engine.dispose()
 
 

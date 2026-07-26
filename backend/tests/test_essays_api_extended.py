@@ -174,3 +174,26 @@ async def test_patch_single_field(client, field):
     patched = await client.patch(f"/api/essays/{essay_id}", json={field: new_value})
     assert patched.status_code == 200
     assert patched.json()[field] == new_value
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("GET", "/api/essays/9223372036854775808"),
+        ("GET", "/api/essays/9223372036854775808/versions"),
+        ("POST", "/api/essays/1/versions/9223372036854775808/restore"),
+        ("POST", "/api/essays/9223372036854775808/analyses"),
+    ],
+)
+async def test_huge_id_is_rejected_by_validation_not_by_the_db_driver(client, method, path):
+    """Число в пути больше int64 роняло драйвер БД — 500 вместо 4xx.
+
+    `int too large to convert` на sqlite, `NumericValueOutOfRange` на Postgres,
+    и задевало это КАЖДУЮ ручку с числовым параметром пути. Нашёл Schemathesis
+    2026-07-26. Чинится не перехватом исключения, а границей в самом типе
+    (`app/api/params.py`): PK в моделях — Postgres `integer`, всё что больше не
+    может быть существующей строкой ни при каком раскладе.
+    """
+    res = await (client.get(path) if method == "GET" else client.post(path))
+    assert res.status_code != 500, res.text
+    assert res.status_code == 422, res.text

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.params import DbId
 from app.auth import Principal, get_principal
 from app.db.models import EssayAnalysis
 from app.db.session import get_db
@@ -104,7 +105,7 @@ async def list_essays(
 
 @router.get("/{essay_id}", response_model=EssayOut)
 async def get_essay(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -113,7 +114,7 @@ async def get_essay(
 
 @router.patch("/{essay_id}", response_model=EssayOut)
 async def update_essay(
-    essay_id: int,
+    essay_id: DbId,
     body: EssayUpdate,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
@@ -128,7 +129,7 @@ async def update_essay(
 
 @router.delete("/{essay_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_essay(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -142,7 +143,7 @@ async def delete_essay(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_version(
-    essay_id: int,
+    essay_id: DbId,
     body: EssayVersionCreate,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
@@ -154,7 +155,7 @@ async def create_version(
 
 @router.get("/{essay_id}/versions", response_model=list[EssayVersionOut])
 async def list_versions(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -169,8 +170,8 @@ async def list_versions(
     response_model=EssayOut,
 )
 async def restore_version(
-    essay_id: int,
-    version_id: int,
+    essay_id: DbId,
+    version_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -186,7 +187,7 @@ async def restore_version(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def start_analysis(
-    essay_id: int,
+    essay_id: DbId,
     body: AnalysisStartIn,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
@@ -211,7 +212,7 @@ async def start_analysis(
 
 @router.get("/{essay_id}/analyses", response_model=list[AnalysisRunOut])
 async def list_analyses(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -225,7 +226,7 @@ async def list_analyses(
     response_model=AnalysisRunOut | None,
 )
 async def active_analysis(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -236,8 +237,8 @@ async def active_analysis(
 
 @router.get("/{essay_id}/analyses/{analysis_id}", response_model=AnalysisRunOut)
 async def get_analysis(
-    essay_id: int,
-    analysis_id: int,
+    essay_id: DbId,
+    analysis_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -250,8 +251,8 @@ async def get_analysis(
 
 @router.post("/{essay_id}/analyses/{analysis_id}/cancel", response_model=AnalysisRunOut)
 async def cancel_analysis(
-    essay_id: int,
-    analysis_id: int,
+    essay_id: DbId,
+    analysis_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -267,7 +268,7 @@ async def cancel_analysis(
     response_model=EssayAnalysisRecordOut,
 )
 async def get_latest_analysis(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -280,7 +281,7 @@ async def get_latest_analysis(
 
 @router.post("/{essay_id}/analyze", response_model=EssayAnalysisOut)
 async def analyze_legacy(
-    essay_id: int,
+    essay_id: DbId,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
@@ -315,7 +316,7 @@ async def analyze_legacy(
 
 @router.post("/{essay_id}/analyze/stream")
 async def analyze_stream_legacy(
-    essay_id: int,
+    essay_id: DbId,
     part: str | None = None,
     principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),

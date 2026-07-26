@@ -52,9 +52,30 @@ def main() -> int:
     if args.enrich_db:
         enrich.ENRICH_DB = args.enrich_db
 
+    # ⚠️ Куда пишем — печатаем ДО работы, и падаем, если это пустышка.
+    #
+    # Без `--enrich-db` путь резолвится из `enrich.ENRICH_DB`, а тот без
+    # переменной окружения (вне контейнера её нет никогда) указывает на
+    # заглушку `app/vocab/enrichment.db` рядом с боевой базой. Скрипт при этом
+    # СОЗДАЁТ в пустышке схему, честно прочитывает миллион строк дампа и
+    # рапортует успехом: «cards with a paradigm: 0 of 0». Ноль в ЗНАМЕНАТЕЛЕ —
+    # единственное, что выдавало подмену, и заметить это можно было только
+    # глазами (напоролись 2026-07-19, записано в PLANS.md 3b).
+    #
+    # Та же ловушка у `intake.py` закрыта явной ошибкой; здесь до сегодня
+    # защиты не было вовсе.
+    print(f"enrichment.db: {enrich.ENRICH_DB}")
     enrich.ensure_schema()
     con = enrich._conn()
     try:
+        cards_before = con.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+        if cards_before == 0:
+            raise SystemExit(
+                f"в {enrich.ENRICH_DB} ноль карточек — это почти наверняка "
+                "пустышка, а не боевая база. Парадигмы легли бы в никуда, и "
+                "отчёт всё равно был бы успешным. Укажи путь явно: "
+                "--enrich-db backend/app/vocab/vocab_data/enrichment.db"
+            )
         stats = morph.import_dump(args.dump, con, only_known=not args.all)
         covered = con.execute(
             "SELECT COUNT(*) FROM cards c JOIN morphology m "

@@ -16,7 +16,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import Principal, get_optional_user, require_user
+from app.auth import Principal, get_optional_user, require_admin, require_user
 from app.db.models import UserWordList, VocabCard
 from app.db.session import get_db
 from app.vocab import mirror, norm, search as search_mod
@@ -226,13 +226,19 @@ async def remove_word(
 # ── mirror ───────────────────────────────────────────────────────────────────
 @router.post("/mirror/sync")
 async def mirror_sync(
-    principal: Principal = Depends(require_user),
+    principal: Principal = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Pull newly enriched cards into the searchable replica.
 
     Runs on a timer too (see `mirror.periodic_sync`); this is the manual nudge
     for when you don't want to wait for the next pass.
+
+    Админ, а не любой аккаунт: проход трогает общий ресурс (полный курсор по
+    92 000 карточек плюс `prune_orphans`), ровно как `enrich/fleet/*` и
+    `build`, которые закрыты админом по этой же причине. Ничего личного у
+    вызывающего он при этом не читает — единственная разница с ними в том, что
+    злоупотребление тут стоит нагрузки, а не чужих токенов.
     """
     result = await mirror.sync_cards(db)
     if not result.get("ok"):

@@ -50,7 +50,7 @@ async def me(
         return {
             "authenticated": True,
             "user": user,
-            "has_mistral_key": bool(user and user.mistral_key_enc),
+            "has_mistral_key": crypto.has_usable_key(user.mistral_key_enc if user else None),
             "key_storage_enabled": crypto.is_enabled(),
             "is_admin": is_admin_email(principal.email),
         }
