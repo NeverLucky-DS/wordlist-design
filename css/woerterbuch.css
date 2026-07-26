@@ -318,6 +318,26 @@ button{font-family:inherit}
   padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:box-shadow .2s}
 .wb-empty-cta:hover{box-shadow:0 12px 26px -12px rgba(51,51,58,.55)}
 
+/* «ist» — форма от sein · настоящее время, 3 л. ед. ч.
+   Sits above the results because it explains why they are what they are: the
+   reader typed `ist` and the list opens with `sein`. Not a boxed callout — it
+   is an aside about the query, not a result — so it carries a single left rule
+   in the connector's own orange and nothing else. `--soft`, not `--muted`: this
+   is a sentence someone has to read, and §accessibility floor above forbids
+   `--muted` for that. */
+.wb-formof{padding:9px 4px 11px 13px;margin-bottom:4px;
+  border-left:2px solid var(--orange);
+  font-size:13.5px;line-height:1.5;color:var(--soft)}
+.wb-formof b{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;
+  color:var(--ink)}
+.wb-formof-base{font:inherit;font-size:15px;font-weight:600;color:var(--ink);
+  background:none;border:0;padding:0 1px;cursor:pointer;
+  border-bottom:1px solid var(--orange);transition:color .15s}
+.wb-formof-base:hover{color:var(--orange)}
+.wb-formof-base:focus-visible{outline:2px solid var(--orange);outline-offset:3px;
+  border-radius:2px}
+.wb-formof-cell{display:block;margin-top:2px;font-size:12.5px;color:var(--soft)}
+
 /* =====================================================================
    THE PAGE — one measure that opens into a spread
    ===================================================================== */

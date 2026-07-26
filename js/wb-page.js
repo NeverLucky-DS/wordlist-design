@@ -93,7 +93,11 @@ async function loadSearch(q) {
   if (!query) { state.results = { lang: null, groups: [] }; return; }
   try {
     const d = await fetchJSON(`${API}/search?q=${encodeURIComponent(query)}`);
-    state.results = { lang: d.lang === 'ru' ? 'RU → DE' : 'DE → RU', groups: groupItems(d.items || []) };
+    state.results = {
+      lang: d.lang === 'ru' ? 'RU → DE' : 'DE → RU',
+      groups: groupItems(d.items || []),
+      formOf: (d.form_of || [])[0] || null,
+    };
   } catch (e) { state.results = { lang: null, groups: [], error: true }; }
 }
 
@@ -223,12 +227,29 @@ const groupsHTML = groups => groups.length
    nothing typed (a prompt), the server failed (an error), and a real miss (the
    word is not in the base yet). Collapsing them into one "не найдено" would tell
    the reader the word is missing when they simply have not typed anything. */
+/* «ist» is not a word — it is a cell of `sein`, and until 2026-07-26 typing it
+   answered `Ist-Wert` "фактическое значение". The base card now heads the list,
+   but the list alone cannot say WHY: `sein` and `ist` are not the same string,
+   and a reader who typed one and got the other is owed the reason. This line is
+   that reason, and it is the grammar lesson too — «прошедшее время (претерит)»
+   is what the learner actually needed. Yandex.Dictionary and Linguee both put
+   it here, above the results. */
+const formOfHTML = () => {
+  const f = search().formOf;
+  if (!f) return '';
+  return `<div class="wb-formof">
+    <b>${esc(f.form)}</b> — форма от <button class="wb-formof-base" type="button"
+      data-goto="${esc(f.base)}">${esc(f.base)}</button>
+    <span class="wb-formof-cell">${esc(f.cell_ru || f.cell_de || '')}</span>
+  </div>`;
+};
+
 function listHTML(groups) {
   if (!state.query.trim()) return `<div class="wb-empty"><b>Начните поиск</b>
     Введите слово по-немецки или по-русски — язык определится сам.</div>`;
   if (search().error) return `<div class="wb-empty"><b>Поиск недоступен</b>
     Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.</div>`;
-  return groupsHTML(groups);
+  return formOfHTML() + groupsHTML(groups);
 }
 
 const searchHTML = () => `<label class="wb-search">
@@ -429,6 +450,10 @@ function delegate() {
     if (del) { e.stopPropagation(); collectWord(del.dataset.del, false); return; }
     const pg = e.target.closest('[data-page]');
     if (pg) { state.minePage = +pg.dataset.page; loadMine().then(() => draw()); return; }
+    // The "форма от sein" link sits ABOVE the result list, outside the card, so
+    // it cannot ride `wireCard`'s [data-base] handler.
+    const go = e.target.closest('[data-goto]');
+    if (go) { e.stopPropagation(); gotoLemma(go.dataset.goto); return; }
     const hit = e.target.closest('[data-lemma]');
     if (hit && !e.target.closest('.wb-card')) { openLemma(hit.dataset.lemma); return; }
     if (e.target.closest('#drawerLogin')) { window.SiteAuth && window.SiteAuth.open(); return; }

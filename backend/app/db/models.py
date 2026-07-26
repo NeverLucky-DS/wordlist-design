@@ -343,6 +343,60 @@ class VocabCardTranslation(Base):
     card: Mapped["VocabCard"] = relationship(back_populates="translations")
 
 
+class VocabForm(Base):
+    """An inflected form and the headword whose card answers it.
+
+    Why a table and not more cards. Typing `ist` (zipf 7.08) answered `Ist-Wert`,
+    `mich` answered `Michelin-Männchen`, `bin` answered `Bingo` — nothing matched
+    exactly, so pg_trgm returned the nearest string it could find. The forms have
+    no cards because the enrichment prompt refuses word forms, and it is right to:
+    `ist` is a cell of `sein`, and `sein` already carries the card.
+
+    Giving each form a card of its own was the obvious repair and the wrong one.
+    It would have covered the 2 220 forms that happen to exist as lemmas in
+    `vocab.db` out of ~173 000 the paradigms actually hold, inflated the mirror,
+    and dropped 2 220 new rows into a ranking that `vocab/forms.py` spent a whole
+    pass teaching to push forms DOWN. An index answers the entire class and
+    competes with nothing: search consults it only when it has no exact card.
+
+    Rows are derived — `mirror.rebuild_forms()` regenerates the table from
+    `vocab_cards.morphology` plus the closed-class tables in `vocab/inflect.py`.
+    Dropping it costs a rebuild, nothing else.
+    """
+
+    __tablename__ = "vocab_forms"
+    __table_args__ = (
+        UniqueConstraint("form", "base_lemma", name="uq_vocab_form"),
+        Index("ix_vocab_forms_norm", "form_norm"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Verbatim, case intact: `Sagen` is the plural of `die Sage`, `sagen` is the
+    # verb, and folding them together would answer one query with the other.
+    form: Mapped[str] = mapped_column(String(128))
+    # Folded the same way `vocab_cards.lemma_norm` is, so a lookup can reuse the
+    # query the search path has already normalised.
+    form_norm: Mapped[str] = mapped_column(String(160))
+    base_lemma: Mapped[str] = mapped_column(
+        ForeignKey("vocab_cards.lemma", ondelete="CASCADE")
+    )
+    # Which paradigm cell this is, in both languages — the answer a learner is
+    # actually after when they look up `gibst` rather than `geben`.
+    cell_de: Mapped[str] = mapped_column(String(96), default="")
+    cell_ru: Mapped[str] = mapped_column(String(96), default="")
+    # Filled only for the handwritten closed class, where the cell IS the answer:
+    # someone typing `mir` wants "мне", and being handed `ich` "я" alone leaves
+    # them to work the paradigm out. Generated forms leave this empty and let the
+    # base card's own `ru` speak.
+    ru: Mapped[str] = mapped_column(Text, default="")
+    pos: Mapped[str] = mapped_column(String(16), default="other")
+    # 'closed' — written by hand in vocab/inflect.py (pronouns, determiners).
+    # 'paradigm' — expanded from a Wiktionary paradigm. Kept because the two
+    # differ in trust: the closed class is a textbook table, the paradigms are a
+    # dump join, and only the second can be wrong about which base it points to.
+    source: Mapped[str] = mapped_column(String(16), default="paradigm")
+
+
 class UserWordList(Base):
     """A word the user put on their learning list.
 
