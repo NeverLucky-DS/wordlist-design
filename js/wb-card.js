@@ -255,6 +255,12 @@ function metaLine(card) {
   const bits = [`<span class="wb-pos">${POS_RU[card.pos] || 'слово'}</span>`];
   if (card.level && card.level !== 'unlisted') {
     bits.push(`<span class="wb-cefr" title="Уровень по спискам Goethe — опубликованный список">${esc(card.band)}</span>`);
+  } else if (card.level_est) {
+    // Deliberately not the boxed chip: that box means "a published list says
+    // so". This is ours, and the tilde plus the lower-case caption say so
+    // before the tooltip has to.
+    bits.push(`<span class="wb-est" title="Наша оценка сложности, а не опубликованный список. Замер на 420 карточках с настоящей разметкой: точный уровень 38 %, в пределах одной ступени 91 %, граница «основной словарь / выше» 91 %.">
+      <b>~${esc(card.level_est.toUpperCase())}</b><span>наша оценка</span></span>`);
   } else if (card.freq) {
     bits.push(`<span class="wb-freq" title="Частотность по корпусу. Это НЕ уровень CEFR — по частоте B1 и B2 не различаются.">
       ${slot('freq-' + card.freq, 58, 14, 'Häufigkeitsskala, 3 Zustände')}

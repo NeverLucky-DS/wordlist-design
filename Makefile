@@ -8,8 +8,8 @@
 DB_URL ?= postgresql+asyncpg://wordlist:wordlist@localhost:5432/wordlist
 
 .DEFAULT_GOAL := help
-.PHONY: help setup up down restart logs ps migrate migration test db dev links clean \
-	lint lint-fix types visual visual-update fuzz schema-debt coverage
+.PHONY: help setup up down restart logs ps migrate migration test test-live db dev links clean \
+	lint lint-fix types visual visual-update fuzz schema-debt coverage mcp-check
 
 help: ## Show this help
 	@echo "Deutsch Essay Trainer — make targets:"
@@ -50,11 +50,18 @@ migration: ## Create a migration from model changes:  make migration name="add x
 	@test -n "$(name)" || { echo 'usage: make migration name="describe the change"'; exit 1; }
 	cd backend && DATABASE_URL="$(DB_URL)" uv run alembic revision --autogenerate -m "$(name)"
 
-test: ## Run the full backend test suite incl. live Mistral (requires backend/.env key)
-	uv run pytest -v
+# Отбор здесь ОБЯЗАН совпадать с CI (.github/workflows/pytest.yml), иначе
+# правило из CLAUDE.md «не считать задачу готовой, если тесты не зелёные»
+# перестаёт что-либо значить. Голый `pytest -v` — это 490 тестов, из которых 56
+# помечены `schema_debt` (в самом маркере написано «run explicitly, not part of
+# the gate»), а visual требует поднятого nginx :8753. Красные строки, не
+# значащие «сломано», обесценивают и настоящие: когда их всегда 56, 57-ю никто
+# не заметит. Ничего не потеряно — у каждого исключения свой прицел ниже.
+test: ## Тесты в том же отборе, что и CI: зелено здесь = зелено там
+	uv run pytest -v -m "not mistral_live and not schema_debt and not visual"
 
-test-unit: ## Run unit/API tests only (no live Mistral calls — used in CI without API key)
-	uv run pytest -v -m "not mistral_live"
+test-live: ## Только живые вызовы Mistral (нужен ключ в backend/.env)
+	uv run pytest -v -m mistral_live
 
 db: ## Open a psql shell inside the database container
 	docker compose exec postgres psql -U wordlist -d wordlist
@@ -106,3 +113,6 @@ schema-debt: ## Показать известный долг по соответ
 
 coverage: ## Покрытие внешнего корпуса — метрика качества базы
 	uv run python backend/scripts/coverage.py
+
+mcp-check: ## Проверить, что MCP-сервер sqlite смотрит в золотые базы, а не в пустышки
+	uv run python scripts/mcp/sqlite_ro.py --self-test

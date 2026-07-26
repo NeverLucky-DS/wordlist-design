@@ -1118,8 +1118,11 @@ def plan_repairs() -> dict:
         # the rest of this function, and equally in-place: it rewrites existing
         # cards without touching `created_at`, so the caller has to resync the
         # mirror when it reports work, exactly as with `zipf` above.
-        from app.vocab import forms
+        from app.vocab import forms, handfixes
         form_stats = forms.tag_forms(con)
+        # Same in-place shape as `tag_forms`: rewrites cards without moving
+        # `created_at`, so it rides the same mirror resync the caller triggers.
+        glosses_fixed = handfixes.apply_fixes(con)
     finally:
         con.close()
     # Keep the old cards live while they wait — a stale entry beats a hole.
@@ -1132,6 +1135,7 @@ def plan_repairs() -> dict:
             "forms_tagged": form_stats["tagged"],
             "forms_cleared": form_stats["cleared"],
             "forms_by_kind": form_stats["by_kind"],
+            "cards_hand_fixed": glosses_fixed,
             "funcwords_written": func_stats["written"]}
 
 

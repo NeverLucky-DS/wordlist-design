@@ -16,7 +16,19 @@
   let auth = { authenticated: false, has_mistral_key: false, key_storage_enabled: false, is_admin: false };
   let running = false, pollT = null;
 
-  const jget = async p => (await fetch(p, { credentials: "same-origin" })).json();
+  /* Статус проверяется здесь, а не у каждого вызова: FastAPI отдаёт ошибку тем
+     же `application/json`, что и успех, поэтому без проверки 500 разбирался
+     молча и доезжал до кода как обычный ответ. Дальше он не падал, а тихо
+     врал — `p.exists` пустой печатал «База ещё не собрана», `r.items` пустой
+     печатал «Пока нет обогащённых карточек», а в `toggleCardDetail` тело
+     ошибки успевало лечь в `cardCache` и пережить починку сервера.
+     Все шесть вызовов уже стоят в try/catch, так что бросок ловится. */
+  const jget = async p => {
+    const r = await fetch(p, { credentials: "same-origin" });
+    if (!r.ok) { const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+    return r.json();
+  };
+  const failText = e => (e && e.status) ? `сервер ответил ${e.status}` : "нет связи с сервером";
   async function jsend(method, path, body) {
     const r = await fetch(path, {
       method, credentials: "same-origin",
@@ -158,7 +170,11 @@
 
   async function refreshProgress() {
     let p;
-    try { p = await jget("/api/vocab/enrich/progress"); } catch { return; }
+    try { p = await jget("/api/vocab/enrich/progress"); }
+    catch (e) {
+      $("enrKpis").innerHTML = `<div class="empty">Прогресс недоступен — ${esc(failText(e))}.</div>`;
+      return;
+    }
     if (!p.exists) { $("enrKpis").innerHTML = `<div class="empty">База ещё не собрана.</div>`; return; }
     $("enrFill").style.width = p.pct + "%";
     paintPhases(p);
@@ -349,7 +365,11 @@
     if (reset) cOffset = 0;
     let r;
     const url = `/api/vocab/enrich/cards?q=${encodeURIComponent(cq)}&confidence=${cconf}&limit=30&offset=${cOffset}`;
-    try { r = await jget(url); } catch { return; }
+    try { r = await jget(url); }
+    catch (e) {
+      if (reset) $("cardResults").innerHTML = `<div class="empty">Карточки недоступны — ${esc(failText(e))}.</div>`;
+      return;
+    }
     cTotal = r.total || 0;
     const el = $("cardResults");
     const rows = (r.items || []).map(cardRow).join("");

@@ -137,7 +137,8 @@ async def enrich_start(
     plan = state.get("plan") or {}
     # Both of these rewrite existing cards in place, which leaves `created_at`
     # untouched and therefore invisible to the mirror's forward cursor.
-    if plan.get("zipf_filled") or plan.get("forms_tagged") or plan.get("forms_cleared"):
+    if (plan.get("zipf_filled") or plan.get("forms_tagged")
+            or plan.get("forms_cleared") or plan.get("cards_hand_fixed")):
         _schedule_resync()
     return {"ok": True, **state}
 

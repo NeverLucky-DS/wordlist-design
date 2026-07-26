@@ -23,8 +23,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import VocabCard, VocabCardTranslation
-from app.vocab import norm
+from app.db.models import VocabCard, VocabCardTranslation, VocabForm
+from app.vocab import inflect, norm
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +68,16 @@ def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
         # revisit a card to pick its paradigm up. Riding along on the card's own
         # row means a re-import is published by the same full resync as any other
         # in-place rewrite.
+        # `level_est` is added by `levels.apply_estimates`, which may never have
+        # run against this file — a fresh enrichment.db, or the fixtures the test
+        # suite builds. Naming a missing column is a hard error in SQLite and
+        # would take the whole mirror down, so ask the schema rather than assume.
+        has_est = any(r[1] == "level_est"
+                      for r in con.execute("PRAGMA table_info(cards)"))
+        est = "c.level_est, " if has_est else "NULL AS level_est, "
         rows = con.execute(
-            "SELECT c.lemma, c.level, c.topic, c.pos, c.article, c.ru, c.confidence, "
+            "SELECT c.lemma, c.level, " + est + "c.topic, c.pos, c.article, c.ru, "
+            "       c.confidence, "
             "       c.register, c.data, c.zipf, c.form_kind, c.form_of, "
             "       m.data AS morphology, c.created_at "
             "FROM cards c "
@@ -125,6 +133,7 @@ def _card_values(row: dict) -> dict:
         "lemma_norm": norm.fold_de(row["lemma"]),
         "lemma_ascii": norm.ascii_de(row["lemma"]),
         "level": (row.get("level") or "unlisted").lower(),
+        "level_est": (row.get("level_est") or None),
         "band": norm.band_of(row.get("level")),
         "topic": row.get("topic"),
         "pos": (row.get("pos") or "other").lower(),
@@ -170,7 +179,8 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
                 index_elements=[VocabCard.lemma],
                 set_={
                     c: stmt.excluded[c]
-                    for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
+                    for c in ("lemma_norm", "lemma_ascii", "level", "level_est",
+                              "band", "topic",
                               "pos", "article", "ru", "confidence", "register", "data",
                               "zipf", "form_kind", "form_of", "morphology",
                               "source_created_at")
@@ -262,6 +272,82 @@ async def sync_cards(db: AsyncSession, *, batch: int = SYNC_BATCH,
     return {"ok": True, "synced": synced, "pruned": pruned, "total": total}
 
 
+async def rebuild_forms(db: AsyncSession) -> dict:
+    """Regenerate `vocab_forms` from paradigms already in the replica.
+
+    No new read of SQLite: `vocab_cards.morphology` is the same paradigm the
+    `morphology` table holds, carried across by the card's own row. So this is a
+    pure derivation from data we have, and it costs one pass over the mirror.
+
+    Three filters decide what becomes an entry, and each one is load-bearing:
+
+    * a form that already HAS a card of its own is dropped. `alle`, `aller` and
+      `alles` are cards, and shadowing a real entry with a pointer to `all-`
+      would answer a good query with a redirect.
+    * a form equal to its own base is dropped — `dieser` generates `dieser`.
+    * `inflect.is_blocked` keeps verb paradigms off the closed class. The German
+      Wiktionary conjugates reflexives with the pronoun attached, so `mich`
+      arrives as a "form" of 27 verbs (`besinnen`, `erholen`, `verlieben`); it is
+      the accusative of `ich` and nothing else.
+
+    Ambiguity is kept rather than resolved. `stand` is the Präteritum of `stehen`
+    AND a present of `standhalten`; both rows stay, and search shows the base
+    whose card ranks best. Choosing one here would be guessing with less
+    information than the ranking already has.
+    """
+    if not is_supported(db):
+        return {"ok": False, "reason": "mirror requires postgresql", "forms": 0}
+
+    lemmas = {r[0] for r in (await db.execute(select(VocabCard.lemma))).all()}
+    rows = (
+        await db.execute(
+            select(VocabCard.lemma, VocabCard.pos, VocabCard.morphology)
+            .where(VocabCard.morphology.isnot(None))
+        )
+    ).all()
+
+    index = inflect.index_rows((lemma, pos, para) for lemma, pos, para in rows)
+    values: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    # The closed class is kept even when the form ALSO has a card of its own,
+    # and that exception is the point. `einen` has a card — the rare verb "to
+    # unite" — so a query for the accusative of `ein`, one of the commonest
+    # words in German, answered "объединять". Same for `meinen`: the card is the
+    # verb "to think". Dropping these on collision would leave exactly the lie
+    # PLANS A1 measured. The card still wins the result list; the form link
+    # rides alongside it as `form_of` and says what the reader actually typed.
+    for form, record in inflect.CLOSED_CLASS.items():
+        if record.base not in lemmas:
+            continue
+        seen.add((form, record.base))
+        values.append({"form": form, "form_norm": norm.fold_de(form),
+                       "base_lemma": record.base, "cell_de": record.cell_de[:96],
+                       "cell_ru": record.cell_ru[:96], "ru": record.ru,
+                       "pos": record.pos, "source": "closed"})
+
+    for form, candidates in index.items():
+        if form in lemmas:
+            continue
+        for record in candidates:
+            key = (form, record.base)
+            if key in seen or record.base not in lemmas:
+                continue
+            seen.add(key)
+            values.append({"form": form, "form_norm": norm.fold_de(form),
+                           "base_lemma": record.base, "cell_de": record.cell_de[:96],
+                           "cell_ru": record.cell_ru[:96], "ru": "",
+                           "pos": record.pos, "source": "paradigm"})
+
+    await db.execute(delete(VocabForm))
+    for chunk in _chunks(values, 9):
+        await db.execute(pg_insert(VocabForm).values(chunk))
+    await db.commit()
+    logger.info("vocab mirror: rebuilt %d form links", len(values))
+    return {"ok": True, "forms": len(values),
+            "closed": sum(1 for v in values if v["source"] == "closed")}
+
+
 async def full_resync() -> dict:
     """Replay every card into the replica on a session of our own.
 
@@ -272,7 +358,9 @@ async def full_resync() -> dict:
     from app.db.session import SessionLocal
 
     async with SessionLocal() as db:
-        return await sync_cards(db, since=(0.0, ""))
+        result = await sync_cards(db, since=(0.0, ""))
+        result["forms"] = (await rebuild_forms(db)).get("forms", 0)
+        return result
 
 
 async def periodic_sync(interval: float = SYNC_INTERVAL) -> None:
@@ -291,6 +379,11 @@ async def periodic_sync(interval: float = SYNC_INTERVAL) -> None:
                 if not is_supported(db):
                     return  # nothing to mirror onto — e.g. the SQLite test setup
                 result = await sync_cards(db)
+                # Only when something moved. The rebuild is a full table replace
+                # of ~170 000 rows; running it every five minutes to discover
+                # nothing changed would be the most expensive no-op in the app.
+                if result.get("synced") or result.get("pruned"):
+                    await rebuild_forms(db)
             if result.get("synced") or result.get("pruned"):
                 logger.info("vocab mirror: +%d −%d cards (total %d)",
                             result["synced"], result["pruned"], result["total"])

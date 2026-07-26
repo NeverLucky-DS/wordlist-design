@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy import Float, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import VocabCard, VocabCardTranslation
+from app.db.models import VocabCard, VocabCardTranslation, VocabForm
 from app.vocab import norm
 from app.vocab.topics import TOPICS
 
@@ -36,6 +36,11 @@ MIN_TRIGRAM_CHARS = 3
 _EXACT = 2.0    # folded query == folded entry
 _PREFIX = 1.0   # entry starts with the query; + similarity to order within
 _PRIMARY_BONUS = 0.05  # tie-break toward a card's main meaning
+# How many bases one form may resolve to. Ambiguity is real (`stand` is the
+# Präteritum of `stehen` and a present of `standhalten`) but shallow: measured on
+# the live paradigms, 83 forms of ~173 000 have more than one candidate base.
+# Two keeps the honest pair and stops `rum` from listing ten separable verbs.
+_FORM_BASES = 2
 
 
 def _by_relevance(score, q: str | None = None):
@@ -154,6 +159,11 @@ def card_out(card: VocabCard, score: float | None = None) -> dict[str, Any]:
         "ru": card.ru,
         "ru_all": data.get("ru_all") or ([card.ru] if card.ru else []),
         "level": card.level,
+        # Two different claims, never merged: `level` cites a published list,
+        # `level_est` is our own measured judgement for the 95.6% no list
+        # covers. The UI has to dress them differently or the estimate borrows
+        # the citation's authority.
+        "level_est": card.level_est,
         "band": card.band,
         # `band` is the brush key and stays CEFR-shaped; `freq` is what we can
         # honestly say about the 95.6% of cards Goethe never listed. The UI
@@ -202,6 +212,37 @@ def _de_terms(q: str) -> list[tuple[Any, str, str]]:
     ]
 
 
+async def _resolve_form(db: AsyncSession, q: str) -> list[tuple[VocabForm, VocabCard]]:
+    """Is `q` an inflected form of a word we do carry a card for?
+
+    Consulted only on the German side, and only as an equality on the folded
+    form — this exists to pre-empt fuzziness, so it must not be fuzzy itself.
+
+    Ordered so the most useful base comes first when a form is ambiguous:
+    handwritten closed-class rows outrank dump-derived ones (`mich` is the
+    accusative of `ich`, not a form of `besinnen`), then frequency, which is what
+    separates `stand` = Präteritum of `stehen` from `stand` = a present of
+    `standhalten`.
+    """
+    folded = norm.fold_de(q)
+    if not folded:
+        return []
+    stmt = (
+        select(VocabForm, VocabCard)
+        .join(VocabCard, VocabCard.lemma == VocabForm.base_lemma)
+        .where(VocabForm.form_norm == folded)
+        .order_by(
+            (VocabForm.source == "closed").desc(),
+            # A form spelled exactly as typed beats one that only matches folded:
+            # someone who wrote `Sagen` means the plural of `die Sage`.
+            (VocabForm.form == q).desc(),
+            VocabCard.zipf.desc().nullslast(),
+        )
+        .limit(_FORM_BASES)
+    )
+    return [(f, c) for f, c in (await db.execute(stmt)).all()]
+
+
 async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
     """Look `q` up on whichever side its script implies."""
     limit = max(1, min(int(limit), MAX_LIMIT))
@@ -245,21 +286,63 @@ async def search(db: AsyncSession, q: str, limit: int = 20) -> dict[str, Any]:
             "query": q,
             "items": _collapse_synonyms(list(rows), limit),
         }
-    else:
-        terms = _de_terms(q)
-        scores = [_score(col, term, pfx) for col, term, pfx in terms]
-        score = scores[0] if len(scores) == 1 else func.greatest(*scores)
-        matches = [_match(col, term, pfx) for col, term, pfx in terms]
-        stmt = (
-            select(VocabCard, score.label("score"))
-            .where(or_(*matches))
-            .order_by(*_by_relevance(score, q))
-            .limit(limit)
-        )
 
+    terms = _de_terms(q)
+    scores = [_score(col, term, pfx) for col, term, pfx in terms]
+    score = scores[0] if len(scores) == 1 else func.greatest(*scores)
+    matches = [_match(col, term, pfx) for col, term, pfx in terms]
+    stmt = (
+        select(VocabCard, score.label("score"))
+        .where(or_(*matches))
+        .order_by(*_by_relevance(score, q))
+        .limit(limit)
+    )
     rows = (await db.execute(stmt)).all()
+    items = [card_out(card, sc) for card, sc in rows]
+
+    # A query with no card spelled exactly as typed is where search used to
+    # invent one: `ist` answered `Ist-Wert`, `bin` answered `Bingo`. If the form
+    # index knows the word, the base card is the true answer and belongs above
+    # the trigram neighbours.
+    #
+    # The gate is a VERBATIM card, not a merely exact score, and the difference
+    # is the whole remaining half of the bug. Folding is case- and
+    # umlaut-blind, so `Mir` (персидский ковёр) scores a perfect 2.0 against
+    # `mir`, `Muss` against `muss`, `Einer` against `einer`, `Würde` against
+    # `wurde` — every one of them a different word wearing a match. German
+    # capitalises its nouns, so someone who typed lowercase did not mean the
+    # noun. Requiring the card to be spelled exactly as typed keeps `einen`
+    # (a real verb, same spelling) on top while letting `ich` overtake `Mir`.
+    forms = await _resolve_form(db, q)
+    exact = any(it["lemma"] == q for it in items)
+    if forms:
+        seen = {it["lemma"] for it in items}
+        promoted = []
+        for link, card in forms:
+            hint = {"form": link.form, "cell_de": link.cell_de,
+                    "cell_ru": link.cell_ru, "ru": link.ru or card.ru,
+                    "base": link.base_lemma}
+            if link.base_lemma in seen:
+                for it in items:
+                    if it["lemma"] == link.base_lemma:
+                        it["matched_form"] = hint
+                continue
+            if exact:
+                continue          # a real word was typed; do not displace it
+            entry = card_out(card, _EXACT)
+            entry["matched_form"] = hint
+            promoted.append(entry)
+        items = (promoted + items)[:limit]
+
     return {
         "lang": lang,
         "query": q,
-        "items": [card_out(card, score) for card, score in rows],
+        "items": items,
+        # Shown even when an exact card exists, because both readings can be
+        # real: `stand` is a card (`der Stand`) AND the Präteritum of `stehen`.
+        "form_of": [
+            {"form": link.form, "base": link.base_lemma, "cell_de": link.cell_de,
+             "cell_ru": link.cell_ru, "ru": link.ru or card.ru}
+            for link, card in forms
+        ],
     }

@@ -34,6 +34,7 @@ def db(tmp_path, monkeypatch):
         ("gäbe", ["gäbe prät conj от geben"]),
         ("alleine", ["разг. см. allein 1."]),
         ("mal", ["сокр. от einmal разг."]),
+        ("Abb", ["сокр. от Abbildung"]),
         ("Schnell", ["Schnell- в сл. сл.: быстроходный; скоростной"]),
         # real words — a trailing compound note after a long, ordinary entry
         ("Tag", ["1) день; сутки 2) " + "день. " * 200 + "Tag- дневной в сл. сл."]),
@@ -83,8 +84,21 @@ def test_marker_at_the_head_tags_the_form(db):
     assert tags["Fakten"] == ("inflection", "Faktum")
     assert tags["gäbe"] == ("inflection", "geben")
     assert tags["alleine"] == ("variant", "allein")
-    assert tags["mal"] == ("abbrev", "einmal")
+    assert tags["Abb"] == ("abbrev", "Abbildung")
     assert tags["Schnell"] == ("compound", "schnell")
+
+
+def test_an_adjudicated_exemption_beats_a_correct_marker(db):
+    """`mal` carries a real "сокр. от einmal" marker and used to be tagged on it.
+
+    The marker is not wrong — `mal` IS short for `einmal` in one reading. But at
+    zipf 6.28 the word is overwhelmingly the modal particle ("Komm mal her!") and
+    the multiplication word, both headwords in their own right, and a tag sends
+    it below every noun that matches the query. Adjudicated in
+    `data/case_twins.tsv`; see vocab/handfixes.py.
+    """
+    forms.tag_forms(db)
+    assert "mal" not in _tags(db)
 
 
 def test_trailing_compound_note_leaves_a_real_word_alone(db):

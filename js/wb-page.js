@@ -94,7 +94,11 @@ async function loadSearch(q) {
   if (!query) { state.results = { lang: null, groups: [] }; return; }
   try {
     const d = await fetchJSON(`${API}/search?q=${encodeURIComponent(query)}`);
-    state.results = { lang: d.lang === 'ru' ? 'RU → DE' : 'DE → RU', groups: groupItems(d.items || []) };
+    state.results = {
+      lang: d.lang === 'ru' ? 'RU → DE' : 'DE → RU',
+      groups: groupItems(d.items || []),
+      formOf: (d.form_of || [])[0] || null,
+    };
   } catch (e) { state.results = { lang: null, groups: [], error: true }; }
 }
 
@@ -163,9 +167,18 @@ async function collectWord(lemma, wantIn) {
 --------------------------------------------------------------------- */
 const FREQ_RU_SHORT = { haeufig: 'частое', mittel: 'средней частоты', selten: 'редкое' };
 
+/* Three claims, three dresses, and they must never be confused for each other.
+   A published Goethe level is a citation and gets the boxed tag. Our estimated
+   level is a judgement — measured at 38% exact but 91% on "core vocabulary or
+   beyond" — so it is written in lower case with a tilde, the way a reading is
+   marked as a reading. Frequency stays what it always was: a corpus fact, not a
+   level at all. */
 function tagHTML(card) {
   if (card.level && card.level !== 'unlisted') {
     return `<span class="wb-tag" title="Уровень по спискам Goethe">${esc(card.band)}</span>`;
+  }
+  if (card.level_est) {
+    return `<span class="wb-tag is-est" title="Наша оценка сложности, не опубликованный список. Точный уровень угадывается в 38 % случаев, граница «основной словарь / выше» — в 91 %.">~${esc(card.level_est.toUpperCase())}</span>`;
   }
   if (!card.freq) return '';   // no frequency known: say nothing, guess nothing
   return `<span class="wb-tag is-freq" title="Частотность по корпусу — это не уровень CEFR">
@@ -224,12 +237,29 @@ const groupsHTML = groups => groups.length
    nothing typed (a prompt), the server failed (an error), and a real miss (the
    word is not in the base yet). Collapsing them into one "не найдено" would tell
    the reader the word is missing when they simply have not typed anything. */
+/* «ist» is not a word — it is a cell of `sein`, and until 2026-07-26 typing it
+   answered `Ist-Wert` "фактическое значение". The base card now heads the list,
+   but the list alone cannot say WHY: `sein` and `ist` are not the same string,
+   and a reader who typed one and got the other is owed the reason. This line is
+   that reason, and it is the grammar lesson too — «прошедшее время (претерит)»
+   is what the learner actually needed. Yandex.Dictionary and Linguee both put
+   it here, above the results. */
+const formOfHTML = () => {
+  const f = search().formOf;
+  if (!f) return '';
+  return `<div class="wb-formof">
+    <b>${esc(f.form)}</b> — форма от <button class="wb-formof-base" type="button"
+      data-goto="${esc(f.base)}">${esc(f.base)}</button>
+    <span class="wb-formof-cell">${esc(f.cell_ru || f.cell_de || '')}</span>
+  </div>`;
+};
+
 function listHTML(groups) {
   if (!state.query.trim()) return `<div class="wb-empty"><b>Начните поиск</b>
     Введите слово по-немецки или по-русски — язык определится сам.</div>`;
   if (search().error) return `<div class="wb-empty"><b>Поиск недоступен</b>
     Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.</div>`;
-  return groupsHTML(groups);
+  return formOfHTML() + groupsHTML(groups);
 }
 
 const searchHTML = () => `<label class="wb-search">
@@ -430,6 +460,10 @@ function delegate() {
     if (del) { e.stopPropagation(); collectWord(del.dataset.del, false); return; }
     const pg = e.target.closest('[data-page]');
     if (pg) { state.minePage = +pg.dataset.page; loadMine().then(() => draw()); return; }
+    // The "форма от sein" link sits ABOVE the result list, outside the card, so
+    // it cannot ride `wireCard`'s [data-base] handler.
+    const go = e.target.closest('[data-goto]');
+    if (go) { e.stopPropagation(); gotoLemma(go.dataset.goto); return; }
     const hit = e.target.closest('[data-lemma]');
     if (hit && !e.target.closest('.wb-card')) { openLemma(hit.dataset.lemma); return; }
     if (e.target.closest('#drawerLogin')) { window.SiteAuth && window.SiteAuth.open(); return; }
