@@ -65,7 +65,7 @@ in place rather than unpicked from ~8 call sites.
 
 | Symbol | Role |
 |--------|------|
-| `STAGES` | 6 essay stages (Einleitung → Schluss), each with a Klischee (`kli`) pool |
+| `STAGES` | 4 essay stages — `einleitung`, `arg1`, `arg2`, `schluss` — each with a Klischee (`kli`) pool; drives the roadmap nodes 1:1 (`buildRoadmap()` does `STAGES.forEach`) |
 | `store` / `localStorage` | Offline dirty copy; server hydrates canonical owner-scoped essay list |
 | `persistEssayToApi()` | Debounced autosave with explicit dirty/saving/saved/offline states |
 | `loadAnalysisHistory()` | Immutable full/part timeline and stale-result handling |
@@ -88,7 +88,8 @@ every route under `/api/essays/*` documented in `info/backend-api.md`.
 
 ### [`js/analysis-waiting-phrases.js`](../js/analysis-waiting-phrases.js)
 
-Approved 60-line German culture/history fact pool. While the real step indicator
+Approved German culture/history fact pool (`ANALYSIS_WAITING_PHRASES`, 61
+entries). While the real step indicator
 tracks server progress, Schreiben rotates one entertainment line every 10
 seconds and excludes the five most recently shown indices.
 

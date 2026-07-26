@@ -8,10 +8,11 @@ account receive a 30-day guest session; registering claims that guest's essays.
 **Проверено против кода: 2026-07-26.** Раньше файл документировал семь ручек
 `/api/pipeline/*` и по одной ручке `words`/`topics`/`phrases`, которых больше
 нет (роутеры `words.py`, `topics.py`, `pipeline.py` и пакет
-`backend/app/pipeline/` удалены), и не описывал ни одной из 24 живых ручек
-`/api/vocab/*`. Список ниже собран из `app.main.app.openapi()['paths']`
-(`uv run python -c "..."`, см. команду в `info/tooling.md`/PLANS §A8) и сверен
-построчно с `@router.` в коде — не с памятью.
+`backend/app/pipeline/` удалены), и не описывал ни одной из 21 живого пути
+`/api/vocab/*` (22 метод+путь, `list` отвечает и на GET, и на POST). Список
+ниже собран из `app.main.app.openapi()['paths']` (`uv run python -c "..."`, см.
+команду в `info/tooling.md`/PLANS §A8) и сверен построчно с `@router.` и
+`Depends(...)` в коде — не с памятью.
 
 ## Routers mounted (`backend/app/main.py`)
 

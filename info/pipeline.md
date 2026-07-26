@@ -10,7 +10,7 @@ directory*). Переписан с нуля про реальный конвей
 
 ## One-paragraph summary
 
-Two independent stages, two SQLite files, one Postgres mirror:
+Two SQLite files and one Postgres mirror, chained through four steps:
 
 1. **Deterministic build (no LLM).** Bilingual dictionary dumps (offline,
    outside the repo) → [`build.py`](../backend/app/vocab/build.py) → `vocab.db`
@@ -158,7 +158,7 @@ run by CI, not run by an agent without an explicit request.
 - **SQLite `enrichment.db`** (`word_status`, `cards`, `token_usage`) — worker
   state, the enriched output, and per-account Mistral spend.
 - **Postgres** (`app/db/models.py`): `vocab_cards`, `vocab_card_translations`
-  (the mirror — derived, safe to drop and rebuild in ~15 s via
+  (the mirror — derived from `enrichment.db`, safe to drop and rebuild via
   `full_resync()`), `user_word_list` (real user data, **not** derived).
 
 ## Config
