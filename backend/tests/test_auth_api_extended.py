@@ -139,10 +139,9 @@ async def test_me_reports_no_key_once_the_server_secret_is_rotated(
     account looks equipped, so nobody re-enters the key, and the worker dies on
     `decrypt` returning None with no hint of why.
     """
-    from sqlalchemy import select, update
-
     from app.db.models import User
     from app.services import crypto
+    from sqlalchemy import select, update
 
     rotating_secret("secret-before-rotation")
     token = crypto.encrypt("sk-live-key")
