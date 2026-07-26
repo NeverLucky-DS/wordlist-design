@@ -1,0 +1,59 @@
+# Case-twin pairs adjudicated by hand, 2026-07-26.
+#
+# `forms.py::_capitalised_twins` catches the common shape and 129 of these
+# 178 duplicates were already tagged by it. This file is only the residue it
+# cannot reach by rule, plus the four it got wrong.
+#
+# action=form   this spelling is not a headword; tag it and point at `base`.
+#               Mostly the LOWERCASE half of a noun pair (frieden, hering,
+#               drittel): the rule only ever looks at the capitalised side,
+#               so a spurious lowercase entry was invisible to it.
+# action=keep   both spellings are real and must NEVER be tagged. `mal`
+#               (zipf 6.28) was tagged `abbrev` and demoted in search — it is
+#               one of the commonest particles in German.
+#
+# lemma	action	base	why
+A-Cappella-Band	form	A-cappella-Band	Duden: при сложении с существительным пишется A-cappella- с одной заглавной (A-cappella-Band/-Chor/-Musik), не
+ABC-Schüler	form	Abc-Schüler	орфографический вариант: по образцу словарной статьи Duden «Abc-Schütze» верна форма с одной заглавной (Abc-),
+ABC-Schütze	form	Abc-Schütze	Duden фиксирует «Abc-Schütze» с одной заглавной; «ABC-Schütze» — частый, но не словарный вариант
+aubergine	form	Aubergine	die Aubergine — существительное, всегда с заглавной
+bergbau	form	Bergbau	der Bergbau — существительное, всегда с заглавной
+Bisschen	form	bisschen	«ein bisschen» по действующей норме пишется строчными; Bisschen — орфографический вариант, не отдельное слово
+Check-In-Schalter	form	Check-in-Schalter	орфографический вариант: нормативно «Check-in-Schalter» со строчной in (Check-in уже существительное-заимствов
+drittel	form	Drittel	das Drittel — существительное, всегда с заглавной; строчный вариант ненормативен (карточки почти дословно совп
+dutzend	form	Dutzend	das Dutzend — существительное, всегда с заглавной; отдельного строчного наречия «dutzend» нет (стандартна слит
+frieden	form	Frieden	der Frieden — существительное, по правилам пишется только с заглавной; строчный вариант ненормативен
+halbwaise	form	Halbwaise	die Halbwaise — существительное, всегда с заглавной; прилагательного «halbwaise» в норме нет, как и в паре Wai
+hering	form	Hering	der Hering — существительное, всегда с заглавной
+I-Tüpfelchen	form	i-Tüpfelchen	Duden фиксирует «i-Tüpfelchen» со строчной i (идиома буквально о точке над строчной i); «I-Tüpfelchen» — не сл
+ideenreichtum	form	Ideenreichtum	der Ideenreichtum — существительное, всегда с заглавной
+ideenwelt	form	Ideenwelt	die Ideenwelt — существительное, всегда с заглавной
+ideologiekritik	form	Ideologiekritik	die Ideologiekritik — существительное, всегда с заглавной
+intensivtherapie	form	Intensivtherapie	die Intensivtherapie — существительное, всегда с заглавной
+kaloriengehalt	form	Kaloriengehalt	der Kaloriengehalt — существительное, всегда с заглавной
+kaltblut	form	Kaltblut	das Kaltblut — существительное (порода лошадей), всегда с заглавной
+kaltblüter	form	Kaltblüter	der Kaltblüter — существительное, всегда с заглавной
+kampfgebiet	form	Kampfgebiet	das Kampfgebiet — существительное, всегда с заглавной
+kampfgefährte	form	Kampfgefährte	der Kampfgefährte — существительное, всегда с заглавной (карточки совпадают дословно)
+kampfgeist	form	Kampfgeist	der Kampfgeist — существительное, всегда с заглавной
+kuckuck	form	Kuckuck	der Kuckuck — существительное (птица), всегда с заглавной; строчный вариант как самостоятельное междометие не 
+mißbehagen	form	Mißbehagen	das Mißbehagen — существительное, всегда с заглавной; карточки побайтово идентичны, кроме регистра леммы
+potential	form	Potential	das Potential/Potenzial — существительное, всегда с заглавной; строчный вариант ненормативен (карточки почти д
+rh-negativ	form	Rh-negativ	медицинский термин пишется с заглавной Rh (сокращение от Rhesus); строчная rh- ненормативна
+s-förmig	form	S-förmig	буква в описании формы традиционно пишется заглавной (S-förmig, по аналогии с V-förmig и т.п.); строчная s- не
+Science-fiction	form	Science-Fiction	орфографический вариант: Duden фиксирует оба компонента с заглавной — Science-Fiction, не Science-fiction
+Science-fiction-Film	form	Science-Fiction-Film	то же самое: Duden — Science-Fiction-Film (оба компонента с заглавной)
+Tête-à-tête	form	Tête-à-Tête	Duden: как существительное пишется «Tête-à-Tête» (обе части с заглавной), полностью строчная форма «tête-à-têt
+ultraschall	form	Ultraschall	der Ultraschall — существительное, всегда с заглавной
+v-förmig	form	V-förmig	буква в описании формы традиционно пишется заглавной (V-förmig); строчная v- не является словарной нормой
+waise	form	Waise	die Waise — существительное, всегда с заглавной; прилагательного «waise» в норме нет (норма — «verwaist»), при
+Walkie-talkie	form	Walkie-Talkie	Duden фиксирует «Walkie-Talkie» с обеих заглавных; «Walkie-talkie» — не словарная форма
+wandlungsfähigkeit	form	Wandlungsfähigkeit	die Wandlungsfähigkeit — существительное, всегда с заглавной
+wasservorrat	form	Wasservorrat	der Wasservorrat — существительное, всегда с заглавной
+Y-Achse	form	y-Achse	орфографический вариант: Duden фиксирует «y-Achse» со строчной y (математическая условность обозначения осей н
+YouTuber	form	Youtuber	по Duden нормативно «Youtuber» (заглавная только в начале слова, внутренняя T бренда YouTube не сохраняется); 
+zwanzigstel	form	Zwanzigstel	das Zwanzigstel — существительное дроби (как Drittel), всегда с заглавной; пример строчной карточки грамматиче
+Erstbeste	keep		тот же случай, что Nächstbeste — субстантивированное прилагательное, в русском «первый попавшийся» тоже не мен
+mal	keep		Mal (случай/раз) и mal (при умножении) — разные части речи, но узкое значение «раз» в обоих случаях верно и по
+Nächstbeste	keep		субстантивированное прилагательное (das Nächstbeste) и обычное прилагательное; в русском «первый попавшийся» т
+Vorletzte	keep		субстантивированное прилагательное (der/die/das Vorletzte — человек) и обычное прилагательное; в русском «пред

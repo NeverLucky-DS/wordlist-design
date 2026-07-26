@@ -176,6 +176,18 @@ def tag_forms(con: sqlite3.Connection) -> dict:
         if lemma not in tagged:
             updates.append(("capitalised", lower, lemma))
 
+    # Hand-adjudicated exceptions, applied last so they win over every rule.
+    # Both directions are needed and both were measured: the rules missed 40
+    # spurious spellings they cannot see (a lowercase `frieden` beside `der
+    # Frieden` — `_capitalised_twins` only ever inspects the capital), and they
+    # demoted 4 real words, including `mal` at zipf 6.28.
+    from app.vocab import handfixes
+
+    adjudicated = handfixes.extra_tags(have_card)
+    blocked = handfixes.exempt() | {t[2] for t in adjudicated}
+    updates = [u for u in updates if u[2] not in blocked]
+    updates.extend(adjudicated)
+
     con.executemany(
         "UPDATE cards SET form_kind=?, form_of=? WHERE lemma=?", updates)
     # Anything previously tagged that no longer matches must be released, or a

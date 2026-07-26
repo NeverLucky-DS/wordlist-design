@@ -1,0 +1,158 @@
+# Adjudicated single-field card corrections, 2026-07-26.
+#
+# Re-applied on every `plan_repairs()` (see vocab/handfixes.py), so a
+# re-enrichment that reintroduces the defect is corrected again rather than
+# quietly winning. Every row was read by hand against the German definition
+# and examples, not against the Russian gloss alone.
+#
+# article   the card is pos=noun with no article. Nominalised adjectives
+#           (der/die Deutsche, das Erste) legitimately have none and are NOT
+#           here — 279 of the 375 flagged were exactly that. What is here is
+#           an ordinary noun that lost its article, plus pluralia tantum
+#           (Eltern, Ferien, Cornflakes) which take `die`.
+# ru        the primary gloss was copied from a case twin: `das Ich` is the
+#           philosophical ego, not the pronoun; `die Elf` is a football team.
+# ru_all    several meanings crammed into one entry. Search scores each entry
+#           whole, so "приходить, прибывать" matches the query «приходить» at
+#           0.63 where the split entry matches at 1.00 — the commonest word
+#           loses to any rival that happened to split its senses. Only true
+#           packing is split: a Russian participial phrase ("лицо, ищущее
+#           убежища") is ONE meaning and stays whole — 155 of 184 were that.
+#
+# lemma	field	value	why
+Acht	ru	восьмёрка (цифра, номер); ист. опала, изгнание	die Acht — субстантивированное числительное (цифра/номер) плюс устаревшее юридическое значение «опала»; «восемь» это про
+Agar-Agar	article	das	«das Agar-Agar»
+Amen	ru	одобрение, благословение	в выражении «sein Amen zu etwas geben» das Amen значит формальное одобрение/благословение, а не просто междометие «аминь
+Anguss	ru_all	["литник", "прибыль (слитка)", "выступ", "бобышка"]	«выступ, бобышка» — два независимых существительных-синонима для третьего значения
+Atembeschwerden	article	die	форма мн.ч. от «die Beschwerde» (ед.ч. употребимо)
+Betriebsdaten	article	die	форма мн.ч.; техническое ед.ч. «das Datum» существует, но разошлось по смыслу с «Daten»
+Biowissenschaften	article	die	форма мн.ч. от «die Wissenschaft»
+Biskuit	article	der	у Duden колеблющийся род der/das Biskuit
+Blouson	article	der	«der Blouson» (франц. заимствование, м.р.)
+Boatpeople	article	die	заимствованное англ. «people» уже во мн.ч., нем. ед.ч. не образовано
+Bodenbakterien	article	die	форма мн.ч. от «die Bakterie»
+Buhrufe	article	die	форма мн.ч. от «der Ruf»
+Calisthenics	article	das	название дисциплины-заимствования по образцу «das Yoga/Jogging»
+Chips	article	die	заимствованное английское мн.ч. как «чипсы»; единственное «ein Chip» для этого значения не используется
+Cornflakes	article	die	заимствованное английское мн.ч., собственного нем. ед.ч. нет (как Chips)
+Crackers	article	die	заимствованное англ. мн.ч. по аналогии с Chips/Cornflakes
+Curry	article	das	у Duden колеблющийся род der/das Curry, в Германии для этого значения чаще «das»
+Depositen	article	die	форма мн.ч. от «das Depositum» (юр./банк. термин, ед.ч. употребимо)
+Detergenzien	article	die	форма мн.ч. от «das Detergens» (химический термин, ед.ч. употребимо)
+Dreißigerjahre	article	die	обозначение десятилетия
+Elf	ru	сборная, команда (из одиннадцати игроков)	die Elf — футбольная команда (метонимия по числу игроков); собственный пример карточки именно об этом, а числительное el
+Erstsemester	article	der	не прилагательное, а неизменяемое существительное; род/артикль зависит от пола референта, «der» взят как генерик по умол
+Fertigungsunterlagen	article	die	форма мн.ч. от «die Unterlage»
+Filmleute	article	die	«Leute» — плюралия тантум
+Finanzkreise	article	die	форма мн.ч. от «der Kreis»
+Fünfzigerjahre	article	die	обозначение десятилетия
+Geistesgaben	article	die	форма мн.ч. от «die Gabe»
+Gender-Pay-Gap	article	der	составное заимствование, употребляется с «der Gender-Pay-Gap»
+Geschäftsverbindungen	article	die	форма мн.ч. от «die Verbindung» (ед.ч. «eine Geschäftsverbindung» стандартно в коммерческом языке)
+Getreideerzeugnisse	article	die	форма мн.ч. от «das Erzeugnis»
+Grabarbeiten	article	die	форма мн.ч. от «die Arbeit»
+Grundchemikalien	article	die	форма мн.ч. от «die Chemikalie»
+Grundmittel	article	die	«Mittel» — ср.р., ед. и мн.ч. совпадают по форме, для мн.ч. нужен артикль «die»
+Gummi	article	der	«der Gummi» (в Австрии допустимо «das Gummi»)
+Halbgeschwister	article	die	«Geschwister» — плюралия тантум того же класса, что и «Eltern» из примера задания
+Halfter	article	das	у Duden колеблющийся род der/das Halfter; для сбруи (основное значение) чаще «das»
+Halluzinogene	article	die	обычное сущ. на -gen (как Allergen, Karzinogen), НЕ субстантивированное прилагательное; форма мн.ч. от «das Halluzinogen
+Handhabung	ru_all	["обращение (с прибором)", "применение (закона)", "метод", "практика"]	«метод, практика» — два разных существительных-синонима для третьего значения
+Hochkaräter	ru_all	["высококачественный драгоценный камень", "что-либо значительное", "что-либо весомое", "важный человек"]	«значительное, весомое» — два независимых прилагательных-синонима для второго значения
+Ich	ru	своё «я», эго	das Ich — философский/психологический термин (собственное я, эго), не личное местоимение; ru_all уже содержит «филос. Я»
+Investitionskosten	article	die	«Kosten» — плюралия тантум
+Ist-Kosten	article	die	«Kosten» — плюралия тантум, ед.ч. «Koste» в этом значении не существует
+Ja	ru	согласие, утвердительный ответ	das Ja — существительное («своё Ja дать» = дать согласие), а не частица «да»
+Jura	article	das	как название учебной дисциплины обычно употребляется без артикля (как Medizin/Latein), словарный род при этом средний; «
+Kaliber	ru_all	["калибр (оружия)", "размер", "диаметр", "тип (человека)", "класс (человека)"]	во 2-м и 3-м значениях склеены пары синонимов (размер/диаметр; тип/класс), каждое слово — самостоятельный перевод
+Kokosflocken	article	die	форма мн.ч. от «die Flocke»
+Konditorwaren	article	die	форма мн.ч. от «die Ware»
+Konsumgüter	article	die	форма мн.ч. от «das Gut» (ед.ч. «ein Konsumgut» — стандартный термин экономики)
+Leichtmetalle	article	die	форма мн.ч. от «das Metall»
+Liebesworte	article	die	форма мн.ч. от «das Wort»
+Lippfische	article	die	форма мн.ч. от «der Fisch»
+Marzipan	article	das	«das Marzipan»
+Medienleute	article	die	«Leute» — плюралия тантум
+Milchprodukte	article	die	форма мн.ч. от «das Milchprodukt» (ед.ч. употребимо: «Butter ist ein Milchprodukt»)
+Militaria	article	die	латинское собирательное мн.ч. (как Utensilien, Insignien), ед.ч. не используется
+Minus	ru	дефицит, недостаток	das Minus — существительное (убыток/дефицит в балансе), а не просто знак вычитания
+Moneten	article	die	студенческий жаргонизм «деньги», только мн.ч.
+Naturstoffe	article	die	форма мн.ч. от «der Stoff» (ед.ч. «ein Naturstoff» — стандартный термин химии)
+Nein	ru	отказ, отрицательный ответ	das Nein — существительное (формальный отказ), а не междометие «нет»
+Neun	ru	девятка (цифра, номер)	die Neun — субстантивированное числительное (номер трамвая, оценка); русскому «девять» соответствует отдельное слово «де
+Neunzigerjahre	article	die	обозначение десятилетия, у этого сложного слова нет формы ед.ч.
+Nougat	article	der	у Duden колеблющийся род der/das Nougat
+Null	ru	ничтожество, никчёмный человек (перен.); ноль (цифра)	die Null помимo цифры имеет переносное значение «никчёмный человек» (Er ist eine Null), которого у числительного null не
+Papierwaren	article	die	форма мн.ч. от «die Ware»
+Perseiden	article	die	название метеорного потока, используется только во мн.ч. (как Leoniden, Geminiden)
+Personalpapiere	article	die	форма мн.ч. от «das Papier»
+Plus	ru	преимущество, прибыль, излишек	das Plus — существительное (выгода/профицит, ср. пример карточки про прибыль компании), а не просто знак сложения
+Privatleute	article	die	«Leute» — плюралия тантум (тот же класс, что и пример задания «Leute»)
+Rotalgen	article	die	форма мн.ч. от «die Alge»
+Ränke	article	die	архаичное «интриги» — плюралия тантум в современном языке
+Röteln	article	die	название болезни по образцу «die Masern» — только мн.ч., ед.ч. не существует
+Rückenschmerzen	article	die	форма мн.ч. от обычного сущ. «der Schmerz»; ед.ч. «der Rückenschmerz» существует и используется в медицинских текстах
+Schulsachen	article	die	форма мн.ч. от «die Sache»
+Schussel	article	der	«der Schussel» (разговорное, не образовано от прилагательного)
+Schwermetalle	article	die	форма мн.ч. от «das Metall» (ед.ч. «ein Schwermetall» стандартно)
+Sechzigerjahre	article	die	обозначение десятилетия
+Siebzigerjahre	article	die	обозначение десятилетия
+Silane	article	die	форма мн.ч. от «das Silan» (химический термин, ед.ч. употребимо)
+Single	article	der	не субстантивированное прилагательное, а существительное-заимствование; «der Single» — одинокий человек (основное значен
+Sixties	article	die	заимствованное обозначение десятилетия, форма ед.ч. для этого значения не существует
+Skonto	article	der	у Duden колеблющийся род der/das Skonto, основной — der
+Spezialkenntnisse	article	die	форма мн.ч. от «die Kenntnis»
+Spinnentiere	article	die	форма мн.ч. от «das Tier»
+Sportsachen	article	die	форма мн.ч. от «die Sache»
+Spray	article	das	«das Spray» (заимствование, ср.р.)
+Spross	ru_all	["побег (ботаника)", "отросток (оленьих рогов)", "потомок", "отпрыск"]	«потомок, отпрыск» — два независимых существительных-синонима для третьего значения
+Stapellauf	ru_all	["спуск на воду (судна)", "начало (перен.)", "старт (перен.)"]	«начало, старт» — два независимых существительных-синонима для переносного значения
+Stehaufmännchen	ru_all	["ванька-встанька (игрушка)", "оптимист", "неунывающий человек"]	«оптимист, неунывающий человек» — два самостоятельных перевода переносного значения
+Steuerrückstände	article	die	форма мн.ч. от «der Rückstand»
+Stiefeltern	article	die	«Eltern» — плюралия тантум, тот же класс, что в примере задания
+Stoizismus	ru_all	["стоицизм (философия)", "стойкость", "невозмутимость"]	«стойкость, невозмутимость» — два независимых существительных-синонима для второго значения
+Streptokokken	article	die	форма мн.ч. от «die Streptokokke» (ед.ч. — стандартный термин микробиологии)
+Strömungsverhältnisse	article	die	форма мн.ч. от «das Verhältnis»
+Süßwaren	article	die	форма мн.ч. от «die Ware» (ед.ч. «eine Süßware» существует, хоть и реже)
+Tabakwaren	article	die	форма мн.ч. от «die Ware»
+Tacken	article	die	жаргонное «деньги», употребляется только во мн.ч.
+Theatralik	ru_all	["театральность (сценичность)", "напыщенность", "неестественность"]	«напыщенность, неестественность» — два независимых существительных-синонима для второго значения
+Titan	ru_all	["титан (химический элемент)", "титан (мифологическое существо)", "великан", "гигант"]	«великан, гигант» — два разных существительных-синонима для переносного значения, оба самостоятельны
+Tortellini	article	die	у Duden закреплено как Pluraletantum, наравне с Ravioli/Spaghetti
+Transportkosten	article	die	«Kosten» — плюралия тантум
+Transurane	article	die	форма мн.ч. от «das Transuran» (химический термин, ед.ч. употребимо)
+Tropenkrankheiten	article	die	форма мн.ч. от «die Krankheit» (ед.ч. «eine Tropenkrankheit» стандартно в медицине)
+Turksprachen	article	die	форма мн.ч. от «die Sprache»
+Twen	article	der	не прилагательное; неизменяемое заимствование, «der Twen» — общий род по умолчанию
+Verdauungsbeschwerden	article	die	форма мн.ч. от «die Beschwerde»
+Verlagserzeugnisse	article	die	форма мн.ч. от «das Erzeugnis»
+Verwaltungskosten	article	die	«Kosten» — плюралия тантум, ед.ч. в этом значении не существует
+Visavis	article	das	«das Vis-à-vis/Visavis» (франц. заимствование, ср.р.)
+Wildfrüchte	article	die	форма мн.ч. от «die Frucht»
+Winkelzüge	article	die	форма мн.ч. от «der Zug» (ед.ч. «ein Winkelzug» стандартно)
+Zahlungsschwierigkeiten	article	die	форма мн.ч. от «die Schwierigkeit»
+Zahnwale	article	die	форма мн.ч. от «der Wal»
+Zigtausend	article	die	субстантивированное числительное по образцу Tausende/Hunderte; ед. числа не образует
+Zirkusleute	article	die	«Leute» — плюралия тантум
+Zwanzigerjahre	article	die	обозначение десятилетия
+abmarschieren	ru_all	["выступать (в поход)", "уходить (пешком)", "отправляться (пешком)", "обходить (район)", "проходить (расстояние)"]	«уходить, отправляться» — два независимых глагола-синонима для второго значения
+durchs	ru_all	["через (слитно: durch + das)", "сквозь"]	«через» и «сквозь» — два самостоятельных значения-синонима, не одна фраза
+handgreiflich	ru_all	["склонный к дракам", "осязаемый", "очевидный"]	«осязаемый, очевидный» — два независимых прилагательных-синонима для второго значения
+heranmachen	ru_all	["подходить", "приближаться", "приставать (с ухаживаниями)", "браться за работу"]	«подходить, приближаться» — два самостоятельных глагола-синонима
+hinlangen	ru_all	["протянуть руку (чтобы взять что-либо)", "хватать", "быть достаточным"]	«хватать, быть достаточным» — два самостоятельных перевода значения «быть достаточным» (хватать здесь в безличном смысле
+knittern	ru_all	["мять (ткань)", "комкать (ткань)", "мяться (о ткани)"]	«мять, комкать» — два независимых переходных глагола-синонима для первого значения
+knuffig	ru_all	["милый", "симпатичный", "крепкий", "здоровенный (разг.)"]	оба значения склеивают пары прилагательных-синонимов (милый/симпатичный; крепкий/здоровенный)
+krachen	ru_all	["греметь", "трещать", "хлопать (о двери)", "разбиваться (при столкновении)", "ссориться"]	«греметь, трещать» — два самостоятельных глагола-синонима, склеенных в одно значение
+lichtvoll	ru_all	["светлый", "залитый светом", "ясный", "очевидный", "лучезарный"]	первое и второе значения склеивают пары синонимов (светлый/залитый светом; ясный/очевидный)
+navigieren	ru	вести (судно, самолёт); прокладывать курс; ориентироваться в пути	ru глагола-карточки скопирован с ru существительного «Navigieren» и равен «навигация» — это не перевод глагола и даже не
+prügeln	ru_all	["бить", "избивать", "драться"]	«бить, избивать» — два самостоятельных глагола-синонима
+tatzen	ru_all	["лапать", "хватать руками", "ударить (по руке, южнонемецкий диалект)"]	«лапать, хватать руками» — два самостоятельных перевода одного действия
+traumwandlerisch	ru_all	["как лунатик", "уверенно", "не задумываясь"]	«уверенно, не задумываясь» — два независимых наречных перевода второго значения
+ums	ru_all	["вокруг (слитно: um + das)", "около"]	«вокруг» и «около» — два самостоятельных предложных значения, каждое годится как отдельный полный перевод
+ungesättigt	ru_all	["ненасыщенный (химически)", "голодный", "несытый"]	«голодный, несытый» — два независимых прилагательных-синонима для второго значения
+verbummeln	ru_all	["прогулять (время, урок)", "промотать (деньги)", "забыть", "упустить", "опуститься (о человеке)"]	«забыть, упустить» — два независимых глагола-синонима для третьего значения
+vereinzeln	ru_all	["прореживать (растения)", "разъединять", "изолировать"]	«разъединять, изолировать» — два независимых глагола-синонима для второго значения
+verknusen	ru_all	["переваривать (пищу, сев.-нем.)", "терпеть (разг.)", "выносить (разг.)"]	«терпеть, выносить» — два независимых глагола-синонима для второго значения
+verrinnen	ru_all	["проходить (о времени)", "вытекать", "стекать"]	«вытекать, стекать» — два независимых глагола-синонима для второго значения
+zutreffend	ru_all	["верный", "правильный", "точный (об ответе)"]	«верный, правильный» — два независимых прилагательных-синонима одного значения
+Ölsardinen	article	die	форма мн.ч. от «die Sardine»
