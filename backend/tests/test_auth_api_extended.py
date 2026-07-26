@@ -121,17 +121,18 @@ async def test_logout_clears_session(guest_client):
 
 
 async def test_phrase_known_requires_auth(guest_client, db_session):
+    from sqlalchemy import select
+
+    from app.db.models import Phrase
+
     await seed_words_and_phrases(db_session)
-    phrases = (await guest_client.get("/api/phrases?topic=technologie")).json()
+    # id берётся из БД, а не из ручки: `GET /api/phrases` удалён 2026-07-26
+    # (0 потребителей во фронте), а `/templates` стоит на `DISTINCT ON`,
+    # которого в sqlite нет. `POST /api/words/{id}/queue` уехал туда же вместе
+    # со всем роутером `/api/words`, поэтому его гостевого теста больше нет.
+    phrase = (await db_session.execute(select(Phrase))).scalars().first()
     res = await guest_client.post(
-        f"/api/phrases/{phrases[0]['id']}/known",
+        f"/api/phrases/{phrase.id}/known",
         json={"known": True},
     )
-    assert res.status_code == 401
-
-
-async def test_word_queue_requires_auth(guest_client, db_session):
-    await seed_words_and_phrases(db_session)
-    words = (await guest_client.get("/api/words")).json()
-    res = await guest_client.post(f"/api/words/{words[0]['id']}/queue")
     assert res.status_code == 401

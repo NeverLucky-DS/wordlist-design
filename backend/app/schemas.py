@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -189,21 +189,6 @@ class AnalysisRunOut(BaseModel):
     is_stale: bool = False
 
 
-class WordOut(BaseModel):
-    id: int
-    german: str
-    article: str | None
-    word_type: str
-    translation_ru: str
-    level: str
-    grammar_data: dict | None
-    examples: list
-    source: str
-    topics: list[str] = Field(default_factory=list)
-
-    model_config = {"from_attributes": True}
-
-
 class PhraseOut(BaseModel):
     id: int
     text_de: str
@@ -214,75 +199,5 @@ class PhraseOut(BaseModel):
     known: bool = False
 
 
-class TopicSummaryOut(BaseModel):
-    slug: str
-    title_de: str
-    title_ru: str = ""
-    level_default: str = "B1"
-
-
-class TopicOut(BaseModel):
-    slug: str
-    title_de: str
-    title_ru: str = ""
-    level_default: str = "B1"
-    essay_type_hints: list[str] = Field(default_factory=list)
-    notes_ru: str = ""
-    word_count: int = 0
-    level_counts: dict[str, int] = Field(default_factory=dict)
-    phrase_count: int = 0
-
-
 class PhraseKnownUpdate(BaseModel):
     known: bool
-
-
-class TrainingQueueItemOut(BaseModel):
-    word_id: int
-    german: str
-    article: str | None
-    translation_ru: str
-    level: str
-    score: int
-
-
-class TrainingResultIn(BaseModel):
-    word_id: int
-    user_answer: str
-    response_ms: int = 5000
-
-
-class TrainingResultOut(BaseModel):
-    word_id: int
-    expected: str
-    is_correct: bool
-    new_score: int
-    delta: int
-
-
-class ScoreTrendPointOut(BaseModel):
-    essay_id: int
-    title: str
-    score: int
-    grade: str
-    analyzed_at: datetime
-
-
-class RecentEssayOut(BaseModel):
-    id: int
-    title: str
-    grade: str | None = None
-    overall_score: int | None = None
-    updated_at: datetime
-
-
-class DashboardOut(BaseModel):
-    streak_current: int
-    streak_last_date: date | None = None
-    words_learned: int
-    last_grade: str | None = None
-    last_score: int | None = None
-    last_essay_title: str | None = None
-    last_analyzed_at: datetime | None = None
-    score_trend: list[ScoreTrendPointOut] = Field(default_factory=list)
-    recent_essays: list[RecentEssayOut] = Field(default_factory=list)

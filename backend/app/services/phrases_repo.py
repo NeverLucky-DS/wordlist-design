@@ -59,33 +59,6 @@ async def list_templates(
     return list(result.scalars().all())
 
 
-async def list_phrases(
-    session: AsyncSession,
-    *,
-    level: str | None = None,
-    essay_part: str | None = None,
-    topic: str | None = None,
-) -> list[Phrase]:
-    topic_slug = (topic or "").strip().lower()
-
-    if topic_slug:
-        stmt = select(Phrase).where(Phrase.topic == topic_slug).order_by(Phrase.id.asc())
-        if level:
-            stmt = stmt.where(Phrase.level == level)
-        if essay_part:
-            stmt = stmt.where(Phrase.essay_part == essay_part)
-        result = await session.execute(stmt)
-        topic_phrases = list(result.scalars().all())
-        if topic_phrases:
-            return topic_phrases
-
-    # Fall back to the topic-independent templates rather than to `topic IS
-    # NULL`. Every one of the 4 021 rows carries a topic, so the old fallback
-    # matched nothing and `GET /api/phrases` answered `[]` for anyone who did
-    # not already know an exact topic slug — which is why this table sat unused.
-    return await list_templates(session, level=level, essay_part=essay_part)
-
-
 async def get_phrase_known_map(
     session: AsyncSession,
     *,

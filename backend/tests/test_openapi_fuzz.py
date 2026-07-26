@@ -70,8 +70,6 @@ NEEDS_POSTGRES_OR_MISTRAL = (
     "/api/vocab/build",
     "/api/vocab/mirror",
     "/api/vocab/enrich",
-    "/api/words",
-    "/api/topics",
     "/api/phrases",
     "/api/essays/{essay_id}/analy",
 )

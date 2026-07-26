@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.auth import Principal
-from app.db.models import EssayAnalysis, User, Word
-from app.services import essays_repo, phrases_repo, words_repo
+from app.db.models import EssayAnalysis, Phrase, User
+from app.services import essays_repo, phrases_repo
 from tests.helpers import essay_payload, seed_words_and_phrases
 
 
@@ -92,44 +92,15 @@ async def test_get_latest_analysis_ignores_failed_runs(db_session):
     assert latest.id == ok.id
 
 
-async def test_words_repo_filters_combined(db_session):
-    await seed_words_and_phrases(db_session)
-    rows = await words_repo.list_words(db_session, topic="natur", level="A2")
-    assert len(rows) == 1
-    assert rows[0].german == "Baum"
-
-
-async def test_words_repo_queue_is_idempotent(db_session):
-    user = User(email="queue@test.com", password_hash="x")
-    db_session.add(user)
-    await db_session.flush()
-    word = Word(
-        german="Test",
-        word_type="noun",
-        translation_ru="тест",
-        level="B1",
-        examples=[],
-        source="test",
-    )
-    db_session.add(word)
-    await db_session.commit()
-
-    first = await words_repo.add_word_to_queue(
-        db_session, user_id=user.id, word_id=word.id
-    )
-    second = await words_repo.add_word_to_queue(
-        db_session, user_id=user.id, word_id=word.id
-    )
-    assert first.id == second.id
-
-
 async def test_phrases_repo_known_toggle(db_session):
     user = User(email="phrase@test.com", password_hash="x")
     db_session.add(user)
     await db_session.flush()
     await seed_words_and_phrases(db_session)
-    phrases = await phrases_repo.list_phrases(db_session, topic="technologie")
-    phrase_id = phrases[0].id
+    # `phrases_repo.list_phrases` удалён 2026-07-26 вместе с `GET /api/phrases`;
+    # оставшийся `list_templates` требует Postgres (`DISTINCT ON`), поэтому id
+    # берётся прямо из таблицы.
+    phrase_id = (await db_session.execute(select(Phrase))).scalars().first().id
 
     row = await phrases_repo.set_phrase_known(
         db_session, user_id=user.id, phrase_id=phrase_id, known=True

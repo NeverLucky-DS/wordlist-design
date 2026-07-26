@@ -6,7 +6,6 @@ import logging
 import re
 import time
 
-import httpx
 
 from app.config import settings
 from app.services.mistral_http import post_mistral_json
@@ -482,31 +481,6 @@ def _grade_from_scores_and_errors(scores: list[int], errors: list[dict]) -> tupl
     return overall_score, grade
 
 
-async def _chat_json(client: httpx.AsyncClient, prompt: str) -> dict:
-    headers = {
-        "Authorization": f"Bearer {settings.mistral_api_key}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": settings.mistral_model,
-        "messages": [
-            {"role": "system", "content": "Return only valid JSON. No markdown."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.2,
-        "response_format": {"type": "json_object"},
-    }
-    response = await client.post(
-        "https://api.mistral.ai/v1/chat/completions",
-        headers=headers,
-        json=payload,
-    )
-    response.raise_for_status()
-    data = response.json()
-    content = data["choices"][0]["message"]["content"]
-    return json.loads(content)
-
-
 def _grade_from_scores(scores: list[int]) -> tuple[int, str]:
     overall_score = int(sum(scores) / max(1, len(scores))) if scores else 0
     overall_score = max(0, min(100, overall_score))
@@ -530,67 +504,6 @@ def _error_has_anchor(err: dict, part_text: str) -> bool:
     if end > start and end <= len(part_text):
         return bool(part_text[start:end].strip())
     return False
-
-
-async def _analyze_single_part(
-    client: httpx.AsyncClient,
-    *,
-    part_key: str,
-    part_text: str,
-    essay_type: str,
-    level: str,
-    previous_points: list[str],
-) -> dict:
-    if not part_text.strip():
-        return {
-            "part": part_key,
-            "score": 0,
-            "feedback_ru": "Часть пустая: текст не написан.",
-            "errors": [],
-            "is_empty": True,
-        }
-
-    part_prompt = _build_part_prompt(
-        part_key=part_key,
-        part_label=PART_LABELS[part_key],
-        text=part_text,
-        essay_type=essay_type,
-        level=level,
-        previous_points=previous_points,
-    )
-    parsed_part = await _chat_json(client, part_prompt)
-
-    part_score = max(0, min(100, int(parsed_part.get("part_score", 60))))
-    part_feedback = str(
-        parsed_part.get(
-            "part_feedback_ru",
-            "Нужно улучшить точность формулировок и связность.",
-        )
-    )
-    errors_raw = parsed_part.get("errors", [])
-    if not isinstance(errors_raw, list):
-        errors_raw = []
-
-    if errors_raw:
-        normalized_errors = _normalize_error_ranges(errors_raw, part_text, part_key)
-        anchored = [err for err in normalized_errors if _error_has_anchor(err, part_text)]
-        if anchored:
-            normalized_errors = anchored
-    else:
-        normalized_errors = []
-
-    deduped_errors = _filter_part_errors(
-        _remove_overlapping_errors(_dedupe_errors_part(normalized_errors)),
-        level,
-    )
-
-    return {
-        "part": part_key,
-        "score": part_score,
-        "feedback_ru": part_feedback,
-        "errors": deduped_errors,
-        "is_empty": False,
-    }
 
 
 def _call_mistral(prompt_text: str, *, label: str) -> dict:

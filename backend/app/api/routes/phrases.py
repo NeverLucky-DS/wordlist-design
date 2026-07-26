@@ -44,24 +44,6 @@ async def list_templates(
     return [_out(p, known_map) for p in phrases]
 
 
-@router.get("", response_model=list[PhraseOut])
-async def list_phrases(
-    level: str | None = None,
-    part: str | None = None,
-    topic: str | None = None,
-    principal: Principal = Depends(get_principal),
-    db: AsyncSession = Depends(get_db),
-):
-    phrases = await phrases_repo.list_phrases(
-        db,
-        level=level,
-        essay_part=part,
-        topic=topic,
-    )
-    known_map = await _known_map(principal, db, phrases)
-    return [_out(p, known_map) for p in phrases]
-
-
 @router.post("/{phrase_id}/known")
 async def set_known(
     phrase_id: int,

@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, essays, health, phrases, topics, words
+from app.api.routes import auth, essays, health, phrases
 from app.auth import cleanup_expired_sessions
 from app.vocab.api import router as vocab_router
 from app.vocab.dict_api import router as woerterbuch_router
@@ -58,9 +58,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(essays.router)
-app.include_router(words.router)
 app.include_router(phrases.router)
-app.include_router(topics.router)
 app.include_router(vocab_router)  # /api/vocab/* — dictionary-ingestion dashboard
 app.include_router(woerterbuch_router)  # /api/vocab/* — Wörterbuch lookup + word list
 
@@ -78,7 +76,7 @@ async def on_startup() -> None:
         await cleanup_expired_sessions(session)
         await ensure_seed_data(session)
         # Idempotent cleanup: dirty lemmas / duplicates left by pipeline v1
-        from app.services.topic_pack_service import (
+        from app.services.word_cleanup import (
             dedupe_words_by_german,
             fix_word_lemmas,
             normalize_topic_case,
