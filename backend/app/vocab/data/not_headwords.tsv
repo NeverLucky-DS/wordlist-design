@@ -1,4 +1,4 @@
-# Case-twin pairs adjudicated by hand, 2026-07-26.
+# Spellings that are not headwords, adjudicated by hand, 2026-07-26.
 #
 # `forms.py::_capitalised_twins` catches the common shape and 129 of these
 # 178 duplicates were already tagged by it. This file is only the residue it
@@ -57,3 +57,20 @@ Erstbeste	keep		тот же случай, что Nächstbeste — субстан
 mal	keep		Mal (случай/раз) и mal (при умножении) — разные части речи, но узкое значение «раз» в обоих случаях верно и по
 Nächstbeste	keep		субстантивированное прилагательное (das Nächstbeste) и обычное прилагательное; в русском «первый попавшийся» т
 Vorletzte	keep		субстантивированное прилагательное (der/die/das Vorletzte — человек) и обычное прилагательное; в русском «пред
+
+# ── non-standard spellings, found 2026-07-26 by the rewritten example check ──
+#
+# Each of these has a card whose OWN examples spell the word differently, and
+# the examples are right. `sponsoren` is the giveaway: it sits at zipf 3.82
+# against `sponsern`'s 2.65, because wordfreq reads it as the plural of a noun
+# — borrowed frequency, the disease `forms.py` exists to treat.
+#
+# Only the unambiguous ones are here. `Ermittelung`, `Seance`, `aufdringen`,
+# `verkündigen` and `niederreißen` were REJECTED for this list: Duden attests
+# them (or the defect is in the example, not the lemma), and demoting a real
+# word to fix an example would be the more expensive mistake.
+sponsoren	form	sponsern	не глагол: «sponsern»; zipf 3.82 унаследован от мн. ч. существительного
+Intensivität	form	Intensität	лишнее «iv», примеры карточки пишут верно
+zwangslos	form	zwanglos	лишняя соединительная «s», примеры карточки пишут верно
+rückrufen	form	zurückrufen	глагола нет, есть существительное «der Rückruf»; примеры пишут «zurück…»
+hinzuarbeiten	form	hinarbeiten	это «hinarbeiten» в форме с zu, а не отдельная лемма

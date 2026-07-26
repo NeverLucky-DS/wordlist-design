@@ -42,7 +42,7 @@ def db(tmp_path):
 
 
 def _write(monkeypatch, tmp_path, twins: str = "", fixes: str = ""):
-    t, f = tmp_path / "case_twins.tsv", tmp_path / "card_fixes.tsv"
+    t, f = tmp_path / "not_headwords.tsv", tmp_path / "card_fixes.tsv"
     t.write_text(twins, encoding="utf-8")
     f.write_text(fixes, encoding="utf-8")
     monkeypatch.setattr(handfixes, "TWINS_FILE", t)
@@ -153,3 +153,42 @@ def test_the_shipped_files_parse_and_point_at_real_cards():
             assert isinstance(fields["ru_all"], list) and fields["ru_all"]
         if "article" in fields:
             assert fields["article"] in ("der", "die", "das"), lemma
+
+
+def test_kind_comes_from_the_relation_not_from_the_capital(db, tmp_path, monkeypatch):
+    """`Intensivität` is a misspelling of `Intensität`, not a case twin.
+
+    Both start with a capital, so inferring the kind from the lemma's own first
+    letter labelled it «форма от» — which says the word is a form of the other.
+    It is a spelling of the other. Only a pair differing by nothing but case is
+    a case pair.
+    """
+    card(db, "Intensität", pos="noun", article="die", ru="интенсивность")
+    card(db, "Intensivität", pos="noun", article="die", ru="интенсивность")
+    card(db, "Bauen", pos="verb", ru="строить")
+    card(db, "bauen", pos="verb", ru="строить")
+    db.commit()
+    _write(monkeypatch, tmp_path,
+           twins="Intensivität\tform\tIntensität\t—\nBauen\tform\tbauen\t—\n")
+
+    forms.tag_forms(db)
+    kinds = {r["lemma"]: r["form_kind"] for r in
+             db.execute("SELECT lemma, form_kind FROM cards")}
+    assert kinds["Intensivität"] == "variant"
+    assert kinds["Bauen"] == "capitalised"
+
+
+def test_a_lowercase_noun_is_a_spelling_not_a_form(db, tmp_path, monkeypatch):
+    """German has no lowercase nouns, so `frieden` is a misspelling of `Frieden`.
+
+    It IS a case pair by string comparison, but `capitalised` renders as «форма
+    от», and a form is not what it is. `capitalised` stays reserved for the
+    direction it was built for: a capital standing in for a real lowercase word.
+    """
+    card(db, "Frieden", pos="noun", article="der", ru="мир")
+    card(db, "frieden", pos="noun", ru="мир")
+    db.commit()
+    _write(monkeypatch, tmp_path, twins="frieden\tform\tFrieden\t—\n")
+    forms.tag_forms(db)
+    row = db.execute("SELECT form_kind FROM cards WHERE lemma='frieden'").fetchone()
+    assert row["form_kind"] == "variant"

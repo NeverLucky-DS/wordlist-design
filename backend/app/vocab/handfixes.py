@@ -25,6 +25,13 @@ the commonest particles in German — was tagged `abbrev` and demoted in search
 for it. `Vorletzte`, `Nächstbeste`, `Erstbeste` are ordinary nominalised
 adjectives that `_capitalised_twins` read as sentence-initial noise.
 
+A second source feeds the same file. Rewriting the "example does not use the
+word" check (it was 100 % false positives on a 150-card sample) left a residue of
+19, and about half of those are not example problems at all — the LEMMA is
+misspelled and the card's own examples spell it correctly. `sponsoren` is the
+clearest: it sits at zipf 3.82 against `sponsern`'s 2.65, because wordfreq reads
+it as a noun plural. Borrowed frequency again, so the same treatment.
+
 Data lives in TSV beside the wordlists rather than in this file: these are
 lexicographic judgements about individual words, the list will grow as more of
 the base is reviewed, and a reviewer should be able to read and amend it without
@@ -41,7 +48,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _DATA = Path(__file__).with_name("data")
-TWINS_FILE = _DATA / "case_twins.tsv"
+TWINS_FILE = _DATA / "not_headwords.tsv"
 FIXES_FILE = _DATA / "card_fixes.tsv"
 
 # Which card fields may be corrected from the TSV. Deliberately short: these are
@@ -107,18 +114,25 @@ def exempt() -> frozenset[str]:
 def extra_tags(have_card) -> list[tuple[str, str | None, str]]:
     """Adjudicated (kind, base, lemma) triples to merge into `tag_forms`.
 
-    The kind follows the spelling, because that is what the reader sees. A
-    capitalised entry beside a real lowercase word is the `capitalised` case the
-    UI already labels «форма от …»; a lowercase entry beside a real noun is a
-    non-standard spelling, which the UI labels «вариант написания».
+    The kind is the RELATION to the base, and the UI renders the two
+    differently: `capitalised` reads «форма от …», `variant` «вариант
+    написания». So `capitalised` is reserved for what it was built for — a
+    capitalised entry standing in for a real LOWERCASE word, the sentence-initial
+    artefact (`Bauen` beside `bauen`).
+
+    Everything else is a spelling. `Intensivität` beside `Intensität` is a
+    misspelling that happens to start with a capital, and `frieden` beside `der
+    Frieden` is a lowercase noun, which German does not have — calling either
+    one "a form of" the other says something untrue about German.
     """
     tag, _keep = load_twins()
     out = []
     for lemma, base in tag.items():
         if lemma not in have_card:
             continue
-        kind = "capitalised" if lemma[:1].isupper() else "variant"
-        out.append((kind, base if base in have_card else None, lemma))
+        case_twin = lemma.lower() == base.lower() and lemma[:1].isupper()
+        out.append(("capitalised" if case_twin else "variant",
+                    base if base in have_card else None, lemma))
     return out
 
 
