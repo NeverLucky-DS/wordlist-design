@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(docker*)",
+      "Bash(make up*)",
+      "Bash(make down*)",
+      "Bash(make restart*)",
+      "Bash(rm *)",
+      "Bash(git push*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean*)",
+      "Bash(gh *)",
+      "Read(backend/.env)",
+      "Edit(backend/.env)",
+      "Edit(enrichment-GOLDEN-*.db*)",
+      "Edit(vocab-GOLDEN-*.db*)",
+      "Edit(backend/app/vocab/vocab_data/**)",
+      "Edit(backend/data/**)"
+    ]
+  }
+}
