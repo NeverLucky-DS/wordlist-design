@@ -268,7 +268,18 @@ class VocabCard(Base):
     lemma_norm: Mapped[str] = mapped_column(String(160))
     lemma_ascii: Mapped[str] = mapped_column(String(160))
     level: Mapped[str] = mapped_column(String(16), default="unlisted")
+    # OUR estimate, for the 95.6% of cards `level` answers "unlisted" for. A
+    # different kind of claim from `level` and stored apart so it can never be
+    # rendered as one: `level` cites a published wordlist, this is a judgement
+    # measured at 38% exact / 91% on the "core vocabulary or beyond" boundary
+    # (see vocab/levels.py). NULL where no estimate was made or a real level
+    # exists.
+    level_est: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
     # Display band, clamped to the B1–C1 brush set (see LEVEL_BAND).
+    #
+    # Deliberately NOT derived from `level_est`: it picks one of 15 hand-painted
+    # brushes, and repainting the whole dictionary on a 38%-exact signal is the
+    # trade PLANS pt.3 refused when it rejected computing CEFR from frequency.
     band: Mapped[str] = mapped_column(String(4), default="C1")
     topic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     pos: Mapped[str] = mapped_column(String(16), default="other")

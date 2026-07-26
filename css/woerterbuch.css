@@ -83,6 +83,12 @@ button{font-family:inherit}
 .wb-pos{font-size:12px;font-weight:700;letter-spacing:.01em;color:var(--ink-soft)}
 .wb-cefr{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--rose-ink);
   background:rgba(255,255,255,.8);border:1px solid var(--rose-soft);border-radius:6px;padding:2px 7px}
+/* Our estimate, and it must not look like the boxed citation above. No border,
+   no plate — the tilde and the caption carry the claim. Same reasoning that
+   keeps `.wb-freq` unboxed: a box in this page means "quoted from a list". */
+.wb-est{display:inline-flex;align-items:baseline;gap:5px}
+.wb-est b{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--soft)}
+.wb-est span{font-size:11px;color:var(--soft)}
 .wb-freq{display:inline-flex;align-items:center;gap:6px}
 .wb-freq b{font-size:11.5px;font-weight:500;color:var(--ink-soft)}
 
@@ -257,6 +263,13 @@ button{font-family:inherit}
   border:1px solid var(--rose-soft);border-radius:7px;padding:3px 7px;background:var(--card)}
 .wb-tag.is-freq{border-color:transparent;background:none;padding:3px 2px;
   font-weight:500;letter-spacing:0;color:var(--soft);display:inline-flex;align-items:center;gap:6px}
+/* The estimate keeps the plate's SHAPE — it is still a level, and lining it up
+   with the citation is what lets a reader compare two rows at a glance — but
+   loses its border and its ink. Boxed and rose means "a published list says
+   so"; this is dashed and quiet because it is ours, and the `~` says it again
+   in the text itself for anyone who cannot see the difference in weight. */
+.wb-tag.is-est{border-style:dashed;border-color:var(--hair);background:none;
+  color:var(--soft);font-weight:600}
 
 /* forms are legitimate hits, never headlines: dimmed paint, and they say so */
 .wb-row.is-form .wb-w::before{opacity:.28}

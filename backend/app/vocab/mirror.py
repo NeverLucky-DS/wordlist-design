@@ -68,8 +68,16 @@ def _read_since(after_ts: float, after_lemma: str, limit: int) -> list[dict]:
         # revisit a card to pick its paradigm up. Riding along on the card's own
         # row means a re-import is published by the same full resync as any other
         # in-place rewrite.
+        # `level_est` is added by `levels.apply_estimates`, which may never have
+        # run against this file — a fresh enrichment.db, or the fixtures the test
+        # suite builds. Naming a missing column is a hard error in SQLite and
+        # would take the whole mirror down, so ask the schema rather than assume.
+        has_est = any(r[1] == "level_est"
+                      for r in con.execute("PRAGMA table_info(cards)"))
+        est = "c.level_est, " if has_est else "NULL AS level_est, "
         rows = con.execute(
-            "SELECT c.lemma, c.level, c.topic, c.pos, c.article, c.ru, c.confidence, "
+            "SELECT c.lemma, c.level, " + est + "c.topic, c.pos, c.article, c.ru, "
+            "       c.confidence, "
             "       c.register, c.data, c.zipf, c.form_kind, c.form_of, "
             "       m.data AS morphology, c.created_at "
             "FROM cards c "
@@ -125,6 +133,7 @@ def _card_values(row: dict) -> dict:
         "lemma_norm": norm.fold_de(row["lemma"]),
         "lemma_ascii": norm.ascii_de(row["lemma"]),
         "level": (row.get("level") or "unlisted").lower(),
+        "level_est": (row.get("level_est") or None),
         "band": norm.band_of(row.get("level")),
         "topic": row.get("topic"),
         "pos": (row.get("pos") or "other").lower(),
@@ -170,7 +179,8 @@ async def _write_batch(db: AsyncSession, rows: list[dict]) -> None:
                 index_elements=[VocabCard.lemma],
                 set_={
                     c: stmt.excluded[c]
-                    for c in ("lemma_norm", "lemma_ascii", "level", "band", "topic",
+                    for c in ("lemma_norm", "lemma_ascii", "level", "level_est",
+                              "band", "topic",
                               "pos", "article", "ru", "confidence", "register", "data",
                               "zipf", "form_kind", "form_of", "morphology",
                               "source_created_at")

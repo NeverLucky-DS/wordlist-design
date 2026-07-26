@@ -159,6 +159,11 @@ def card_out(card: VocabCard, score: float | None = None) -> dict[str, Any]:
         "ru": card.ru,
         "ru_all": data.get("ru_all") or ([card.ru] if card.ru else []),
         "level": card.level,
+        # Two different claims, never merged: `level` cites a published list,
+        # `level_est` is our own measured judgement for the 95.6% no list
+        # covers. The UI has to dress them differently or the estimate borrows
+        # the citation's authority.
+        "level_est": card.level_est,
         "band": card.band,
         # `band` is the brush key and stays CEFR-shaped; `freq` is what we can
         # honestly say about the 95.6% of cards Goethe never listed. The UI

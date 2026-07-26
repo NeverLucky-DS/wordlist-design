@@ -166,9 +166,18 @@ async function collectWord(lemma, wantIn) {
 --------------------------------------------------------------------- */
 const FREQ_RU_SHORT = { haeufig: 'частое', mittel: 'средней частоты', selten: 'редкое' };
 
+/* Three claims, three dresses, and they must never be confused for each other.
+   A published Goethe level is a citation and gets the boxed tag. Our estimated
+   level is a judgement — measured at 38% exact but 91% on "core vocabulary or
+   beyond" — so it is written in lower case with a tilde, the way a reading is
+   marked as a reading. Frequency stays what it always was: a corpus fact, not a
+   level at all. */
 function tagHTML(card) {
   if (card.level && card.level !== 'unlisted') {
     return `<span class="wb-tag" title="Уровень по спискам Goethe">${esc(card.band)}</span>`;
+  }
+  if (card.level_est) {
+    return `<span class="wb-tag is-est" title="Наша оценка сложности, не опубликованный список. Точный уровень угадывается в 38 % случаев, граница «основной словарь / выше» — в 91 %.">~${esc(card.level_est.toUpperCase())}</span>`;
   }
   if (!card.freq) return '';   // no frequency known: say nothing, guess nothing
   return `<span class="wb-tag is-freq" title="Частотность по корпусу — это не уровень CEFR">
