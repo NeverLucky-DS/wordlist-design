@@ -1,6 +1,16 @@
 /* =====================================================================
    Shared watercolor brush map — level + grammatical type → worte/*.png
-   Used by index (app.js), schreiben, pipeline shelf tiles.
+
+   THE source of the map, and the only one. Loaded by index.html (for
+   `wb-card.js`) and by schreiben.html (for `schreiben.js`); pipeline.html has
+   no words on it and does not load this file.
+
+   Until 2026-07-26 `wb-card.js` carried its own byte-identical copy of the
+   15 keys, because index.html did not load this file at all after the V9
+   rewrite. Nothing had drifted yet — but a renamed brush in worte/ would have
+   been fixed in one file and left broken in the other, and the symptom is a
+   silently transparent card, not an error. Guarded by
+   `tests/frontend/test_asset_links.py`.
    ===================================================================== */
 'use strict';
 
@@ -21,18 +31,6 @@ const WASH = {
   'C1|verb': 'C1_Verbs_Olive-Ochre_BG-Wash.png',
   'C1|adj': 'C1_Adjectives_Plum_BG-Wash.png',
 };
-
-/* Stable subset cycled on pipeline topic shelf tiles */
-const PIPELINE_WASHES = [
-  'worte/B1_Adjectives_Lavender_BG-Wash.png',
-  'worte/B1_Der_Powdery-Blue_Horizontal-Soft.png',
-  'worte/B1_Die_Powdery-Pink_BG-Wash.png',
-  'worte/B1_Das_Pale-Green_BG-Wash.png',
-  'worte/B1_Verbs_Sandy-Ochre_BG-Wash.png',
-  'worte/B2_Adjectives_Amethyst_BG-Wash.png',
-  'worte/B2_Das_Grass-Green_BG-Wash.png',
-  'worte/B2_Verbs_Terracotta_BG-Wash.png',
-];
 
 function typeKey(w) {
   return w.pos === 'verb' ? 'verb' : (w.pos === 'adj' ? 'adj' : w.art);

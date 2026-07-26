@@ -65,7 +65,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g,
    (12.1%) show literal asterisks in the Russian line and 461 cards show them in
    the collocations — 11 260 cards, 12.2% of the base, print raw `**` at a
    reader. Escape first, then promote, so nothing in the data can inject markup.
-   This is info/PLANS.md 0e and it must travel with the card into app.js. */
+   This is info/PLANS.md 0e, closed here: the old renderer that escaped the
+   Russian line was js/app.js, deleted 2026-07-26 with the rest of the
+   pre-V9 page. */
 const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<em>$1</em>');
 
 const POS_RU = { noun: 'существительное', verb: 'глагол', adj: 'прилагательное',
@@ -205,7 +207,6 @@ const WB = { art: false };
    that CONSUMES it (css/woerterbuch.css, at /css/) — a bare `worte/…` would 404
    at /css/worte/…. An origin-absolute `/worte/` is correct from the site root,
    which since 2026-07-25 is the only place this runs (nginx :8753, `make up`). */
-const WORTE_BASE = window.WB_WORTE || '/worte/';
 
 function slot(id, w, h, what, cls = '') {
   if (!WB.art) return '';
@@ -224,21 +225,13 @@ function slot(id, w, h, what, cls = '') {
 const HEAD_ART = card => slot('card-head-' + card.type, 440, 152,
   'Aquarell-Kopfwäsche je Wortart', 'is-head');
 
-const brushFor = card => {
-  const WASH = {
-    'B1|der': 'B1_Der_Powdery-Blue_Horizontal-Soft.png', 'B1|die': 'B1_Die_Powdery-Pink_BG-Wash.png',
-    'B1|das': 'B1_Das_Pale-Green_BG-Wash.png', 'B1|verb': 'B1_Verbs_Sandy-Ochre_BG-Wash.png',
-    'B1|adj': 'B1_Adjectives_Lavender_BG-Wash.png',
-    'B2|der': 'B2_Der_Deep-Blue_BG-Wash.png', 'B2|die': 'B2_Die_Magenta_BG-Wash.png',
-    'B2|das': 'B2_Das_Grass-Green_BG-Wash.png', 'B2|verb': 'B2_Verbs_Terracotta_BG-Wash.png',
-    'B2|adj': 'B2_Adjectives_Amethyst_BG-Wash.png',
-    'C1|der': 'C1_Der_Indigo_BG-Wash.png', 'C1|die': 'C1_Die_Burgundy_BG-Wash.png',
-    'C1|das': 'C1_Das_Emerald_BG-Wash.png', 'C1|verb': 'C1_Verbs_Olive-Ochre_BG-Wash.png',
-    'C1|adj': 'C1_Adjectives_Plum_BG-Wash.png',
-  };
-  const f = WASH[card.band + '|' + card.type];
-  return f ? `url('${WORTE_BASE}${f}')` : 'none';
-};
+/* The map itself lives in js/words-data.js — one source for the whole site,
+   loaded by index.html just before this file. `brushOfCard` resolves against
+   `document.baseURI`, which yields the same absolute `/worte/…` this file used
+   to build by hand: pages sit at the site root, and the URL has to be absolute
+   because it is consumed from a CSS custom property (a relative one would
+   resolve against css/, see CRITICAL-LINKS §6c). */
+const brushFor = card => brushOfCard(card);
 
 /* ---------------------------------------------------------------------
    Head furniture

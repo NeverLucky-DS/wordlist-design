@@ -1,7 +1,8 @@
 /* =====================================================================
    Wörterbuch — the Wortkarte and the single page it lives in.
 
-   Palette and type are the production ones (css/styles.css). The only new inks
+   Palette and type were inherited from the pre-V9 page (css/styles.css, deleted
+   2026-07-26 once nothing loaded it any more). The only new inks
    are `--soft` and `--rose-ink`: the originals fail WCAG AA and are documented
    where they are declared. The scale here is deliberately compact — this is a
    reference tool, read in glances, not an article.

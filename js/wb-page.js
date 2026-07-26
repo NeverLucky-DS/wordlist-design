@@ -15,9 +15,10 @@
 
    The config hooks below survive that deletion and are now INERT in every
    supported setup (nothing sets them). Left in place rather than unpicked from
-   ten call sites; see the note on CFG.demo.
+   eight call sites; see the note on CFG.demo. (`window.WB_WORTE` was a third
+   hook until 2026-07-26; it went away with the duplicated brush map, and the
+   path to worte/ is now resolved in one place, js/words-data.js.)
      window.WB_API    base for the vocab API       (default '/api/vocab')
-     window.WB_WORTE  base for the brush assets    (default '/worte/', read in wb-card.js)
      window.WB_DEMO   true → fixed in-memory list instead of the account's
    ===================================================================== */
 'use strict';
