@@ -8,7 +8,8 @@
 DB_URL ?= postgresql+asyncpg://wordlist:wordlist@localhost:5432/wordlist
 
 .DEFAULT_GOAL := help
-.PHONY: help setup up down restart logs ps migrate migration test db dev links clean
+.PHONY: help setup up down restart logs ps migrate migration test db dev links clean \
+	lint lint-fix types visual visual-update fuzz schema-debt coverage
 
 help: ## Show this help
 	@echo "Deutsch Essay Trainer — make targets:"
@@ -76,3 +77,32 @@ links: ## Print all local URLs
 
 clean: ## Stop the stack and DELETE all data (drops the database volume)
 	docker compose down -v
+
+# ── качество кода (добавлено 2026-07-26, разбор в info/tooling.md) ───────────
+
+lint: ## Линтер: gate (F) + полный набор информационно
+	@echo "— gate (F): должен быть пустым —"
+	@uv run ruff check --select F --output-format concise . || true
+	@echo "— полный набор (долг, пока не gate) —"
+	@uv run ruff check --statistics . || true
+
+lint-fix: ## Починить то, что ruff умеет чинить сам (только полный набор из pyproject)
+	uv run ruff check --fix .
+
+types: ## Проверка типов (pyright). Тем же движком, что LSP-плагин в Claude Code
+	uv run pyright backend/app
+
+visual: ## Визуальные снапшоты трёх страниц (нужен `make up`)
+	uv run pytest tests/frontend/test_visual.py -v
+
+visual-update: ## Перезаписать эталоны снапшотов — делать осознанно, глядя на дифф
+	uv run pytest tests/frontend/test_visual.py --update-snapshots
+
+fuzz: ## Глубокий фаззинг API по OpenAPI (дольше, чем в `make test`)
+	uv run pytest backend/tests/test_openapi_fuzz.py -v -m "not schema_debt" --hypothesis-seed=random
+
+schema-debt: ## Показать известный долг по соответствию ответов схеме (падает — так и задумано)
+	uv run pytest backend/tests/test_openapi_fuzz.py -v -m schema_debt
+
+coverage: ## Покрытие внешнего корпуса — метрика качества базы
+	uv run python backend/scripts/coverage.py

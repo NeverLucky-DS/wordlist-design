@@ -34,8 +34,13 @@ dependencies = [
 # Dev-only tools (tests). Excluded from the Docker image via `uv sync --no-dev`.
 [dependency-groups]
 dev = [
+    "playwright>=1.61.0",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-playwright>=0.8.0",
+    "pytest-playwright-visual-snapshot>=0.5.1",
+    "ruff>=0.16.0",
+    "schemathesis>=4.24.3",
 ]
 
 [tool.uv]
@@ -46,7 +51,43 @@ package = false
 # Test config (folded in from the old backend/pytest.ini).
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["backend/tests"]
+# backend/tests — бэкенд. tests/ — фронт: целостность ссылок на ассеты и
+# визуальные снапшоты. Второй набор живёт отдельно, потому что проверяет не
+# Python, а HTML/CSS/JS, и половина его пропускается без поднятого стека.
+testpaths = ["backend/tests", "tests"]
 markers = [
     "mistral_live: live calls to the Mistral API (requires MISTRAL_API_KEY)",
+    "visual: Playwright screenshot comparison (skipped when nginx :8753 is down)",
+    "schema_debt: known OpenAPI conformance debt — run explicitly, not part of the gate",
 ]
+# Эталоны — рядом с тестом, а не в корне репозитория (дефолт плагина).
+# Провалы уезжают в git-ignored папку: это артефакт прогона, не исходник.
+playwright_visual_snapshots_path = "tests/frontend/__snapshots__"
+playwright_visual_snapshot_failures_path = "tests/frontend/snapshot-failures"
+
+# ── ruff ─────────────────────────────────────────────────────────────────────
+# Линтера в проекте не было вовсе. Набор правил намеренно консервативный: цель
+# — ловить настоящие ошибки (F: неиспользуемое/неопределённое, B: багованные
+# паттерны), а не переформатировать 24 существующих тестовых файла.
+[tool.ruff]
+line-length = 100
+extend-exclude = [".venv", "graphify-out", "backend/alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",   # длину строк не режем — в проекте много осмысленных длинных комментариев
+    "B008",   # Depends(...) в аргументах — идиома FastAPI, а не баг
+]
+
+[tool.ruff.lint.per-file-ignores]
+# conftest ставит переменные окружения до импорта app — порядок обязателен.
+# F401: последняя строка файла импортирует хелперы «без использования» —
+# трогать не стали, потому что цена ошибки (молча отвалившаяся фикстура во всех
+# 300+ тестах) выше пользы от удаления трёх строк.
+"backend/tests/conftest.py" = ["E402", "F401"]
+"backend/tests/*" = ["B011"]
+# `audit_db.py` — ручная maintenance-CLI, CLAUDE.md прямо говорит её не трогать.
+# Линтуем всё остальное, а её замечания (неиспользуемый импорт, две f-строки
+# без подстановок) оставляем как есть.
+"backend/audit_db.py" = ["F401", "F541", "B905"]

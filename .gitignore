@@ -3,9 +3,20 @@
 .idea/
 .vscode/
 
-# Claude / tooling artifacts
-.claude/
+# Claude / tooling artifacts.
+# `.claude/*`, а не `.claude/` — иначе исключена сама папка и отменить
+# исключение для файла внутри неё уже нельзя. settings.json отслеживается
+# намеренно: в нём хуки проекта, они должны ехать вместе с кодом.
+# settings.local.json остаётся личным.
+.claude/*
+!.claude/settings.json
 graphify-out/
+
+# Тестовые артефакты. Эталоны снапшотов (tests/frontend/__snapshots__)
+# отслеживаются — это исходники сравнения; провалы и кэш hypothesis — нет.
+tests/frontend/snapshot-failures/
+.hypothesis/
+backend/data/coverage-corpus/
 
 # Secrets & env
 .env
@@ -13,6 +24,10 @@ graphify-out/
 !.env.example
 !backend/.env.example
 backend/.env
+# Конфиг MCP-серверов: в args лежит Postgres-DSN с паролем и абсолютный путь
+# к бинарю в домашней папке. Репозиторий публичный — файл личный, не общий.
+# Как его собрать заново — info/tooling.md.
+.mcp.json
 
 # Python
 __pycache__/
@@ -34,8 +49,8 @@ backend/data/*.db
 
 # vocab pipeline local data (large / third-party dictionaries)
 dictionaries/
-backend/app/vocab/vocab.db
-backend/app/vocab/enrichment.db
+backend/app/vocab/vocab.db*
+backend/app/vocab/enrichment.db*
 backend/app/vocab/vocab_data/
 
 # Golden backups of the enriched base (see GOLDEN-BACKUP.md). Ignored because
@@ -44,3 +59,11 @@ backend/app/vocab/vocab_data/
 # untracked file beside it matters.
 enrichment-GOLDEN-*.db*
 vocab-GOLDEN-*.db*
+
+# Ralph — состояние прогонов. Сам инструмент (ralph.sh, ralph-prompt.md,
+# ralph-settings.json, README.md) отслеживается: это конфигурация проекта.
+# Ниже — то, что цикл перезаписывает на каждом прогоне.
+scripts/ralph/prd.json
+scripts/ralph/progress.txt
+scripts/ralph/archive/
+scripts/ralph/.last-branch
