@@ -9,24 +9,35 @@ Compact reference for AI/human review. **Start here** instead of scanning the wh
 | [architecture.md](architecture.md) | Deploy, nginx, services, data flow |
 | [frontend.md](frontend.md) | HTML pages, JS/CSS modules, assets |
 | [backend-api.md](backend-api.md) | REST endpoints |
-| [pipeline.md](pipeline.md) | Word enrichment pipeline (v2 production path) |
+| [AUDIT-2026-07-26.md](AUDIT-2026-07-26.md) | **Приоритеты 1-й и 2-й очереди, с замером на пункт** |
 | [data-model.md](data-model.md) | PostgreSQL tables |
 | [files.md](files.md) | Canonical file tree (what matters) |
-| [known-debt.md](known-debt.md) | Remaining tech debt (short) |
 | [graph.md](graph.md) | Code graph (Graphify) — how to navigate the repo structurally |
-| [AUDIT.md](AUDIT.md) | Full audit report (dated) |
+
+⚠️ **Устарели, доверять с проверкой (2026-07-26).** Все четыре описывают topic-pipeline,
+которого больше нет: роутера `/api/pipeline/*` не существует, пакета
+`backend/app/pipeline/` тоже, Grok не упоминается в `backend/` ни разу.
+
+| Doc | Что в нём протухло |
+|-----|--------------------|
+| [pipeline.md](pipeline.md) | описывает удалённый v2-путь целиком |
+| [backend-api.md](backend-api.md) | 7 несуществующих ручек `/api/pipeline/*` |
+| [frontend.md](frontend.md) | `pipeline.html` как потребитель `/api/pipeline/*` |
+| [architecture.md](architecture.md) | `GROK_API_KEY` в обязательных env, пакет `pipeline/` |
+| [known-debt.md](known-debt.md) | переписан 2026-07-26; актуальный долг — в AUDIT |
+| [AUDIT.md](AUDIT.md) | аудит от 2026-07-11, заменён AUDIT-2026-07-26 |
 
 ## One-paragraph summary
 
-**Deutsch Essay Trainer** — B1–C1 German essay app. Vanilla HTML/JS frontend (nginx :8753) talks to FastAPI backend (:8000) + PostgreSQL. Users browse a thematic word list (`index.html`), plan/write essays (`schreiben.html`), and ops watch an autonomous word-enrichment pipeline (`pipeline.html`). Backend uses Mistral for word enrichment (+ essay API for future schreiben integration), Grok/DDG for article discovery.
+**Deutsch Essay Trainer** — B1–C1 German essay app. Vanilla HTML/JS frontend (nginx :8753) talks to FastAPI backend (:8000) + PostgreSQL. Users look words up in a 92 000-card dictionary (`index.html`), plan/write essays (`schreiben.html`), and ops drive the enrichment workers (`pipeline.html`). Backend uses Mistral for word enrichment and essay analysis; the dictionary itself is built offline from dictionary dumps + Wiktionary, with no LLM in that path.
 
 ## Production entry points
 
 | URL | File | Backend |
 |-----|------|---------|
-| `/` | `index.html` | `GET /api/words` (optional overlay) |
+| `/` | `index.html` | `/api/vocab/*` (search, entry, list). `GET /api/words` жив, но не зовётся ниоткуда |
 | `/schreiben.html` | `schreiben.html` | `/api/auth/*`, `/api/essays/*` (localStorage offline copy) |
-| `/pipeline.html` | `pipeline.html` | `/api/pipeline/*` |
+| `/pipeline.html` | `pipeline.html` | `/api/vocab/*` (`/api/pipeline/*` удалён вместе с topic-pipeline) |
 | `/api/*` | — | all routes |
 | `/health` | — | liveness |
 

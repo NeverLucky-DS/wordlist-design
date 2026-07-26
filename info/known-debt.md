@@ -1,39 +1,32 @@
 # Known tech debt (short)
 
-Last updated: **2026-07-13**. Full audit: [`AUDIT.md`](AUDIT.md). Safe-delete map: [`CRITICAL-LINKS.md`](CRITICAL-LINKS.md).
+> ⚠️ **Superseded on 2026-07-26.** The live debt list now lives in
+> [`AUDIT-2026-07-26.md`](AUDIT-2026-07-26.md) (priorities, with a measurement per
+> item) and in [`PLANS.md`](PLANS.md) (the work queue). This file is kept for the
+> "Resolved" log below, which is still accurate history.
+>
+> What was here until today described the topic pipeline, and **all seven files it
+> named are gone**: `runner.py`, `enrichment.py`, `grammar_schema.py`,
+> `content_llm.py`, `verify.py`, `discovery.py`, `backfill_grammar.py`. Anyone who
+> started their cleanup from this page — the page `info/README.md` points at for
+> "remaining tech debt" — was fixing a subsystem that no longer exists. Two more
+> entries had rotted the same way: `schreiben.js` was listed at "~1030 lines"
+> (it is 2377) and nav `href="#"` stubs were listed as open (there are 0).
 
-## High priority
+## Still open, and not tracked anywhere else
 
-| Issue | Where | Impact |
-|-------|-------|--------|
-| Pipeline v2 (runner) vs v3 (scripts) | `enrichment.py` vs `content_llm.py`/`verify.py` | Inconsistent `grammar_data` by write path |
-| `normalize_grammar_data()` never called on write | `grammar_schema.py` vs `runner.py` | Messy grammar JSON in DB |
-| Topic casing inconsistency | `pipeline.py` vs `runner.py` | Duplicate topic keys |
-
-## Medium priority
+These survived the rewrite because they are real and current — everything else
+moved to the audit:
 
 | Issue | Where |
 |-------|-------|
-| Essay feedback precision not verified | `mistral_analyzer.py` — corrections + structure/argumentation are LLM-only, no verify-pass / rubric / citation-grounding yet |
-| Open signup + guest AI has no quota | auth + essay analysis | Cost/abuse risk; private beta only |
-| No email verification/password reset | auth | Email is a login identifier; lost passwords cannot be recovered in v1 |
-| Analysis worker is in-process | `analysis_jobs.py` | Navigation survives, backend restart interrupts the run |
-| `schreiben.js` ~1030 lines monolith | essay store, roadmap, tools |
-| 3 Wiktionary clients | `enrichment.py`, `wiktionary_client.py`, `backfill_grammar.py` |
+| Essay feedback precision not verified | `mistral_analyzer.py` — corrections + structure/argumentation are LLM-only, no verify-pass / rubric / citation-grounding |
+| Open signup + guest AI has no quota | auth + essay analysis; cost/abuse risk, private beta only. Measured 2026-07-26: `/analyze*` runs on the owner's shared key for anonymous guests |
+| No email verification / password reset | auth — email is the login identifier, a lost password cannot be recovered |
+| Analysis worker is in-process | `analysis_jobs.py` — navigation survives, a backend restart interrupts the run |
 | 2 Mistral HTTP stacks | `mistral_http.py` vs `mistral_analyzer.py` |
-| `PIPELINE_*` env not in docker-compose | tuning blocked |
-| Topic YAML packs missing | `/api/topics` empty in Docker |
-| Tests mock pipeline I/O | no discovery/enrichment/extraction tests |
-
-## Low priority
-
-| Issue | Where |
-|-------|-------|
-| `datetime.utcnow()` deprecated | pipeline modules |
-| `@app.on_event` deprecated | `main.py` |
+| `@app.on_event` deprecated | `main.py` — warns on every test run |
 | `/health` doesn't check DB | `health.py` |
-| Startup v1 cleanup every boot | `main.py` |
-| Nav `href="#"` stubs | all HTML pages |
 
 ## Resolved ✅ (2026-07-10 — migrations + tooling)
 
