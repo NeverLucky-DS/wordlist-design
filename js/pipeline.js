@@ -17,6 +17,23 @@ const $ = id => document.getElementById(id);
 const fmt = n => (n==null ? "–" : n.toLocaleString("ru-RU"));
 const esc = s => (s||"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 
+/* Единственная дверь к API страницы. Раньше здесь стоял голый
+   `(await fetch(p)).json()`, и статус не смотрели вовсе — а FastAPI отдаёт
+   ошибку тем же `application/json`, что и успех. Поэтому 500 доезжал до кода
+   как обычный ответ: `{"detail": …}` разбирался молча, `j.events` оказывался
+   не массивом, `s.exists` и `r.items` — пустыми, и ops-панель писала «база ещё
+   не собрана» ровно тогда, когда сервер упал. Хуже нечестного ответа только
+   нечестный ответ, который выглядит спокойно.
+
+   Приём тот же, что у `fetchJSON` в `js/wb-page.js`: статус в `e.status`,
+   чтобы вызывающий мог отличить «сервер ответил 500» от «сети нет». */
+const jget = async p => {
+  const r = await fetch(p);
+  if (!r.ok){ const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+  return r.json();
+};
+const failText = e => (e && e.status) ? `сервер ответил ${e.status}` : "нет связи с сервером";
+
 document.querySelectorAll("#presets .preset").forEach(b => b.onclick = () => {
   document.querySelectorAll("#presets .preset").forEach(x => x.classList.remove("on"));
   b.classList.add("on"); minZipf = parseFloat(b.dataset.z);
@@ -61,8 +78,8 @@ const STAGE_PCT = {start:5, source:35, aggregate_done:55, coverage:65, cap:72, w
 
 async function poll(){
   let j;
-  try { j = await (await fetch("/api/vocab/status")).json(); }
-  catch { return; }
+  try { j = await jget("/api/vocab/status"); }
+  catch (e) { $("stage").textContent = "Статус недоступен — " + failText(e); return; }
   const cur = j.current;
   if (cur){
     $("stage").textContent = (STAGE_TXT[cur.stage] || (() => cur.stage))(cur);
@@ -89,8 +106,8 @@ async function poll(){
 
 async function loadStats(){
   let s;
-  try { s = await (await fetch("/api/vocab/stats")).json(); }
-  catch { return; }
+  try { s = await jget("/api/vocab/stats"); }
+  catch (e) { $("statsSub").textContent = "Статистика недоступна — " + failText(e); return; }
   if (!s.exists){ $("statsSub").textContent = "База ещё не собрана — запусти обработку."; return; }
   $("statsSub").textContent = `Всего ${fmt(s.total)} лемм · Goethe A1–B1 ${fmt(s.obligatory)}`;
   $("kpis").innerHTML =
@@ -112,8 +129,11 @@ async function loadStats(){
 async function searchWords(){
   const q = $("q").value.trim();
   let r;
-  try { r = await (await fetch(`/api/vocab/words?q=${encodeURIComponent(q)}&level=${curLevel}&limit=40`)).json(); }
-  catch { return; }
+  try { r = await jget(`/api/vocab/words?q=${encodeURIComponent(q)}&level=${curLevel}&limit=40`); }
+  catch (e) {
+    $("results").innerHTML = `<div class="empty">Поиск недоступен — ${esc(failText(e))}.</div>`;
+    return;
+  }
   const el = $("results");
   if (!r.items.length){ el.innerHTML = `<div class="empty">Ничего не найдено.</div>`; return; }
   el.innerHTML = r.items.map(w => {
@@ -136,8 +156,12 @@ async function toggleCard(row, lemma){
   const d = row.nextElementSibling;
   if (d.classList.contains("open")){ d.classList.remove("open"); return; }
   let w;
-  try { w = await (await fetch(`/api/vocab/word/${encodeURIComponent(lemma)}`)).json(); }
-  catch { return; }
+  try { w = await jget(`/api/vocab/word/${encodeURIComponent(lemma)}`); }
+  catch (e) {
+    d.innerHTML = `<div class="empty">Карточка недоступна — ${esc(failText(e))}.</div>`;
+    d.classList.add("open");
+    return;
+  }
   let h = "";
   if ((w.forms&&w.forms.length) || (w.pos&&w.pos.length))
     h += `<div class="k">грамматика</div><div>${esc([(w.pos||[]).join(", "),(w.forms||[]).join(", ")].filter(Boolean).join(" · ")) || "—"}</div>`;
