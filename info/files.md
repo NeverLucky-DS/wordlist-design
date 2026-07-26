@@ -131,7 +131,7 @@ No LLM runs in `build.py`; Mistral only enters at `enrich.py`/`enrich_worker.py`
 
 - `backend/.env` — single config/secrets file (copy from `backend/.env.example`)
 - `backend/data/*.db`
-- `backend/app/vocab/vocab.db*`, `backend/app/vocab/enrichment.db*`, `backend/app/vocab/vocab_data/` — the real ingestion/enrichment SQLite DBs (and the stub placeholders next to them — see `CRITICAL-LINKS.md` §6a on why the stub path is a trap)
+- `backend/app/vocab/vocab_data/` — the real ingestion/enrichment SQLite DBs (docker-mounted). `backend/app/vocab/vocab.db*`/`enrichment.db*` (bare, no `vocab_data/`) are empty stub placeholders next to them — a script that resolves its DB path without `--enrich-db`/env override silently reads these instead and reports false "success" (see `CRITICAL-LINKS.md` §6a)
 - `dictionaries/` — raw third-party dictionary dumps `build.py` ingests
 - `enrichment-GOLDEN-*.db*`, `vocab-GOLDEN-*.db*` — backup snapshots of the enriched base; never delete from disk despite being untracked (see `GOLDEN-BACKUP.md`, which IS tracked)
 - `.mcp.json` — contains a Postgres DSN with a password

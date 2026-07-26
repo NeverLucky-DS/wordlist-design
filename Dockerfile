@@ -8,10 +8,13 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
-# System deps for lxml / psycopg2, plus uv itself (from PyPI — reproducible
-# installs straight from uv.lock).
+# System deps for psycopg2, plus uv itself (from PyPI — reproducible installs
+# straight from uv.lock). `libxml2-dev libxslt1-dev` стояли здесь ради `lxml`;
+# он ушёл из зависимостей 2026-07-26 вместе с `duckduckgo-search` и
+# `beautifulsoup4` — их тянул удалённый topic-pipeline, а импортов не осталось
+# ни одного во всём дереве.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        gcc libpq-dev libxml2-dev libxslt1-dev \
+        gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir uv
 
