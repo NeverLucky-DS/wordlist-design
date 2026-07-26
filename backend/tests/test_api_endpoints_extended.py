@@ -22,7 +22,25 @@ async def test_unknown_topic_returns_404(client):
     assert res.status_code == 404
 
 
-async def test_import_unknown_topic_returns_404(client):
+async def test_import_topic_is_closed_to_non_admins(client, monkeypatch):
+    """Importing a pack writes into `words`/`word_topics`/`phrases`. It was the
+    only route in topics.py with no dependency at all."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "admin_emails", "someone-else@example.com")
+    res = await client.post("/api/topics/nonexistent-slug-xyz/import")
+    assert res.status_code == 403
+
+
+async def test_import_topic_is_closed_to_guests(guest_client):
+    res = await guest_client.post("/api/topics/nonexistent-slug-xyz/import")
+    assert res.status_code == 401
+
+
+async def test_import_unknown_topic_returns_404_for_an_admin(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "admin_emails", "tester@example.com")
     res = await client.post("/api/topics/nonexistent-slug-xyz/import")
     assert res.status_code == 404
 

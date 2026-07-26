@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import Principal, require_admin
 from app.db.session import get_db
 from app.schemas import TopicOut, TopicSummaryOut
 from app.services import topic_pack_service
@@ -36,8 +37,12 @@ async def get_topic(slug: str, db: AsyncSession = Depends(get_db)):
     return TopicOut(**meta)
 
 
+# Admin-only: the two GETs above only read, this one writes rows into `words`,
+# `word_topics` and `phrases` from a YAML pack on disk. It was the one route in
+# this file with no dependency at all, and no page has ever called it.
 @router.post("/{slug}/import")
-async def import_topic(slug: str, db: AsyncSession = Depends(get_db)):
+async def import_topic(slug: str, db: AsyncSession = Depends(get_db),
+                       principal: Principal = Depends(require_admin)):
     try:
         result = await topic_pack_service.import_topic_pack(db, slug.strip().lower())
     except FileNotFoundError as e:

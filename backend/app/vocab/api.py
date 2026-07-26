@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import Principal, require_admin, require_user
+from app.auth import Principal, is_admin_email, require_admin, require_user
 from app.db.session import get_db
 from app.vocab import store
 
@@ -213,13 +213,30 @@ async def enrich_requeue(
     principal: Principal = Depends(require_user),
 ):
     """Reset words back to 'raw' so the next run re-enriches them with the current
-    prompt. Auth-gated: it mutates the shared enrichment state."""
+    prompt. Auth-gated: it mutates the shared enrichment state.
+
+    The two scopes are gated differently on purpose. `low_confidence` is what the
+    panel's button sends, it is bounded by the data (18 cards on the live base),
+    and every logged-in operator may run it. An explicit `lemmas` list is admin
+    only: `enrich.requeue` defaults to `drop_card=True`, so the cards go from
+    `cards` immediately, before any re-enrichment brings them back — a list of
+    92 000 lemmas is a DELETE of the whole dictionary, signup is open and needs no
+    e-mail confirmation, and no page has ever sent this field. A length cap alone
+    would not close it; the caller would just send the list in chunks.
+    """
     from app.vocab import enrich
 
     if body.lemmas:
-        n = enrich.requeue([s.strip() for s in body.lemmas if s.strip()])
+        if not is_admin_email(principal.email):
+            raise HTTPException(403, "Admin access required for an explicit lemma list")
+        lemmas = [s.strip() for s in body.lemmas if s.strip()]
+        # Sync SQLite work: it deletes and rewrites a row per lemma. The route is
+        # `async`, so calling it inline would freeze the whole API for the length
+        # of the loop — every other route in this file already hands such work to
+        # a thread.
+        n = await asyncio.to_thread(enrich.requeue, lemmas)
     elif body.scope == "low_confidence":
-        n = enrich.requeue_low_confidence()
+        n = await asyncio.to_thread(enrich.requeue_low_confidence)
     else:
         raise HTTPException(422, "pass scope='low_confidence' or a lemmas list")
     return {"ok": True, "requeued": n}
