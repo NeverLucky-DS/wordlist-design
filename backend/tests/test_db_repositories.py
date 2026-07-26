@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from sqlalchemy import select
+from datetime import UTC, datetime
 
 from app.auth import Principal
 from app.db.models import EssayAnalysis, User, Word
 from app.services import essays_repo, phrases_repo, words_repo
+from sqlalchemy import select
+
 from tests.helpers import essay_payload, seed_words_and_phrases
 
 
@@ -32,7 +32,7 @@ async def test_essays_repo_guest_ownership(db_session):
 
     guest = GuestSession(
         token_hash="abc",
-        expires_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(UTC),
     )
     db_session.add(guest)
     await db_session.flush()

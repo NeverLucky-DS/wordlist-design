@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 
-from httpx import ASGITransport, AsyncClient
-
 from app.main import app
+from httpx import ASGITransport, AsyncClient
 
 
 def payload(title: str = "Gast") -> dict:

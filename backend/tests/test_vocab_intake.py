@@ -13,7 +13,6 @@ import json
 import sqlite3
 
 import pytest
-
 from app.vocab import funcwords, intake
 
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import html
 import re
-from typing import Iterator
+from collections.abc import Iterator
 
 from app.vocab import dsl
 from app.vocab.sources import Source
@@ -88,6 +88,7 @@ def _iter_dsl(source: Source) -> Iterator[tuple[str, dict]]:
 
 def _iter_pyglossary(source: Source) -> Iterator[tuple[str, dict]]:
     import logging
+
     from pyglossary import Glossary
     Glossary.init()
     logging.getLogger("pyglossary").setLevel(logging.ERROR)

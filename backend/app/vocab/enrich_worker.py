@@ -28,7 +28,7 @@ MAX_CONSECUTIVE_FAILURES = 20
 _IDLE_BACKOFF = 5.0
 _MAX_FAIL_BACKOFF = 90.0        # grow the pause between failing batches, capped
 
-_workers: dict[int, "Worker"] = {}
+_workers: dict[int, Worker] = {}
 _registry_lock = threading.Lock()
 
 _plan_lock = threading.Lock()

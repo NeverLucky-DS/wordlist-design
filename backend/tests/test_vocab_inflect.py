@@ -14,9 +14,9 @@ a form that already has a card of its own must not be shadowed by a redirect.
 from __future__ import annotations
 
 import pytest
-
 from app.db.models import VocabCard, VocabCardTranslation, VocabForm
-from app.vocab import inflect, mirror, norm, search as search_mod
+from app.vocab import inflect, mirror, norm
+from app.vocab import search as search_mod
 
 
 # ── pure expansion ───────────────────────────────────────────────────────────

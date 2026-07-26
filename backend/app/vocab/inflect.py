@@ -41,7 +41,8 @@ prints.
 """
 from __future__ import annotations
 
-from typing import Iterator, NamedTuple
+from collections.abc import Iterator
+from typing import NamedTuple
 
 # ── the closed class, by hand ────────────────────────────────────────────────
 # Finite, and not derivable from anything we hold: no dump conjugates pronouns,

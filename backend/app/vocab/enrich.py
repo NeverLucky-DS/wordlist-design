@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from app.vocab import funcwords, norm
-from app.vocab.topics import GENERAL_TOPIC, TOPICS, TOPIC_SLUGS
+from app.vocab.topics import GENERAL_TOPIC, TOPIC_SLUGS, TOPICS
 
 log = logging.getLogger(__name__)
 

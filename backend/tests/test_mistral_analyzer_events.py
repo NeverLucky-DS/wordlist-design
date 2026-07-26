@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-
 from app.config import settings
 from app.services import mistral_analyzer as ma
-
 
 SAMPLE_ESSAY = (
     "Einleitung:\nTechnologie ist wichtig.\n\n"

@@ -24,7 +24,7 @@ import json
 import logging
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import requests as _requests
 

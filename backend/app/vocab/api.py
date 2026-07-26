@@ -115,9 +115,9 @@ async def enrich_start(
     db: AsyncSession = Depends(get_db),
 ):
     """Start this account's enrichment worker using its own stored Mistral key."""
-    from app.services import crypto
     from app.config import settings
     from app.db.models import User
+    from app.services import crypto
     from app.vocab import enrich, enrich_worker
 
     if not crypto.is_enabled():
