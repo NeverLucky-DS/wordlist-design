@@ -1,18 +1,16 @@
 name: pytest
 
+# Триггер расширен с `main` на все ветки и все PR.
+# Раньше проверялся только main, то есть ветка, где работа уже закончена —
+# сломанное узнавалось после слияния. Это пункт аудита 2026-07-26 (A6).
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
-    branches: [main]
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-
     steps:
       - uses: actions/checkout@v4
 
@@ -21,13 +19,52 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies (from uv.lock)
-        run: uv sync --frozen
+      - run: uv sync --frozen
 
+      # Gate — только класс настоящих ошибок (F: неиспользуемое, неопределённое).
+      # Замер 2026-07-26: полный набор даёт 142 замечания (30 несортированных
+      # импортов, 29 старых Optional) — gate на них сделал бы CI красным в день
+      # установки. F после разбора 26 июля даёт 0, поэтому он и стал gate.
+      #
+      # ⚠️ Не добавлять сюда B: `--select` в CLI перебивает `ignore` из
+      # pyproject, и вернётся B008 (`Depends()` в аргументах FastAPI, 98 мест).
+      - name: ruff (настоящие ошибки)
+        run: uv run ruff check --select F --output-format github .
+
+      # Остальное — информационно, чтобы долг был виден и не рос молча.
+      # Станет частью gate, когда 142 разберут.
+      - name: ruff (полный набор, не блокирует)
+        continue-on-error: true
+        run: uv run ruff check --output-format github .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      # `-m "not schema_debt"` — известный долг по соответствию ответов схеме
+      # (см. backend/tests/test_openapi_fuzz.py). Смотреть его надо осознанно,
+      # а не ронять им каждый прогон.
+      #
+      # `-m "not visual"` — снапшоты выключены здесь НАМЕРЕННО и жёстко.
+      # Полагаться на то, что их пропустит `live_site`, нельзя: фикстуры
+      # поднимаются в порядке сигнатуры теста, `page` стоит раньше и успевает
+      # дёрнуть браузер до того, как `live_site` сделает skip. Браузеров в CI
+      # нет (`playwright install` не зовётся), и это 5 ошибок, а не 5 пропусков.
+      # Эталоны сняты на macOS и с линуксовым рендерингом всё равно не совпали
+      # бы — это локальная сеть безопасности, не gate на merge.
+      # Тест целостности ссылок на ассеты сервера не требует и идёт всегда.
       - name: Run tests
-        run: uv run pytest -v -m "not mistral_live"
+        run: uv run pytest -v -m "not mistral_live and not schema_debt and not visual"
         env:
-          DATABASE_URL: sqlite+aiosqlite:///./data/ci-test.db
+          DATABASE_URL: sqlite+aiosqlite:///./backend/data/ci-test.db
           MISTRAL_API_KEY: ""
           CORS_ORIGINS: http://127.0.0.1:8753
 
@@ -35,7 +72,7 @@ jobs:
         if: ${{ secrets.MISTRAL_API_KEY != '' }}
         run: uv run pytest -v -m mistral_live
         env:
-          DATABASE_URL: sqlite+aiosqlite:///./data/ci-test.db
+          DATABASE_URL: sqlite+aiosqlite:///./backend/data/ci-test.db
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           MISTRAL_MODEL: mistral-large-latest
           CORS_ORIGINS: http://127.0.0.1:8753
