@@ -110,6 +110,60 @@ async def test_authenticated_me_returns_user(client):
     assert data["user"]["email"] == "tester@example.com"
 
 
+@pytest.fixture
+def rotating_secret(monkeypatch):
+    """Swap the server secret the way an operator rotation does.
+
+    `monkeypatch` restores the setting itself, but the derived Fernet key lives
+    in an `lru_cache` that no fixture knows about — so clear it on the way in
+    and on the way out, or the next test inherits whichever secret this one
+    happened to finish on.
+    """
+    from app.services import crypto
+
+    def _set(secret: str) -> None:
+        monkeypatch.setattr(crypto.settings, "mistral_key_secret", secret)
+        crypto._fernet.cache_clear()
+
+    yield _set
+    crypto._fernet.cache_clear()
+
+
+async def test_me_reports_no_key_once_the_server_secret_is_rotated(
+    client, db_session, rotating_secret
+):
+    """`has_mistral_key` must mean "we can still read it", not "the column is set".
+
+    Rotating `MISTRAL_KEY_SECRET` leaves every row present and every row
+    undecryptable. Answering "yes" then is the worst of the two answers: the
+    account looks equipped, so nobody re-enters the key, and the worker dies on
+    `decrypt` returning None with no hint of why.
+    """
+    from app.db.models import User
+    from app.services import crypto
+    from sqlalchemy import select, update
+
+    rotating_secret("secret-before-rotation")
+    token = crypto.encrypt("sk-live-key")
+    await db_session.execute(
+        update(User).where(User.email == "tester@example.com").values(mistral_key_enc=token)
+    )
+    await db_session.commit()
+
+    assert (await client.get("/api/auth/me")).json()["has_mistral_key"] is True
+
+    rotating_secret("secret-after-rotation")
+    assert (await client.get("/api/auth/me")).json()["has_mistral_key"] is False
+
+    # ...and the column is untouched, so what changed is readability, not storage.
+    stored = (
+        await db_session.execute(
+            select(User.mistral_key_enc).where(User.email == "tester@example.com")
+        )
+    ).scalar_one()
+    assert stored == token
+
+
 async def test_logout_clears_session(guest_client):
     await guest_client.post(
         "/api/auth/register",

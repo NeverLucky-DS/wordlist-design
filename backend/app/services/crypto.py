@@ -51,13 +51,18 @@ def decrypt(token: str) -> str | None:
 
 
 def has_usable_key(token: str | None) -> bool:
-    """Есть ли ключ, которым РЕАЛЬНО можно воспользоваться.
+    """Is this stored token something we could actually call Mistral with?
 
-    Не то же самое, что `token is not None`. `decrypt` намеренно возвращает
-    None после ротации `MISTRAL_KEY_SECRET` — колонка при этом остаётся
-    заполненной. Оба потребителя (`/api/auth/me` и панель флота) раньше
-    проверяли именно NOT NULL, поэтому после смены секрета интерфейс всех
-    17 аккаунтов продолжал показывать «ключ привязан», а первый же запуск
-    воркера отвечал `400 no Mistral key attached`.
+    Deliberately NOT `bool(token)`. A column that is merely NOT NULL proves the
+    user once saved a key, not that we can still read it: rotating
+    `MISTRAL_KEY_SECRET` (or restoring a database next to a different one)
+    leaves every row present and every row undecryptable. Answering "yes" then
+    is the worst of both worlds — the account looks equipped, so nobody
+    re-enters the key, and the worker fails on `decrypt` returning None. That
+    is exactly what happened: after one rotation all 17 accounts still showed
+    "key attached" and the first worker start answered `400 no Mistral key`.
+
+    That is the same question `decrypt` already answers, so ask it rather than
+    keeping a second, weaker definition of "has a key" in the API layer.
     """
     return bool(token) and decrypt(token) is not None

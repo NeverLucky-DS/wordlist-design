@@ -451,13 +451,33 @@ function wire() {
 /* One delegated handler for every way a word can be opened — bound ONCE in boot.
    `#app` survives every redraw (only its innerHTML changes), so re-adding the
    listener on each draw would accumulate them. */
+/* «+» и «×» — единственные цели делегата, которые НЕ настоящие `<button>`:
+   строка списка сама кнопка, а кнопку в кнопку вкладывать нельзя. Отсюда
+   `<span role="button" tabindex="0">` — и отсюда же баг: `tabindex` фокус даёт,
+   `role` клавиатуру обещает, но выполняет обещание только настоящий `<button>`.
+   Слово можно было выбрать с клавиатуры и нельзя было добавить в список.
+   Остальные цели (`[data-lemma]`, `[data-goto]`, `[data-page]`) — `<button>`,
+   им отдельная обработка не нужна. Эталон приёма — `js/site-header.js:166`. */
+function collectFromEvent(e) {
+  const add = e.target.closest('[data-add]');
+  if (add) { e.stopPropagation(); collectWord(add.dataset.add, !(byLemma(add.dataset.add) || {}).in_list); return true; }
+  const del = e.target.closest('[data-del]');
+  if (del) { e.stopPropagation(); collectWord(del.dataset.del, false); return true; }
+  return false;
+}
+
 function delegate() {
   const root = appEl();
+  root.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (!e.target.closest('[data-add],[data-del]')) return;
+    // Space на роли button обязан гасить прокрутку: список длинный, и уехавший
+    // из-под пальца экран читается как «кнопка не сработала».
+    e.preventDefault();
+    collectFromEvent(e);
+  });
   root.addEventListener('click', e => {
-    const add = e.target.closest('[data-add]');
-    if (add) { e.stopPropagation(); collectWord(add.dataset.add, !(byLemma(add.dataset.add) || {}).in_list); return; }
-    const del = e.target.closest('[data-del]');
-    if (del) { e.stopPropagation(); collectWord(del.dataset.del, false); return; }
+    if (collectFromEvent(e)) return;
     const pg = e.target.closest('[data-page]');
     if (pg) { state.minePage = +pg.dataset.page; loadMine().then(() => draw()); return; }
     // The "форма от sein" link sits ABOVE the result list, outside the card, so
