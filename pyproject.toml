@@ -34,6 +34,7 @@ dependencies = [
 # Dev-only tools (tests). Excluded from the Docker image via `uv sync --no-dev`.
 [dependency-groups]
 dev = [
+    "mcp>=1.2",
     "playwright>=1.61.0",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
@@ -47,6 +48,13 @@ dev = [
 # The app is run as `uvicorn app.main:app` (cwd=backend), not installed as a
 # package — so there is nothing to build.
 package = false
+
+# Without this, pyright resolves imports against whatever interpreter it finds
+# first and reports every third-party import as missing — `uv run pyright` and
+# the LSP plugin in Claude Code disagreed with each other until it was set.
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
 
 # Test config (folded in from the old backend/pytest.ini).
 [tool.pytest.ini_options]
