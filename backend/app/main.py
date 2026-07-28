@@ -115,8 +115,10 @@ async def on_startup() -> None:
 async def stop_background() -> None:
     from app.services.analysis_jobs import stop_analysis_jobs
     from app.vocab import enrich_worker
+    from app.vocab.wortpaket_jobs import stop_package_jobs
 
     if _mirror_task is not None:
         _mirror_task.cancel()
     await stop_analysis_jobs()
+    await stop_package_jobs()
     enrich_worker.stop_all()

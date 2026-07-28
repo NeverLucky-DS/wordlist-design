@@ -181,6 +181,49 @@ class EssayAnalysis(Base):
     version: Mapped[EssayVersion | None] = relationship(back_populates="analyses")
 
 
+class EssayWordPackage(Base):
+    """The ~100 words picked for one essay's topic (see vocab/wortpaket.py).
+
+    Stored rather than recomputed, and the reason is not cost — two model calls
+    run to a few thousand tokens. It is that a model has no two identical
+    answers, and a vocabulary drawer that reshuffles between sessions stops
+    being something a writer can rely on. Refreshing is an explicit action.
+
+    One row per essay: rebuilding replaces it in place, so the essay never has
+    two packages disagreeing about what its topic was.
+
+    `thema` and `niveau` are copies, not lookups. They record what the package
+    was actually built FROM, so a package that no longer matches an edited essay
+    is visible as a mismatch instead of silently claiming to be current.
+    """
+
+    __tablename__ = "essay_word_packages"
+    __table_args__ = (
+        UniqueConstraint("essay_id", name="uq_essay_word_package_essay"),
+        Index("ix_essay_word_packages_status", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    essay_id: Mapped[int] = mapped_column(
+        ForeignKey("essays.id", ondelete="CASCADE"), index=True
+    )
+    thema: Mapped[str] = mapped_column(Text, default="")
+    niveau: Mapped[str] = mapped_column(String(8), default="B1")
+    # pending → running → ready | failed. A failure is a row, not just a log
+    # line: the drawer has to be able to say "this did not work" without anyone
+    # reading the container's output.
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    lemmas: Mapped[list] = mapped_column(JSON_TYPE, default=list)
+    # Everything needed to audit one build after the fact: which topics were
+    # chosen and how close, pool size, how many lemmas the model returned, how
+    # many failed the byte-exact check, how many were backfilled, timings.
+    stats: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prompt_version: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
 class Word(Base):
     __tablename__ = "words"
 
