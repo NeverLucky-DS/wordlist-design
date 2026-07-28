@@ -21,6 +21,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
+from app.config import settings
 from app.db.models import EssayWordPackage, User
 from app.db.session import SessionLocal
 from app.services import crypto
@@ -32,8 +33,6 @@ log = logging.getLogger(__name__)
 # garbage-collect a task nobody holds, and the build would vanish mid-flight
 # with no error anywhere.
 _tasks: dict[int, asyncio.Task] = {}
-
-MODEL = "mistral-large-latest"
 
 
 def _now() -> datetime:
@@ -101,8 +100,11 @@ async def _run(package_id: int, user_id: int) -> None:
         try:
             exclude = await wortpaket.saved_lemmas(db, user_id)
             result = await wortpaket.build(
+                # The model is configured once (`config.mistral_model`) and read
+                # here rather than named again: a second literal is a second
+                # thing to remember on the day it changes.
                 db, thema=row.thema, niveau=row.niveau,
-                api_key=api_key, model=MODEL, exclude=exclude,
+                api_key=api_key, model=settings.mistral_model, exclude=exclude,
             )
         except wortpaket.WortpaketError as exc:
             await _fail(db, row, f"[{exc.stage}] {exc.detail}")
