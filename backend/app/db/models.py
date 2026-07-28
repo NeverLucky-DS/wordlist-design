@@ -110,7 +110,17 @@ class Essay(Base):
     text: Mapped[str] = mapped_column(Text, default="")
     content_json: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
     essay_type: Mapped[str] = mapped_column(String(64), default="argumentativ")
-    topic: Mapped[str] = mapped_column(String(128), default="")
+    # The essay's topic is the exam prompt itself — "Sollten Smartphones an
+    # Schulen verboten werden?" — not a category. `Text`, because `varchar(128)`
+    # does not truncate a longer one, it REJECTS the insert: Postgres answers
+    # `value too long for type character varying(128)` and the essay fails to
+    # save. Categories fit in 128 characters; questions do not.
+    #
+    # Case is preserved on the way in. It used to be lower-cased in the browser
+    # (`js/schreiben.js`), which is harmless for "Technologie" and wrong for
+    # German prose — and this topic string is fed to the model that picks the
+    # word package, where case is the difference between two words.
+    topic: Mapped[str] = mapped_column(Text, default="")
     level: Mapped[str] = mapped_column(String(8), default="B1")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

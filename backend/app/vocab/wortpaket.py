@@ -50,6 +50,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import UserWordList, VocabCard
 from app.services.mistral_http import post_mistral_json
+from app.vocab import norm
 from app.vocab.topics import TOPICS
 
 log = logging.getLogger(__name__)
@@ -289,6 +290,64 @@ async def candidates(
         for r in rows
         if r.lemma not in skip
     ]
+
+
+async def hydrate(
+    session: AsyncSession, lemmas: list[str], *, saved: set[str] | None = None
+) -> list[dict[str, Any]]:
+    """Turn stored lemmas into rows the drawer can draw in one query.
+
+    A snapshot of what the ROW needs and nothing more — the same contract the
+    personal list already follows (`CRITICAL-LINKS.md` §6b): no `definition_de`,
+    no grammar, no examples. Opening a card goes through
+    `GET /api/vocab/entry/{lemma}`, and anything that renders a card from this
+    payload will render an empty one.
+
+    Order is the package's, not the database's. The model ranked these by
+    usefulness for the prompt; re-sorting by frequency here would throw that
+    away silently.
+
+    `saved` marks the words already in the user's list instead of removing them.
+    A word vanishing from under the cursor at the moment it is clicked is how
+    the next word gets added by accident.
+    """
+    if not lemmas:
+        return []
+    rows = (
+        await session.execute(
+            select(
+                VocabCard.lemma, VocabCard.ru, VocabCard.level, VocabCard.level_est,
+                VocabCard.band, VocabCard.pos, VocabCard.article, VocabCard.topic,
+                VocabCard.zipf,
+            ).where(VocabCard.lemma.in_(lemmas))
+        )
+    ).all()
+    by_lemma = {r.lemma: r for r in rows}
+    saved = saved or set()
+
+    out: list[dict[str, Any]] = []
+    for lemma in lemmas:
+        r = by_lemma.get(lemma)
+        # A card can disappear between building the package and reading it —
+        # re-enrichment may skip a word or rename it to the 1996 spelling. Drop
+        # it rather than ship a row the card endpoint will 404 on.
+        if r is None:
+            continue
+        out.append({
+            "lemma": r.lemma,
+            "ru": r.ru or "",
+            "level": r.level if r.level and r.level != "unlisted" else None,
+            "level_est": r.level_est,
+            "band": r.band,
+            "pos": r.pos,
+            "article": r.article,
+            "topic": r.topic,
+            "topic_de": _TOPIC_DE.get(r.topic or "", ""),
+            "freq": norm.freq_of(r.zipf),
+            "type": norm.type_of(r.pos, r.article),
+            "in_list": r.lemma in saved,
+        })
+    return out
 
 
 async def saved_lemmas(session: AsyncSession, user_id: int) -> set[str]:

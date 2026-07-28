@@ -25,6 +25,8 @@ from app.schemas import (
 from app.services import essays_repo
 from app.services.analysis_jobs import start_analysis_job
 from app.services.mistral_analyzer import PART_ORDER, analyze_essay, iter_analyze_events
+from app.vocab import wortpaket
+from app.vocab.wortpaket_jobs import start_package_job
 
 router = APIRouter(prefix="/api/essays", tags=["essays"])
 
@@ -337,3 +339,67 @@ async def analyze_stream_legacy(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ── Wortpaket: the vocabulary for this essay's topic ─────────────────────────
+#
+# Two endpoints and no third: POST builds or rebuilds, GET reads. The build is
+# never done inside the request — it is two model calls and several seconds, and
+# nothing about starting to write may wait for it.
+
+@router.post("/{essay_id}/wortpaket", status_code=status.HTTP_202_ACCEPTED)
+async def build_wortpaket(
+    essay_id: DbId,
+    principal: Principal = Depends(get_principal),
+    db: AsyncSession = Depends(get_db),
+):
+    """Start (or restart) the package for this essay. Returns immediately.
+
+    202, not 201: nothing is ready yet. The client polls GET, which is also
+    where a failure surfaces — the row carries the stage that broke.
+    """
+    essay = await _essay_or_404(db, essay_id, principal)
+    # Guests can write essays but not own a word list, and the build spends the
+    # account's own Mistral key. Both reasons point the same way.
+    if not principal.authenticated or principal.user_id is None:
+        raise HTTPException(status_code=401, detail="Wortpaket requires an account")
+    if not (essay.topic or "").strip():
+        raise HTTPException(status_code=422, detail="Essay has no topic to build from")
+
+    row = await essays_repo.upsert_wortpaket(db, essay)
+    start_package_job(row.id, principal.user_id)
+    return {"status": row.status, "package_id": row.id}
+
+
+@router.get("/{essay_id}/wortpaket")
+async def get_wortpaket(
+    essay_id: DbId,
+    principal: Principal = Depends(get_principal),
+    db: AsyncSession = Depends(get_db),
+):
+    """The package plus enough of each card to draw the list in one request.
+
+    `stale` is the one piece of judgement here: a package built for a topic the
+    essay no longer has is not wrong, it is out of date, and saying so is better
+    than either hiding it or silently rebuilding on a read.
+    """
+    essay = await _essay_or_404(db, essay_id, principal)
+    row = await essays_repo.get_wortpaket(db, essay.id)
+    if row is None:
+        return {"status": "none", "words": [], "stale": False,
+                "thema": essay.topic or "", "stats": {}}
+
+    saved = (
+        await wortpaket.saved_lemmas(db, principal.user_id)
+        if principal.user_id is not None else set()
+    )
+    words = await wortpaket.hydrate(db, list(row.lemmas or []), saved=saved)
+    return {
+        "status": row.status,
+        "words": words,
+        "thema": row.thema,
+        "niveau": row.niveau,
+        "stale": (row.thema or "") != (essay.topic or ""),
+        "error": row.error_message,
+        "stats": row.stats or {},
+    }
