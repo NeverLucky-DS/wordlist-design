@@ -67,3 +67,6 @@ scripts/ralph/prd.json
 scripts/ralph/progress.txt
 scripts/ralph/archive/
 scripts/ralph/.last-branch
+
+# Оригиналы 1024² от генератора — 28.7 МБ; шиппится 268 КБ рядом.
+images/generated/masters/
