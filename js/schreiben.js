@@ -200,9 +200,11 @@ const store = loadStore() || { essays: [], activeId: null };
 const currentEssay = () => store.essays.find(e => e.id === store.activeId) || null;
 const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
-function newEssayObj(thema, aufgabe, niveau){
+function newEssayObj(thema, niveau){
   return {
-    id: uid('e'), thema, aufgabe, niveau,
+    // `thema` is the exam question itself. There used to be a second field
+    // (`aufgabe`) beside a category picker; the category was the redundant one.
+    id: uid('e'), thema, niveau,
     apiId: null,
     drafts: Object.fromEntries(STAGES.map(s => [s.id, ''])),
     snapshots: [],
@@ -298,9 +300,12 @@ function essayPayload(e) {
     title: e.thema || 'Essay',
     text: buildEssayText(),
     essay_type: 'argumentativ',
-    topic: (e.thema || '').toLowerCase(),
+    // Case is preserved. Lower-casing was harmless for "Technologie" and wrong
+    // for German prose, and this string is what the word package is picked
+    // against — where case is the difference between two words.
+    topic: e.thema || '',
     level: e.niveau || 'B1',
-    content_json: { drafts: { ...drafts }, aufgabe: e.aufgabe || '' },
+    content_json: { drafts: { ...drafts } },
   };
 }
 
@@ -378,8 +383,9 @@ function serverEssayToLocal(row, old) {
     ...(old || {}),
     id: old?.id || `api-${row.id}`,
     apiId: row.id,
-    thema: row.title || 'Essay',
-    aufgabe: content.aufgabe || '',
+    // `title` and not `topic`: essays written before the topic became free text
+    // carry a lower-cased category in `topic` and the readable one in `title`.
+    thema: row.title || row.topic || 'Essay',
     niveau: row.level || 'B1',
     drafts: mappedDrafts,
     snapshots: old?.snapshots || [],
@@ -1275,41 +1281,41 @@ $('#pomoReset').addEventListener('click', () => {
    analysis stubs
    ===================================================================== */
 const sheet = document.querySelector('.sheet');
-const THEME_PAGE = 6;
-let startThema = THEMEN[0].id, startNiveau = 'B1';
-let startQuery = '', startPage = 0;
+let startNiveau = 'B1';
+
+/* Real exam-style prompts, not categories.
+   They are here to teach granularity, which is the one thing the word package
+   depends on and the one thing an empty field cannot ask for: "Technologie"
+   yields nouns about the subject, while a question yields the vocabulary an
+   argument is actually made of (Verbot, Altersgrenze, Ablenkung). */
+const THEMA_BEISPIELE = [
+  'Sollten Smartphones an Schulen verboten werden?',
+  'Brauchen wir ein generelles Tempolimit auf Autobahnen?',
+  'Ist Homeoffice ein Gewinn oder ein Verlust für die Arbeitswelt?',
+  'Sollte der Staat ungesunde Lebensmittel höher besteuern?',
+  'Machen soziale Medien einsam?',
+  'Ist ein Studium heute noch der beste Weg in den Beruf?',
+  'Wie viel Überwachung im öffentlichen Raum ist vertretbar?',
+  'Sollten Unternehmen zu mehr Klimaschutz verpflichtet werden?',
+];
 
 function renderStart(){
-  const grid = $('#startThemen');
-  grid.innerHTML = '';
-  const f = startQuery.trim().toLowerCase();
-  const items = THEMEN.filter(t =>
-    !f || t.name.toLowerCase().includes(f) || t.sub.toLowerCase().includes(f));
-  const pages = Math.max(1, Math.ceil(items.length / THEME_PAGE));
-  startPage = Math.min(startPage, pages - 1);
-  const slice = items.slice(startPage * THEME_PAGE, startPage * THEME_PAGE + THEME_PAGE);
-
-  if (!slice.length){
-    grid.innerHTML = '<p class="themen-empty">Kein Thema gefunden.</p>';
+  const box = $('#startExamples');
+  if (box && !box.dataset.ready){
+    box.dataset.ready = '1';
+    box.innerHTML = THEMA_BEISPIELE
+      .map(t => `<button class="thema-chip" type="button">${esc(t)}</button>`).join('');
+    box.addEventListener('click', e => {
+      const b = e.target.closest('.thema-chip');
+      if (!b) return;
+      const field = $('#startThema');
+      field.value = b.textContent;
+      field.focus();
+    });
   }
-  slice.forEach(t => {
-    const n = WORDS.filter(w => w.cat === t.id).length;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'thema-card' + (t.id === startThema ? ' sel' : '') + (n ? '' : ' empty');
-    b.innerHTML = `<b>${esc(t.name)}</b><i>${esc(t.sub)}</i>
-      <span>${n ? n + ' Wörter im Paket' : 'Wortpaket folgt'}</span>`;
-    b.addEventListener('click', () => { startThema = t.id; renderStart(); });
-    grid.appendChild(b);
-  });
-  renderPager($('#startPager'), pages, startPage, p => { startPage = p; renderStart(); });
   $$('#startNiveau button').forEach(b =>
     b.classList.toggle('sel', b.textContent === startNiveau));
 }
-$('#startSearch').addEventListener('input', e => {
-  startQuery = e.target.value; startPage = 0;
-  renderStart();
-});
 
 /* ---------- essays list (the folder button) ---------- */
 const countOf = t => { t = (t || '').trim(); return t ? t.split(/\s+/).length : 0; };
@@ -1333,7 +1339,7 @@ function renderEssays(){
     row.className = 'essay-row' + (e.id === store.activeId ? ' current' : '');
     row.innerHTML = `
       <button class="essay-open" type="button">
-        <span class="er-main"><b>${esc(e.thema)}</b>${e.aufgabe ? `<i>${esc(e.aufgabe)}</i>` : ''}</span>
+        <span class="er-main"><b>${esc(e.thema)}</b></span>
         <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · erstellt ${fmtDate(e.created)} · bearbeitet ${fmtDate(e.updated)}</span>
       </button>
       <button class="essay-delete" type="button" aria-label="Essay löschen">×</button>`;
@@ -1393,7 +1399,6 @@ function bindEssay(e){
   $('#sheetThema').hidden = false;
   $('#themaName').textContent = e.thema;
   $('#themaNiveau').textContent = e.niveau;
-  $('#themaAufgabe').textContent = e.aufgabe || '';
   const meta = $('#themaMeta');
   if (meta) {
     const words = STAGES.reduce((n, st) => n + countOf(e.drafts[st.id]), 0);
@@ -1408,11 +1413,21 @@ function bindEssay(e){
 }
 
 $('#startBegin').addEventListener('click', () => {
-  const e = newEssayObj(startThema, $('#startAufgabe').value.trim(), startNiveau);
+  const field = $('#startThema');
+  const thema = field.value.trim();
+  if (!thema){
+    // Nothing to build a package from, and an essay with no prompt is not an
+    // essay. Say so where the eye already is instead of starting silently.
+    field.classList.add('is-missing');
+    field.focus();
+    return;
+  }
+  field.classList.remove('is-missing');
+  const e = newEssayObj(thema, startNiveau);
   store.essays.push(e);
   store.activeId = e.id;
   saveStore();
-  $('#startAufgabe').value = '';
+  field.value = '';
   setSheetMode('write');
   bindEssay(e);
   persistEssayToApi().catch(() => {});

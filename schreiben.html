@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/site-header.css?v=11">
-<link rel="stylesheet" href="css/schreiben.css?v=34">
+<link rel="stylesheet" href="css/schreiben.css?v=35">
 </head>
 <body>
 
@@ -74,16 +74,17 @@
         <div class="start" id="startState" hidden>
           <div class="start-eyebrow">Neues Essay</div>
           <h2 class="start-title serif">Worüber möchtest du schreiben?</h2>
-          <label class="start-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="startSearch" type="text" placeholder="Thema suchen…">
+          <!-- One field, and it takes the exam question itself — not a category.
+               The word package is picked against this text, so "Technologie"
+               and "Sollten Smartphones an Schulen verboten werden?" are not two
+               ways of saying the same thing: the first names the subject, the
+               second carries the argument. -->
+          <label class="start-thema">
+            <textarea id="startThema" rows="2" maxlength="400"
+              placeholder="z. B. Sollten Smartphones an Schulen verboten werden?"></textarea>
           </label>
-          <div class="start-themen" id="startThemen"></div>
-          <div class="pager start-pager" id="startPager" hidden></div>
-          <label class="start-custom">
-            <span>Eigene Aufgabenstellung · optional</span>
-            <input id="startAufgabe" type="text" placeholder="z. B. Sollten Smartphones an Schulen verboten werden?">
-          </label>
+          <p class="start-hint">Schreib die Aufgabenstellung so, wie sie in der Prüfung steht — je genauer, desto besser das Wortpaket.</p>
+          <div class="start-examples" id="startExamples"></div>
           <div class="start-row">
             <div class="seg" id="startNiveau">
               <button type="button">B1</button><button type="button">B2</button><button type="button">C1</button>
@@ -104,7 +105,6 @@
           <span class="k">Thema</span><span class="name" id="themaName"></span>
           <span class="nlv" id="themaNiveau"></span>
           <span class="meta" id="themaMeta"></span>
-          <span class="auf" id="themaAufgabe"></span>
         </div>
 
         <!-- swap ⇄ : flip the sheet between writing and the annotated review -->
@@ -251,6 +251,6 @@
   <script src="js/words-data.js?v=3"></script>
   <script src="js/schreiben-api.js?v=5"></script>
   <script src="js/analysis-waiting-phrases.js?v=1"></script>
-  <script src="js/schreiben.js?v=33"></script>
+  <script src="js/schreiben.js?v=34"></script>
 </body>
 </html>
