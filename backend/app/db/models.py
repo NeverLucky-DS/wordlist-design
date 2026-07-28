@@ -285,6 +285,11 @@ class VocabCard(Base):
     __table_args__ = (
         Index("ix_vocab_cards_band", "band"),
         Index("ix_vocab_cards_zipf", "zipf"),
+        # Wortpaket asks for `topic IN (...) AND zipf >= 2.5 ORDER BY zipf DESC`
+        # (see vocab/wortpaket.py). Composite rather than a plain `topic` index:
+        # the biggest topic holds 2 695 candidates and the ordering is the whole
+        # point of the query, so the second column earns its keep.
+        Index("ix_vocab_cards_topic_zipf", "topic", "zipf"),
         Index(
             "ix_vocab_cards_form_kind", "form_kind",
             postgresql_where=text("form_kind IS NOT NULL"),
