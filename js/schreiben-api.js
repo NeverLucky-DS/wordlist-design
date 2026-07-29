@@ -182,7 +182,43 @@
     }
   }
 
+  /* ---- Wortpaket: the vocabulary picked for this essay's topic ---- */
+
+  // 202 and nothing else: the build is two model calls and runs in the
+  // background. Everything the caller needs afterwards comes from `getWortpaket`.
+  function buildWortpaket(essayId) {
+    return request(`/api/essays/${essayId}/wortpaket`, { method: 'POST' });
+  }
+
+  function getWortpaket(essayId) {
+    return request(`/api/essays/${essayId}/wortpaket`);
+  }
+
+  /* ---- the personal word list, shared with the Wörterbuch page ---- */
+
+  function listMyWords(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/vocab/list${qs ? '?' + qs : ''}`);
+  }
+
+  function addMyWord(lemma) {
+    return request('/api/vocab/list', {
+      method: 'POST',
+      headers: HEADERS_JSON,
+      body: JSON.stringify({ lemma }),
+    });
+  }
+
+  function removeMyWord(lemma) {
+    return request(`/api/vocab/list/${encodeURIComponent(lemma)}`, { method: 'DELETE' });
+  }
+
   window.SchreibenApi = {
+    buildWortpaket,
+    getWortpaket,
+    listMyWords,
+    addMyWord,
+    removeMyWord,
     createEssay,
     updateEssay,
     listEssays,

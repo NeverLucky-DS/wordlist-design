@@ -1,0 +1,210 @@
+/* =====================================================================
+   WORTKARTE — the word card, as a component.
+   =====================================================================
+
+   Lifted out of `woerterbuch.css` on 2026-07-28 so the essay editor can draw
+   the same card. Sharing the whole stylesheet was not an option, and the reason
+   is worth keeping: `woerterbuch.css` is a PAGE, not a component — it carries
+   `:root` with the entire palette, `*{box-sizing}`, `html{}` and a `body{}`
+   with background and colour. Linking it into `schreiben.html` repaints the
+   editor.
+
+   The four variables below are the ones the card needs that the editor palette
+   does not define. `--brush` is set per element by `wb-card.js`.
+
+   ⚠️ They sit on `:root`, and putting them on `.wb-card` instead is a bug that
+   was caught here rather than in the browser. `body.theme-dim` — the shared
+   header's dark toggle — overrides all four (`woerterbuch.css`), and a custom
+   property resolves from the NEAREST ancestor that declares it. Declared on the
+   card, these would out-rank `body` and the card alone would stay light while
+   the page around it went dark.
+
+   Everything else (`--card`, `--hair`, `--rose`, `--rose-soft`, `--ink`,
+   `--ink-soft`, `--muted`, `--bg-2`) exists in both palettes and is inherited
+   from the host on purpose — the card should sit in the page it opens in.
+   ===================================================================== */
+:root{
+  --graphite:#33333A;
+  --hair-2:#F2F1EC;
+  --rose-ink:#8C4F57;
+  --soft:#6A6A74;
+}
+
+/* =====================================================================
+   THE CARD — 420px wherever it opens, in every state.
+   ===================================================================== */
+.wb-card{position:relative;width:420px;max-width:100%;background:var(--card);
+  border:1px solid var(--hair);border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(40,40,45,.04), 0 3px 8px rgba(40,40,45,.05),
+             0 22px 44px -20px rgba(40,40,45,.18), 0 46px 100px -50px rgba(40,40,45,.32)}
+
+.wb-close{position:absolute;top:12px;right:12px;z-index:6;width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.86);
+  backdrop-filter:blur(3px);border:1px solid var(--hair);color:var(--ink-soft);cursor:pointer;
+  transition:border-color .18s,color .18s,background .18s}
+.wb-close:hover{border-color:var(--rose);color:var(--rose-ink);background:#fff}
+.wb-close svg{width:13px;height:13px}
+
+/* ---------- head ---------- */
+.wb-head{position:relative;padding:12px 20px 10px;overflow:hidden;
+  border-radius:15px 15px 0 0;isolation:isolate}
+/* the row brush, cropped to a band across the upper head and faded out downward,
+   so the paint stays above the text and the word sits on clean ground */
+.wb-head::before{content:"";position:absolute;left:0;right:0;top:0;height:76%;z-index:0;
+  background:var(--brush) no-repeat center/cover;opacity:.6;
+  -webkit-mask:linear-gradient(180deg,#000 0,#000 42%,rgba(0,0,0,.45) 72%,transparent 100%);
+          mask:linear-gradient(180deg,#000 0,#000 42%,rgba(0,0,0,.45) 72%,transparent 100%)}
+.wb-head::after{content:"";position:absolute;inset:0;z-index:2;
+  background:linear-gradient(174deg,rgba(255,255,255,.32) 0%,rgba(255,255,255,.80) 46%,rgba(255,255,255,.95) 100%)}
+.wb-head>*{position:relative;z-index:3}
+
+.wb-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  min-height:18px;padding-right:34px;margin-bottom:5px}
+.wb-pos{font-size:12px;font-weight:700;letter-spacing:.01em;color:var(--ink-soft)}
+.wb-cefr{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--rose-ink);
+  background:rgba(255,255,255,.8);border:1px solid var(--rose-soft);border-radius:6px;padding:2px 7px}
+/* Our estimate, and it must not look like the boxed citation above. No border,
+   no plate — the tilde and the caption carry the claim. Same reasoning that
+   keeps `.wb-freq` unboxed: a box in this page means "quoted from a list". */
+.wb-est{display:inline-flex;align-items:baseline;gap:5px}
+.wb-est b{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--soft)}
+.wb-est span{font-size:11px;color:var(--soft)}
+.wb-freq{display:inline-flex;align-items:center;gap:6px}
+.wb-freq b{font-size:11.5px;font-weight:500;color:var(--ink-soft)}
+/* Register and topic — unboxed for the same reason as `.wb-est`. Only
+   `umgangssprachlich` takes the accent ink: of the three it is the one that
+   costs marks in an exam essay, so it is the one worth interrupting for.
+   `fachsprachlich` (23 366 cards) stays quiet — at that volume an accent on it
+   would repaint a quarter of the dictionary and stop meaning anything.
+   12px, not the 10–11px this line used to reach for: these are read, not
+   furniture, and the page floor is being raised, not lowered. */
+.wb-reg{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--soft)}
+.wb-reg.is-umgangssprachlich{color:var(--rose-ink)}
+.wb-topic{font-size:12px;color:var(--soft)}
+
+.wb-word{font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;font-weight:600;
+  line-height:1.04;letter-spacing:-.4px;color:var(--ink);display:flex;align-items:baseline;
+  flex-wrap:wrap;gap:0 9px}
+.wb-word.is-s{font-size:27px;letter-spacing:-.2px}
+.wb-word.is-xs{font-size:22px;letter-spacing:-.1px}
+/* the article is its own object, never glued into the lemma — the one fact a
+   learner comes back for most */
+.wb-art{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:.05em;
+  color:var(--rose-ink);background:rgba(255,255,255,.78);border:1px solid var(--rose-soft);
+  border-radius:6px;padding:2px 8px;align-self:center;flex:none}
+.wb-lemma{min-width:0;word-break:break-word}
+
+.wb-form{margin-top:7px;font-size:12px;color:var(--soft)}
+.wb-base,.wb-syn-chip{font:inherit;font-size:12.5px;color:var(--rose-ink);background:rgba(255,255,255,.6);
+  border:1px solid var(--rose-soft);border-radius:7px;padding:2px 8px;margin-left:4px;cursor:pointer;
+  transition:background .16s,border-color .16s}
+.wb-base:hover,.wb-syn-chip:hover{background:var(--rose-soft);border-color:var(--rose)}
+
+.wb-pron{display:flex;align-items:center;gap:12px;margin-top:7px;flex-wrap:wrap}
+.wb-say{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;
+  color:var(--rose-ink);font-size:12.5px;font-weight:600;cursor:pointer}
+.wb-say:hover span{text-decoration:underline}
+
+/* ---------- body ---------- */
+.wb-body{padding:11px 20px 10px}
+.wb-blk+.wb-blk{margin-top:10px;padding-top:10px;border-top:1.5px solid var(--hair)}
+
+.wb-lab{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:#fff;background:var(--graphite);border-radius:5px;
+  padding:2px 8px;margin-bottom:6px}
+
+/* meanings — all equal, order preserved by the numeral only */
+.wb-mn{list-style:none;display:flex;flex-direction:column;gap:3px;counter-reset:mn}
+.wb-mn li{display:flex;gap:10px;align-items:baseline;counter-increment:mn}
+.wb-mn .mn-n{flex:none;width:14px;font-size:11px;font-weight:700;color:var(--soft);
+  font-variant-numeric:tabular-nums}
+.wb-mn .mn-n::before{content:counter(mn)}
+.wb-mn .mn-t{font-size:14.5px;font-weight:500;line-height:1.34;color:var(--ink)}
+.wb-mn.is-single .mn-t{font-size:16px}
+
+/* example */
+.wb-x-de{font-size:14px;font-weight:500;line-height:1.44;color:var(--ink)}
+.wb-x-de em{font-style:normal;font-weight:700;box-shadow:inset 0 -3px 0 var(--rose)}
+.wb-x-ru{margin-top:5px;font-size:13.5px;line-height:1.4;color:var(--ink-soft)}
+.wb-x-ru em{font-style:normal;font-weight:600;color:var(--ink)}
+
+/* usage — Rektion and collocations under one heading */
+.wb-rek{font-family:'SF Mono','Fira Code',ui-monospace,monospace;font-size:13px;font-weight:600;
+  color:var(--ink);letter-spacing:-.01em;margin-bottom:6px;line-height:1.5}
+.wb-colls{font-size:13.5px;line-height:1.56;color:var(--ink-soft)}
+.wb-colls em{font-style:normal;font-weight:700;color:var(--ink)}
+.wb-dot{color:var(--soft);padding:0 6px}
+
+/* ---------- tabs ---------- */
+.wb-tabs{display:flex;gap:2px;padding:0 18px;border-top:1px solid var(--hair);
+  background:linear-gradient(180deg,var(--bg-2),var(--card))}
+.wb-tab{position:relative;background:none;border:0;padding:10px 10px 12px;
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12.5px;font-weight:600;color:var(--soft);cursor:pointer;transition:color .16s}
+.wb-tab:hover{color:var(--ink)}
+.wb-tab.on{color:var(--ink);font-weight:700}
+.wb-tab.on::after{content:"";position:absolute;left:8px;right:8px;bottom:5px;height:4px;
+  background:var(--rose);border-radius:3px}
+.wb-tab-n{font-size:10px;font-weight:700;color:var(--rose-ink);background:var(--rose-soft);
+  border-radius:20px;padding:1px 6px;min-width:17px;text-align:center}
+.wb-caret{width:6px;height:6px;border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);opacity:.5;transition:transform .2s,opacity .2s}
+.wb-tab.on .wb-caret{transform:rotate(225deg) translate(-2px,-2px);opacity:1}
+
+.wb-panel{display:none;padding:14px 22px 6px;border-top:1px solid var(--hair)}
+.wb-panel.on{display:block;animation:wbPanel .22s ease}
+@keyframes wbPanel{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.wb-def{font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
+.wb-syn{margin-top:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.wb-syn-lab{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.wb-syn-chip{font-family:'Cormorant Garamond',serif;font-size:16px;margin-left:0}
+
+/* ---------- foot ---------- */
+.wb-foot{display:flex;align-items:center;gap:10px;padding:9px 20px 11px;
+  border-top:1px solid var(--hair);background:var(--card)}
+.wb-collect{flex:1;background:var(--graphite);color:#fff;border:1px solid var(--graphite);
+  border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  transition:box-shadow .2s,background .2s,color .2s,border-color .2s}
+.wb-collect:hover{box-shadow:0 12px 26px -12px rgba(51,51,58,.55)}
+.wb-collect.is-in{background:var(--rose-soft);color:var(--rose-ink);border-color:var(--rose-soft)}
+.wb-collect.is-in:hover{background:var(--card);border-color:var(--rose);box-shadow:none}
+
+/* ---------- grammar ---------- */
+.g-parts{display:flex;flex-wrap:wrap;gap:9px 24px;align-items:baseline}
+.g-part{display:flex;flex-direction:column;gap:2px}
+.g-part i,.g-step i,.g-sub-lab,.g-extra i,.g-person i,.g-brief-sep,
+.g-cases thead th,.g-cases tbody th{font-style:normal;font-size:10px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.g-part b,.g-step b{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;
+  color:var(--ink);line-height:1.12}
+.g-sub{margin-top:13px}
+.g-sub-lab{margin-bottom:6px}
+.g-sub-lab em{font-style:normal;color:var(--rose-ink);text-transform:none;letter-spacing:.02em}
+.g-persons{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 18px}
+.g-person{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--ink);
+  display:flex;align-items:baseline;gap:8px}
+.g-person i{flex:none;min-width:48px}
+.g-extra{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px}
+.g-extra span{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--ink-soft);
+  display:flex;align-items:baseline;gap:8px}
+.g-ladder{display:flex;align-items:flex-end;gap:11px;flex-wrap:wrap}
+.g-ladder .g-arrow{width:15px;height:1.5px;background:var(--hair);margin-bottom:9px;flex:none}
+.g-brief{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink)}
+.g-brief-pl{display:inline-flex;align-items:baseline;gap:8px;white-space:nowrap}
+.g-brief-many{color:var(--ink-soft)}
+.g-note{margin-top:7px;font-size:12px;font-weight:500;color:var(--rose-ink)}
+.g-more{margin-top:11px}
+.g-more>summary{list-style:none;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--soft);padding:4px 0}
+.g-more>summary::-webkit-details-marker{display:none}
+.g-more>summary::before{content:'+ ';color:var(--muted)}
+.g-more[open]>summary::before{content:'– '}
+.g-more>summary:hover{color:var(--ink)}
+.g-cases-wrap{overflow-x:auto}
+.g-cases{width:100%;border-collapse:collapse;margin-top:6px}
+.g-cases th,.g-cases td{text-align:left;padding:5px 12px 5px 0;
+  font-family:'Cormorant Garamond',serif;font-size:14.5px;color:var(--ink);white-space:nowrap}
+.g-cases tbody td:last-child{color:var(--ink-soft)}
+.g-cases tbody tr+tr th,.g-cases tbody tr+tr td{border-top:1px solid var(--hair-2)}
+
+.wb-x-list{display:flex;flex-direction:column;gap:13px}

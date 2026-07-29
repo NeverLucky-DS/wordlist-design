@@ -13,7 +13,9 @@
 index.html   — Wörterbuch: поиск-разворот + карточка + личный список в ящике
                 (2026-07-23: переписан на дизайн «Разворот», §6c. Единственный
                  фронт — прототип на :8799 удалён 2026-07-25, поднимать make up)
-├── css/site-header.css, css/woerterbuch.css
+├── css/site-header.css, css/wortkarte.css, css/woerterbuch.css
+│     wortkarte.css ПЕРЕД woerterbuch.css: карточка везёт :root-фоллбэки на
+│     четыре переменные, палитра страницы обязана остаться главной
 ├── js/site-header.js, js/words-data.js, js/wb-card.js, js/wb-page.js  (+ inline boot())
 │     words-data.js ПЕРЕД wb-card.js: карта кистей одна на сайт, см. §2
 ├── worte/*.png                             (wb-card.js brushFor, путь /worte/ АБСОЛЮТНЫЙ)
@@ -37,9 +39,13 @@ index.html   — Wörterbuch: поиск-разворот + карточка + �
 (`app/services/word_cleanup.py`) и сидирование 17 слов.
 
 schreiben.html
-├── css/site-header.css, css/schreiben.css
+├── css/site-header.css, css/schreiben.css, css/wortkarte.css
 ├── js/site-header.js, js/words-data.js, js/schreiben-api.js
-├── js/analysis-waiting-phrases.js, js/schreiben.js
+├── js/analysis-waiting-phrases.js, js/wb-card.js, js/schreiben.js
+│     ⚠️ wb-card.js объявляет глобальный `const esc`. У schreiben.js свой
+│     хелпер переименован в `escHtml` — два top-level `const` с одним именем
+│     это SyntaxError, и второй скрипт не исполняется ЦЕЛИКОМ и молча
+│     (напоролись 2026-07-29: страница грузилась, карта эссе не рисовалась)
 ├── images/background_schreiben.png         (body bg)
 ├── images/timer-wash.png, tool-card-wash.png
 ├── images/kli-1/2/3.png, decor-head.png, Deklination.png
@@ -324,8 +330,10 @@ Postgres: `users`, `auth_sessions`, `guest_sessions`, `essays`, `essay_versions`
 
 2. **Cache-bust `?v=N`** — при смене CSS/JS обновлять версию в HTML
    (`site-header.css` — `?v=11` на ВСЕХ ТРЁХ страницах, `site-header.js` — `?v=8`,
-   `woerterbuch.css` — `?v=2`, `wb-card.js` — `?v=3`, `wb-page.js` — `?v=3`,
-   `schreiben.css` — `?v=34`, `words-data.js` — `?v=3` на обеих страницах,
+   `woerterbuch.css` — `?v=6`, `wortkarte.css` — `?v=1` на index И schreiben,
+   `wb-card.js` — `?v=5` на index И schreiben, `wb-page.js` — `?v=6`,
+   `schreiben.css` — `?v=36`, `schreiben.js` — `?v=36`,
+   `schreiben-api.js` — `?v=6`, `words-data.js` — `?v=3` на обеих страницах,
    `pipeline.css` — `?v=9`, `pipeline.js` — `?v=5`, `enrich.js` — `?v=5`).
    ⚠️ Номер обязан совпадать НА ВСЕХ страницах, которые грузят файл. Он уже
    расходился: `77e71df` (07-13) переписал `pipeline.html` целиком и вернул

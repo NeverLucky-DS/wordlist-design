@@ -11,7 +11,10 @@
 
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* Local to this file. `wb-card.js` also declares a global `esc`, and two
+   top-level `const`s of one name are a SyntaxError that kills whichever
+   script parses second — silently, because it never runs to report it. */
+const escHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 function speak(t){
   if (!('speechSynthesis' in window)) return;
@@ -63,109 +66,14 @@ const STAGES = [
 ];
 
 /* thematic vocabulary — same entries as the editor demo (Technologie) */
-const WORDS = [
-  {de:'Technologie',art:'die',pos:'noun',cat:'Technologie',level:'B1',ru:'технология',ipa:'[tɛçnoloˈɡiː]',
-   genus:'Femininum',plural:'die Technologien',
-   def:'Die Gesamtheit der Verfahren und Mittel, mit denen der Mensch sein Wissen praktisch nutzbar macht.',
-   pull:'Ohne Technologie wäre der moderne Alltag kaum vorstellbar.',
-   koll:['moderne Technologie','digitale Technologie','Technologie nutzen'],
-   ex:[['Die <strong>Technologie</strong> verändert unsere Arbeitswelt grundlegend.','Технология коренным образом меняет наш рабочий мир.'],
-       ['Neue <strong>Technologien</strong> entstehen heute schneller als je zuvor.','Новые технологии появляются сегодня быстрее, чем когда-либо.']]},
-  {de:'Entwicklung',art:'die',pos:'noun',cat:'Technologie',level:'B1',ru:'развитие',ipa:'[ɛntˈvɪklʊŋ]',
-   genus:'Femininum',plural:'die Entwicklungen',
-   def:'Ein Prozess fortschreitender Veränderung, durch den etwas allmählich entsteht oder sich verbessert.',
-   pull:'Die rasante Entwicklung der KI wirft neue Fragen auf.',
-   koll:['technische Entwicklung','Entwicklung fördern','rasante Entwicklung'],
-   ex:[['Die <strong>Entwicklung</strong> der Digitalisierung schreitet rasch voran.','Развитие цифровизации стремительно продвигается.'],
-       ['Diese <strong>Entwicklung</strong> hat Vor- und Nachteile.','Это развитие имеет преимущества и недостатки.']]},
-  {de:'Fortschritt',art:'der',pos:'noun',cat:'Technologie',level:'B1',ru:'прогресс',ipa:'[ˈfɔʁtʃʁɪt]',
-   genus:'Maskulinum',plural:'die Fortschritte',
-   def:'Eine positive Veränderung hin zu einem höheren, besseren oder weiter entwickelten Zustand.',
-   pull:'Technischer Fortschritt ist nicht immer gleichbedeutend mit Lebensqualität.',
-   koll:['technischer Fortschritt','Fortschritt machen','wissenschaftlicher Fortschritt'],
-   ex:[['Der technische <strong>Fortschritt</strong> erleichtert viele Aufgaben.','Технический прогресс облегчает многие задачи.'],
-       ['Nicht jeder <strong>Fortschritt</strong> dient dem Menschen.','Не всякий прогресс служит человеку.']]},
-  {de:'Algorithmus',art:'der',pos:'noun',cat:'Technologie',level:'B2',ru:'алгоритм',ipa:'[alɡoˈʁɪtmʊs]',
-   genus:'Maskulinum',plural:'die Algorithmen',
-   def:'Eine eindeutige Handlungsvorschrift zur Lösung eines Problems oder einer Klasse von Problemen.',
-   pull:'Ein guter Algorithmus spart Zeit und Ressourcen.',
-   koll:['der Algorithmus entscheidet','einen Algorithmus entwickeln','komplexer Algorithmus'],
-   ex:[['Der <strong>Algorithmus</strong> analysiert die Daten und liefert die Ergebnisse.','Алгоритм анализирует данные и предоставляет результаты.'],
-       ['Ein effizienter <strong>Algorithmus</strong> verarbeitet Millionen Daten in Sekunden.','Эффективный алгоритм обрабатывает миллионы данных за секунды.']]},
-  {de:'Digitalisierung',art:'die',pos:'noun',cat:'Technologie',level:'B2',ru:'цифровизация',ipa:'[diɡitaliˈziːʁʊŋ]',
-   genus:'Femininum',plural:'die Digitalisierungen',
-   def:'Die Umwandlung analoger Informationen und Abläufe in digitale Form.',
-   pull:'Die Digitalisierung hat unseren Alltag grundlegend verändert.',
-   koll:['die Digitalisierung vorantreiben','fortschreitende Digitalisierung'],
-   ex:[['Die <strong>Digitalisierung</strong> verändert die Art, wie wir kommunizieren.','Цифровизация меняет то, как мы общаемся.'],
-       ['Viele Branchen profitieren von der <strong>Digitalisierung</strong>.','Многие отрасли выигрывают от цифровизации.']]},
-  {de:'Kommunikation',art:'die',pos:'noun',cat:'Technologie',level:'B2',ru:'коммуникация',ipa:'[kɔmunikaˈt͡si̯oːn]',
-   genus:'Femininum',plural:'die Kommunikationen',
-   def:'Der Austausch von Informationen zwischen zwei oder mehreren Beteiligten.',
-   pull:'Digitale Kommunikation kennt keine Grenzen mehr.',
-   koll:['digitale Kommunikation','Kommunikation verbessern'],
-   ex:[['Die digitale <strong>Kommunikation</strong> verbindet Menschen weltweit.','Цифровая коммуникация связывает людей по всему миру.']]},
-  {de:'Vorteil',art:'der',pos:'noun',cat:'Technologie',level:'B1',ru:'преимущество',ipa:'[ˈfoːɐ̯taɪ̯l]',
-   genus:'Maskulinum',plural:'die Vorteile',
-   def:'Ein günstiger Umstand, der jemandem oder etwas nützt.',
-   pull:'Jede Technologie bringt Vorteile und Risiken zugleich.',
-   koll:['einen Vorteil haben','klarer Vorteil','Vorteile bieten'],
-   ex:[['Ein großer <strong>Vorteil</strong> der Technik ist die Zeitersparnis.','Большое преимущество техники — экономия времени.']]},
-  {de:'Nachteil',art:'der',pos:'noun',cat:'Technologie',level:'B1',ru:'недостаток',ipa:'[ˈnaːxtaɪ̯l]',
-   genus:'Maskulinum',plural:'die Nachteile',
-   def:'Ein ungünstiger Umstand, der jemandem oder etwas schadet.',
-   pull:'Der größte Nachteil ist die wachsende Abhängigkeit.',
-   koll:['einen Nachteil haben','der Nachteil überwiegt'],
-   ex:[['Ein <strong>Nachteil</strong> der Digitalisierung ist der Datenschutz.','Недостаток цифровизации — защита данных.']]},
-  {de:'Netzwerk',art:'das',pos:'noun',cat:'Technologie',level:'B2',ru:'сеть',ipa:'[ˈnɛt͡svɛʁk]',
-   genus:'Neutrum',plural:'die Netzwerke',
-   def:'Ein System aus miteinander verbundenen Elementen, das den Austausch von Daten ermöglicht.',
-   pull:'Ein stabiles Netzwerk ist die Grundlage moderner Kommunikation.',
-   koll:['soziales Netzwerk','ein Netzwerk aufbauen'],
-   ex:[['Das soziale <strong>Netzwerk</strong> verbindet Millionen von Nutzern.','Социальная сеть связывает миллионы пользователей.']]},
-  {de:'Datenschutz',art:'der',pos:'noun',cat:'Technologie',level:'B2',ru:'защита данных',ipa:'[ˈdaːtn̩ʃʊt͡s]',
-   genus:'Maskulinum',plural:'—',
-   def:'Der Schutz personenbezogener Daten vor Missbrauch und unbefugtem Zugriff.',
-   pull:'Datenschutz wird im digitalen Zeitalter immer wichtiger.',
-   koll:['den Datenschutz gewährleisten','Datenschutz beachten'],
-   ex:[['Der <strong>Datenschutz</strong> ist ein zentrales Thema der Digitalisierung.','Защита данных — центральная тема цифровизации.']]},
-  {de:'Effizienz',art:'die',pos:'noun',cat:'Technologie',level:'C1',ru:'эффективность',ipa:'[ɛfiˈt͡si̯ɛnt͡s]',
-   genus:'Femininum',plural:'—',
-   def:'Das Verhältnis zwischen erreichtem Nutzen und dem dafür nötigen Aufwand.',
-   pull:'Mehr Effizienz bedeutet nicht automatisch mehr Zufriedenheit.',
-   koll:['die Effizienz steigern','hohe Effizienz'],
-   ex:[['Neue Technologien erhöhen die <strong>Effizienz</strong> der Arbeit.','Новые технологии повышают эффективность труда.']]},
-  {de:'künstlich',art:'',pos:'adj',cat:'Technologie',level:'B2',ru:'искусственный',ipa:'[ˈkʏnstlɪç]',
-   genus:'Adjektiv',plural:'—',
-   def:'Vom Menschen nachgebildet oder hergestellt; nicht natürlich entstanden.',
-   pull:'Künstliche Intelligenz prägt zunehmend unseren Alltag.',
-   koll:['künstliche Intelligenz','künstliches Licht'],
-   ex:[['<strong>Künstliche</strong> Intelligenz übernimmt immer mehr Aufgaben.','Искусственный интеллект берёт на себя всё больше задач.']]},
-];
 
 /* brushOf, typeKey, WASH — js/words-data.js */
 
 /* full declension per word (N/G/D/A × Sg/Pl) — explicit, no auto-guessing */
-const DEKL = {
-  Technologie:     [['die Technologie','die Technologien'],['der Technologie','der Technologien'],['der Technologie','den Technologien'],['die Technologie','die Technologien']],
-  Entwicklung:     [['die Entwicklung','die Entwicklungen'],['der Entwicklung','der Entwicklungen'],['der Entwicklung','den Entwicklungen'],['die Entwicklung','die Entwicklungen']],
-  Fortschritt:     [['der Fortschritt','die Fortschritte'],['des Fortschritts','der Fortschritte'],['dem Fortschritt','den Fortschritten'],['den Fortschritt','die Fortschritte']],
-  Algorithmus:     [['der Algorithmus','die Algorithmen'],['des Algorithmus','der Algorithmen'],['dem Algorithmus','den Algorithmen'],['den Algorithmus','die Algorithmen']],
-  Digitalisierung: [['die Digitalisierung','die Digitalisierungen'],['der Digitalisierung','der Digitalisierungen'],['der Digitalisierung','den Digitalisierungen'],['die Digitalisierung','die Digitalisierungen']],
-  Kommunikation:   [['die Kommunikation','die Kommunikationen'],['der Kommunikation','der Kommunikationen'],['der Kommunikation','den Kommunikationen'],['die Kommunikation','die Kommunikationen']],
-  Vorteil:         [['der Vorteil','die Vorteile'],['des Vorteils','der Vorteile'],['dem Vorteil','den Vorteilen'],['den Vorteil','die Vorteile']],
-  Nachteil:        [['der Nachteil','die Nachteile'],['des Nachteils','der Nachteile'],['dem Nachteil','den Nachteilen'],['den Nachteil','die Nachteile']],
-  Netzwerk:        [['das Netzwerk','die Netzwerke'],['des Netzwerks','der Netzwerke'],['dem Netzwerk','den Netzwerken'],['das Netzwerk','die Netzwerke']],
-  Datenschutz:     [['der Datenschutz','—'],['des Datenschutzes','—'],['dem Datenschutz','—'],['den Datenschutz','—']],
-  Effizienz:       [['die Effizienz','—'],['der Effizienz','—'],['der Effizienz','—'],['die Effizienz','—']],
-};
 /* adjective comparison forms */
-const STEIG = {
-  'künstlich': ['künstlich','künstlicher','am künstlichsten'],
-};
 
 const WORD_TARGET = 250;
-const WB_PAGE = 9, KLI_PAGE = 3;
+const KLI_PAGE = 3;
 
 /* =====================================================================
    Store — essays in localStorage; synced to backend when API is up.
@@ -327,6 +235,10 @@ async function persistEssayToApi(force = false) {
       saved = await SchreibenApi.createEssay(essayPayload(e));
       e.apiId = saved.id;
       alog('essay created on backend · apiId =', saved.id);
+      /* The word package is asked for once, here, and built in the background.
+         Writing never waits for it: two model calls take seconds, and the
+         drawer polls for the result on its own. */
+      requestPaket(e);
     }
     apiReady = true;
     e.dirty = false;
@@ -458,7 +370,6 @@ function schedulePersist(){
 
 let drafts = Object.fromEntries(STAGES.map(s => [s.id, '']));
 let activeStage = STAGES[0].id;
-const favs = new Set();
 
 /* =====================================================================
    Roadmap — rendered once; stage changes only move classes & leaves
@@ -702,7 +613,7 @@ function insertText(t){
    Tool cards — they expand downwards, in place (one open at a time)
    ===================================================================== */
 let openedTool = null;              /* 'hilfen' | 'woerterbuch' | null */
-let wbQuery = '', wbPage = 0, kliPage = 0, kliQuery = '';
+let kliPage = 0, kliQuery = '';
 
 function openTool(tool, keep){
   if (openedTool === tool){
@@ -714,13 +625,21 @@ function openTool(tool, keep){
     closeTools(); return;
   }
   openedTool = tool;
-  if (tool === 'woerterbuch'){ wbPage = 0; renderWoerterbuch(); }
+  if (tool === 'woerterbuch'){
+    /* first open loads; afterwards the drawer keeps what it has so reopening
+       does not re-fetch a list the user just looked at */
+    renderWoerterbuch();
+    (wbTab === 'meine' && wbMine === null ? loadMine() :
+     wbTab === 'thema' && wbPaket === null ? loadPaket() : Promise.resolve())
+      .then(renderWoerterbuch);
+  }
   else if (tool === 'analysen'){ anaPage = 0; renderAnalysen(); }
   else { kliPage = 0; renderHilfen(); }
   $$('.tool-card').forEach(c => c.classList.toggle('open', c.dataset.tool === tool));
 }
 function closeTools(){
   openedTool = null;
+  wbStopPolling();
   $$('.tool-card').forEach(c => c.classList.remove('open'));
   closeCard();
 }
@@ -762,69 +681,194 @@ function renderPager(el, count, page, onPage){
   mk('›', page + 1, { disabled: page === count - 1 });
 }
 
-/* ---------- Wörterbuch ---------- */
-function wbFiltered(){
-  const q = wbQuery.trim().toLowerCase();
-  /* the essay's Thema drives the vocabulary; fall back to everything */
+/* =====================================================================
+   Wörterbuch — two tabs over one row renderer.
+
+   «Meine»  — the account's own list, most recently added first. That order is
+              deliberate and it is NOT spaced repetition: these are the words
+              picked up while writing THIS essay, and having them to hand is
+              the point. Repetition needs data we do not keep yet (no review
+              date, no answer count — `user_word_list` is bookmarks).
+   «Thema»  — the package built for the essay's prompt (see backend
+              `vocab/wortpaket.py`). Computed in the background at creation,
+              so this tab can be empty-but-working for a few seconds.
+
+   The demo array this drawer used to read (12 words, all Technologie) is gone
+   with everything that served it.
+   ===================================================================== */
+let wbTab = 'meine';                 /* 'meine' | 'thema' */
+let wbMine = null;                   /* null = not loaded yet */
+let wbPaket = null;                  /* {status, words, stale, error} */
+let wbPoll = null;
+
+const WB_TABS = [
+  { id: 'meine', label: 'Meine Wörter' },
+  { id: 'thema', label: 'Zum Thema' },
+];
+
+function wbStopPolling(){
+  if (wbPoll){ clearTimeout(wbPoll); wbPoll = null; }
+}
+
+/* The build takes a few seconds and finishes without telling anyone, so the
+   drawer asks. Only while the drawer is open and only while it is still
+   running — a poll that outlives its reason is the kind of timer nobody
+   remembers to look for later. */
+function wbSchedulePoll(){
+  wbStopPolling();
+  if (openedTool !== 'woerterbuch') return;
+  if (!wbPaket || !['pending', 'running'].includes(wbPaket.status)) return;
+  wbPoll = setTimeout(() => { loadPaket().then(renderWoerterbuch); }, 2500);
+}
+
+async function loadMine(){
+  try {
+    const rows = await window.SchreibenApi.listMyWords({ limit: 200 });
+    const items = Array.isArray(rows) ? rows : (rows.items || []);
+    /* newest first; `added_at` is ISO, so a string compare is enough */
+    wbMine = items.slice().sort((a, b) => (b.added_at || '').localeCompare(a.added_at || ''));
+  } catch (err) {
+    wbMine = err.status === 401 ? 'auth' : 'error';
+  }
+}
+
+async function loadPaket(){
   const e = currentEssay();
-  const themed = e ? WORDS.filter(w => w.cat === e.thema) : [];
-  const src = themed.length ? themed : WORDS;
-  return src.filter(w => !q || w.de.toLowerCase().includes(q) || w.ru.toLowerCase().includes(q));
+  if (!e || !e.apiId){ wbPaket = { status: 'none', words: [] }; return; }
+  try {
+    wbPaket = await window.SchreibenApi.getWortpaket(e.apiId);
+  } catch (err) {
+    wbPaket = err.status === 401 ? { status: 'auth', words: [] }
+                                 : { status: 'error', words: [], error: err.message };
+  }
+}
+
+/* Ask the server to build a package for this essay. Fire-and-forget: the
+   drawer discovers the result by polling, and a failure is a row in the
+   database, not a lost promise. */
+function requestPaket(essay){
+  if (!essay || !essay.apiId) return;
+  window.SchreibenApi.buildWortpaket(essay.apiId)
+    .then(() => { wbPaket = { status: 'pending', words: [] }; wbSchedulePoll(); })
+    .catch(() => {});
+}
+
+function wbRowHTML(w){
+  const inList = !!w.in_list;
+  const art = w.article ? `<span class="art">${escHtml(w.article)} </span>` : '';
+  const star = wbTab === 'meine'
+    ? `<button class="wb-star on" type="button" data-drop="${escHtml(w.lemma)}" aria-label="Aus der Liste entfernen">
+         <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18.3 6.2 21.4l1.1-6.5L2.6 9.8l6.5-.9z"/></svg>
+       </button>`
+    : `<button class="wb-star${inList ? ' on' : ''}" type="button" data-keep="${escHtml(w.lemma)}"
+         aria-label="${inList ? 'Schon in der Liste' : 'Merken'}">
+         <svg viewBox="0 0 24 24" fill="${inList ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18.3 6.2 21.4l1.1-6.5L2.6 9.8l6.5-.9z"/></svg>
+       </button>`;
+  return `
+    <div class="wb-row" data-lemma="${escHtml(w.lemma)}" style="--brush:${brushOfCard(w)}">
+      <span class="wb-wash" aria-hidden="true"></span>
+      <span class="wb-de">${art}${escHtml(w.lemma)}</span>
+      <span class="wb-ru">${escHtml(w.ru || '')}</span>
+      ${star}
+    </div>`;
+}
+
+function wbBodyHTML(){
+  const tabs = WB_TABS.map(t =>
+    `<button class="wb-tab${t.id === wbTab ? ' on' : ''}" type="button" data-tab="${t.id}">${t.label}</button>`
+  ).join('');
+
+  let inner = '';
+  if (wbTab === 'meine'){
+    if (wbMine === null) inner = `<div class="wb-empty">Wird geladen…</div>`;
+    else if (wbMine === 'auth') inner = `<div class="wb-empty">Melde dich an, um deine Wörter zu sehen.</div>`;
+    else if (wbMine === 'error') inner = `<div class="wb-empty">Die Liste ist gerade nicht erreichbar.</div>`;
+    else if (!wbMine.length)
+      inner = `<div class="wb-empty">Noch keine eigenen Wörter.
+        <button class="wb-jump" type="button" data-tab="thema">Wörter zum Thema ansehen</button></div>`;
+    else inner = `<div class="wb-list">${wbMine.map(wbRowHTML).join('')}</div>`;
+  } else {
+    const p = wbPaket || { status: 'none', words: [] };
+    if (p.status === 'none') inner = `<div class="wb-empty">Das Essay ist noch nicht auf dem Server.</div>`;
+    else if (p.status === 'auth') inner = `<div class="wb-empty">Melde dich an, um ein Wortpaket zu bekommen.</div>`;
+    else if (['pending', 'running'].includes(p.status))
+      inner = `<div class="wb-empty">Wörter zum Thema werden gesucht…</div>`;
+    else if (p.status === 'failed' || p.status === 'error')
+      inner = `<div class="wb-empty">Das Wortpaket konnte nicht gebaut werden.
+        <button class="wb-jump" type="button" data-rebuild>Nochmal versuchen</button></div>`;
+    else if (!p.words || !p.words.length)
+      inner = `<div class="wb-empty">Kein Wortpaket.
+        <button class="wb-jump" type="button" data-rebuild>Jetzt bauen</button></div>`;
+    else
+      inner = `${p.stale ? `<div class="wb-note">Das Paket gehört zu einem anderen Thema.
+          <button class="wb-jump" type="button" data-rebuild>Neu bauen</button></div>` : ''}
+        <div class="wb-list">${p.words.map(wbRowHTML).join('')}</div>`;
+  }
+  return `<div class="wb-tabs">${tabs}</div>${inner}`;
 }
 
 function renderWoerterbuch(){
-  const items = wbFiltered();
-  const pages = Math.max(1, Math.ceil(items.length / WB_PAGE));
-  wbPage = Math.min(wbPage, pages - 1);
-  const slice = items.slice(wbPage * WB_PAGE, wbPage * WB_PAGE + WB_PAGE);
-
-  $('#wbBody').innerHTML = `
-    <label class="wb-search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="wbSearch" type="text" placeholder="Suche nach Wort…" value="${esc(wbQuery)}">
-    </label>
-    <div class="wb-list" id="wbList"></div>`;
-
-  const list = $('#wbList');
-  if (!slice.length){
-    list.innerHTML = `<div class="wb-empty">Keine Begriffe gefunden.</div>`;
-  }
-  slice.forEach(w => {
-    const row = document.createElement('div');
-    row.className = 'wb-row';
-    row.style.setProperty('--brush', brushOf(w));
-    const art = w.art ? `<span class="art">${esc(w.art)} </span>` : '';
-    row.innerHTML = `
-      <span class="wb-wash" aria-hidden="true"></span>
-      <span class="wb-de">${art}${esc(w.de)}</span>
-      <span class="wb-ru">${esc(w.ru)}</span>
-      <button class="wb-star${favs.has(w.de) ? ' on' : ''}" type="button" aria-label="Merken">
-        <svg viewBox="0 0 24 24" fill="${favs.has(w.de) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18.3 6.2 21.4l1.1-6.5L2.6 9.8l6.5-.9z"/></svg>
-      </button>`;
-    row.addEventListener('click', e => {
-      if (e.target.closest('.wb-star')) return;
-      $$('.wb-row').forEach(r => r.classList.remove('active'));
-      row.classList.add('active');
-      openCard(w, row);
-    });
-    row.querySelector('.wb-star').addEventListener('click', e => {
-      e.stopPropagation();
-      const star = e.currentTarget;
-      if (favs.has(w.de)){ favs.delete(w.de); star.classList.remove('on'); star.querySelector('svg').setAttribute('fill','none'); }
-      else { favs.add(w.de); star.classList.add('on'); star.querySelector('svg').setAttribute('fill','currentColor'); }
-    });
-    list.appendChild(row);
-  });
-
-  $('#wbSearch').addEventListener('input', e => {
-    wbQuery = e.target.value; wbPage = 0;
-    const pos = e.target.selectionStart;
-    renderWoerterbuch();
-    const inp = $('#wbSearch'); inp.focus(); inp.setSelectionRange(pos, pos);
-  });
-
-  renderPager($('#wbPager'), pages, wbPage, p => { wbPage = p; renderWoerterbuch(); });
+  $('#wbBody').innerHTML = wbBodyHTML();
+  wbSchedulePoll();
 }
+
+/* One delegated listener on the drawer: the body is replaced wholesale on
+   every render, so per-row handlers would have to be rebound each time. */
+$('#wbBody').addEventListener('click', async e => {
+  const tabBtn = e.target.closest('[data-tab]');
+  if (tabBtn){
+    wbTab = tabBtn.dataset.tab;
+    if (wbTab === 'meine' && wbMine === null) await loadMine();
+    if (wbTab === 'thema' && wbPaket === null) await loadPaket();
+    renderWoerterbuch();
+    return;
+  }
+  if (e.target.closest('[data-rebuild]')){
+    requestPaket(currentEssay());
+    wbPaket = { status: 'pending', words: [] };
+    renderWoerterbuch();
+    return;
+  }
+
+  const keep = e.target.closest('[data-keep]');
+  if (keep){
+    e.stopPropagation();
+    const lemma = keep.dataset.keep;
+    /* The row stays where it is and only changes its mark. Removing it here
+       would move every row below up by one at the moment of the click, and the
+       next word would be added by accident. It leaves on the next rebuild. */
+    const on = keep.classList.toggle('on');
+    keep.querySelector('svg').setAttribute('fill', on ? 'currentColor' : 'none');
+    try {
+      if (on) await window.SchreibenApi.addMyWord(lemma);
+      else await window.SchreibenApi.removeMyWord(lemma);
+      wbMine = null;                 /* the other tab is stale now */
+    } catch (err) {
+      keep.classList.toggle('on', !on);
+      keep.querySelector('svg').setAttribute('fill', !on ? 'currentColor' : 'none');
+      if (err.status === 401 && window.SiteAuth) window.SiteAuth.open();
+    }
+    return;
+  }
+
+  const drop = e.target.closest('[data-drop]');
+  if (drop){
+    e.stopPropagation();
+    try {
+      await window.SchreibenApi.removeMyWord(drop.dataset.drop);
+      await loadMine();
+      renderWoerterbuch();
+    } catch (_) {}
+    return;
+  }
+
+  const row = e.target.closest('.wb-row');
+  if (row){
+    $$('.wb-row').forEach(r => r.classList.remove('active'));
+    row.classList.add('active');
+    openCard(row.dataset.lemma, row);
+  }
+});
 
 /* ---------- Schreibhilfen ----------
 
@@ -849,7 +893,7 @@ let kliLoading = false;
    placeholder reads as a gap rather than punctuation. Escape first — this text
    goes in as innerHTML. */
 function kliMarkup(text){
-  return esc(text).replace(/\.\.\.|…/g, '<em>…</em>');
+  return escHtml(text).replace(/\.\.\.|…/g, '<em>…</em>');
 }
 
 async function loadKlischees(){
@@ -902,11 +946,11 @@ function renderHilfen(){
   const slice = kli.slice(kliPage * KLI_PAGE, kliPage * KLI_PAGE + KLI_PAGE);
 
   $('#hilfenBody').innerHTML = `
-    <div class="kli-cap">Klischees · <b>${esc(s.title)}</b>
+    <div class="kli-cap">Klischees · <b>${escHtml(s.title)}</b>
       <span class="kli-count">${kli.length}</span></div>
     <label class="wb-search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="kliSearch" type="text" placeholder="Formulierung suchen…" value="${esc(kliQuery)}">
+      <input id="kliSearch" type="text" placeholder="Formulierung suchen…" value="${escHtml(kliQuery)}">
     </label>
     <div class="kli-list" id="kliList"></div>`;
 
@@ -923,7 +967,7 @@ function renderHilfen(){
     b.type = 'button';
     b.className = 'kli';
     b.innerHTML = `<span class="kli-de">${k.de}</span>
-      <span class="kli-ru">${esc(k.ru)}</span>
+      <span class="kli-ru">${escHtml(k.ru)}</span>
       <span class="kli-add">Einfügen ↵</span>`;
     b.addEventListener('click', () => {
       const tmp = document.createElement('div');
@@ -941,7 +985,7 @@ const ANA_PAGE = 6;
 let anaPage = 0;
 
 function mlEsc(s) {
-  return String(s ?? '').split('\n').map(esc).join('<br>');
+  return String(s ?? '').split('\n').map(escHtml).join('<br>');
 }
 
 function analysisFromRun(run) {
@@ -1019,8 +1063,8 @@ function renderAnalysen(){
     const label = run.scope === 'part' ? (run.part || 'Teil') : 'Gesamtes Essay';
     const score = run.overall_score == null ? '' : ` · ${run.overall_score}/100`;
     return `<button type="button" data-analysis-id="${run.id}" class="${a?.id === run.id ? 'active' : ''}">
-      <b>${esc(label)}</b><span>${fmtDate(run.created_at)}${score}</span>
-      <i data-status="${esc(run.status)}">${esc(run.status.replaceAll('_', ' '))}</i>
+      <b>${escHtml(label)}</b><span>${fmtDate(run.created_at)}${score}</span>
+      <i data-status="${escHtml(run.status)}">${escHtml(run.status.replaceAll('_', ' '))}</i>
     </button>`;
   }).join('')}</div>` : '';
   if (!a) {
@@ -1032,12 +1076,12 @@ function renderAnalysen(){
   const notices = [
     a.is_stale ? '<p class="ana-warning">Analysierte Textversion — der aktuelle Text wurde seitdem bearbeitet. Die Korrekturen beziehen sich auf den Stand zum Analysezeitpunkt.</p>' : '',
     a.warnings?.length ? `<div class="ana-warning">Teilweise abgeschlossen · ${a.warnings.length} Hinweis(e)
-      ${a.warnings.filter(w => w.part).map(w => `<button type="button" data-retry-part="${esc(w.part)}">${esc(w.part)} erneut prüfen</button>`).join('')}
+      ${a.warnings.filter(w => w.part).map(w => `<button type="button" data-retry-part="${escHtml(w.part)}">${escHtml(w.part)} erneut prüfen</button>`).join('')}
     </div>` : '',
   ].join('');
   const head = `
     <div class="ana-head">
-      <span class="ana-grade">${esc(a.grade || '—')}</span>
+      <span class="ana-grade">${escHtml(a.grade || '—')}</span>
       <span class="ana-score-val">${a.overall_score ?? '—'} / 100</span>
       <button type="button" class="ana-swaplink${reviewMode ? ' active' : ''}" id="anaSwapLink">${swapLinkText()}</button>
     </div>
@@ -1045,7 +1089,7 @@ function renderAnalysen(){
 
   const partsInner = (a.part_reports || []).filter(pr => !pr.is_empty).map(pr => `
     <div class="ana-part">
-      <div class="ana-part-top"><b>${esc(pr.label || pr.part)}</b><span>${pr.score}/100</span></div>
+      <div class="ana-part-top"><b>${escHtml(pr.label || pr.part)}</b><span>${pr.score}/100</span></div>
       ${pr.feedback_ru ? `<p>${mlEsc(pr.feedback_ru)}</p>` : ''}
     </div>`).join('');
   const parts = partsInner
@@ -1078,75 +1122,7 @@ function renderAnalysen(){
    ===================================================================== */
 let activeRow = null;
 
-const ART_CLS = { der:'art-der', die:'art-die', das:'art-das' };
 
-function cardHTML(w){
-  const art = w.art ? `<span class="art ${ART_CLS[w.art] || ''}">${esc(w.art)}</span> ` : '';
-  const longCls = ((w.art ? w.art.length + 1 : 0) + w.de.length) > 15 ? ' long' : '';
-
-  /* Bedeutung = the first example, alive; the rest go to the Beispiele tab */
-  const bedEx = (w.ex && w.ex[0]) ? w.ex[0][0] : esc(w.pull || '');
-  const rest = (w.ex || []).slice(1);
-
-  /* Grammatik key forms by part of speech */
-  const dekl = DEKL[w.de];
-  const steig = STEIG[w.de];
-  let spec = '';
-  const hasPlural = dekl && dekl.some(r => r[1] !== '—');
-  if (w.pos === 'adj' && steig){
-    spec = `<span class="g-s"><i>Steigerung</i>${esc(steig.join(' · '))}</span>`;
-  } else {
-    spec = [
-      hasPlural ? `<span class="g-s"><i>Plural</i>${esc(w.plural)}</span>`
-                : `<span class="g-s"><i>Plural</i>kein Plural</span>`,
-      dekl ? `<span class="g-s"><i>Genitiv</i>${esc(dekl[1][0])}</span>` : '',
-    ].join('');
-  }
-  /* singularia tantum get a single-column table — no dash noise */
-  const declBlock = dekl ? `
-    <button class="decl-btn" id="declBtn" type="button">Deklination anzeigen
-      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-    </button>
-    <div class="decl-tbl" id="declTbl" hidden><table>
-      ${['Nominativ','Genitiv','Dativ','Akkusativ'].map((c, i) =>
-        `<tr><th>${c}</th><td>${esc(dekl[i][0])}</td>${hasPlural ? `<td>${esc(dekl[i][1])}</td>` : ''}</tr>`).join('')}
-    </table></div>` : '';
-
-  const koll = (w.koll || []).map(k => `<span class="koll">${esc(k)}</span>`).join('');
-  const examples = rest.map(([de, ru]) => `
-    <div class="ex-body"><p class="ex-de">${de}</p>${ru ? `<p class="ex-ru">${ru}</p>` : ''}</div>`).join('');
-
-  return `
-    <div class="d-top">
-      <div class="d-title">
-        <span class="d-word${longCls}">${art}${esc(w.de)}</span>
-        <span class="d-level">${esc(w.level)}</span>
-      </div>
-      <div class="d-icons">
-        <button class="d-iconbtn" id="dHear" type="button" aria-label="Aussprache">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 9v6h4l5 5V4L9 9H5z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
-        </button>
-        <button class="d-iconbtn d-star${favs.has(w.de) ? ' on' : ''}" id="dStar" type="button" aria-label="Merken">
-          <svg viewBox="0 0 24 24" fill="${favs.has(w.de) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18.3 6.2 21.4l1.1-6.5L2.6 9.8l6.5-.9z"/></svg>
-        </button>
-        <button class="d-iconbtn" id="dClose" type="button" aria-label="Schließen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-    </div>
-    <p class="d-ru">${esc(w.ru)}</p>
-    <div class="d-bed"><span class="d-lab">Bedeutung</span><p>${bedEx}</p></div>
-    <div class="d-tabs">
-      <button class="d-tab" data-mod="gram" type="button">Grammatik</button>
-      <button class="d-tab" data-mod="bsp" type="button">Beispiele</button>
-    </div>
-    <div class="d-mod" id="modGram" hidden><div class="g-spec">${spec}</div>${declBlock}</div>
-    <div class="d-mod" id="modBsp" hidden>
-      ${koll ? `<div class="koll-row">${koll}</div>` : ''}
-      ${examples ? `<div class="ex-list">${examples}</div>` : ''}
-    </div>
-    <div class="d-foot-pad"></div>`;
-}
 
 function positionCard(rowEl){
   const card = $('#wordCard');
@@ -1162,61 +1138,47 @@ function positionCard(rowEl){
   card.style.top = top + 'px';
 }
 
-function openCard(w, rowEl){
+/* The card is `wortkarte()` from js/wb-card.js — the same renderer the
+   Wörterbuch page uses, on the same markup and the same stylesheet
+   (css/wortkarte.css). There used to be a second implementation here, with its
+   own class prefix and its own copy of the connector; it went with the demo
+   data it was built for.
+
+   Shared is the markup, not the placement: `wortkarte()` was drawn for a fixed
+   420px column, while here the card is positioned beside the row it belongs to
+   and joined to it by a line. */
+async function openCard(lemma, rowEl){
   const card = $('#wordCard');
   activeRow = rowEl;
-  card.innerHTML = cardHTML(w);
+  card.innerHTML = `<article class="wb-card"><div class="wb-body">
+    <p class="wb-mean">Wird geladen…</p></div></article>`;
   $('#wcOverlay').classList.add('open');
-
   card.style.top = '0px'; card.style.visibility = 'hidden';
   card.classList.add('open');
-  requestAnimationFrame(() => {
-    positionCard(rowEl);
-    card.style.visibility = 'visible';
-    requestAnimationFrame(updateLink);
-  });
 
-  card.querySelector('#dClose').onclick = closeCard;
-  card.querySelector('#dHear').onclick = () => speak((w.art ? w.art + ' ' : '') + w.de);
+  let data = null;
+  try {
+    const r = await fetch(`/api/vocab/entry/${encodeURIComponent(lemma)}`,
+      { credentials: 'same-origin' });
+    if (r.ok) data = await r.json();
+  } catch (_) {}
 
-  /* star — kept in sync with the row star in the list */
-  card.querySelector('#dStar').onclick = e => {
-    const btn = e.currentTarget;
-    const on = !favs.has(w.de);
-    if (on) favs.add(w.de); else favs.delete(w.de);
-    btn.classList.toggle('on', on);
-    btn.querySelector('svg').setAttribute('fill', on ? 'currentColor' : 'none');
-    const rowStar = rowEl.querySelector('.wb-star');
-    if (rowStar){
-      rowStar.classList.toggle('on', on);
-      rowStar.querySelector('svg').setAttribute('fill', on ? 'currentColor' : 'none');
-    }
-  };
-
-  /* tabs — one module at a time; card is repositioned as its height changes */
-  const tabs = Array.from(card.querySelectorAll('.d-tab'));
-  const mods = { gram: card.querySelector('#modGram'), bsp: card.querySelector('#modBsp') };
-  tabs.forEach(t => t.onclick = () => {
-    const id = t.dataset.mod;
-    const wasOn = t.classList.contains('on');
-    tabs.forEach(x => x.classList.remove('on'));
-    Object.values(mods).forEach(m => m.hidden = true);
-    if (!wasOn){ t.classList.add('on'); mods[id].hidden = false; }
-    positionCard(rowEl); updateLink();
-  });
-
-  /* full declension table, one level deeper */
-  const declBtn = card.querySelector('#declBtn');
-  if (declBtn){
-    const tbl = card.querySelector('#declTbl');
-    declBtn.onclick = () => {
-      const show = tbl.hidden;
-      tbl.hidden = !show;
-      declBtn.classList.toggle('on', show);
-      declBtn.firstChild.textContent = show ? 'Deklination verbergen' : 'Deklination anzeigen';
-      positionCard(rowEl); updateLink();
-    };
+  if (activeRow !== rowEl) return;   /* another row was opened while we waited */
+  if (!data){
+    card.innerHTML = `<article class="wb-card"><div class="wb-body">
+      <p class="wb-mean">Die Karte ist gerade nicht erreichbar.</p></div></article>`;
+  } else {
+    const entry = data.card || data;
+    card.innerHTML = wortkarte(entry);
+    wireCard(card, entry, {
+      close: closeCard,
+      goto: base => { const r = $(`.wb-row[data-lemma="${CSS.escape(base)}"]`); openCard(base, r || rowEl); },
+      resize: () => { positionCard(rowEl); updateLink(); },
+    });
   }
+  positionCard(rowEl);
+  card.style.visibility = 'visible';
+  updateLink();
 }
 function closeCard(){
   $('#wordCard').classList.remove('open');
@@ -1304,7 +1266,7 @@ function renderStart(){
   if (box && !box.dataset.ready){
     box.dataset.ready = '1';
     box.innerHTML = THEMA_BEISPIELE
-      .map(t => `<button class="thema-chip" type="button">${esc(t)}</button>`).join('');
+      .map(t => `<button class="thema-chip" type="button">${escHtml(t)}</button>`).join('');
     box.addEventListener('click', e => {
       const b = e.target.closest('.thema-chip');
       if (!b) return;
@@ -1339,8 +1301,8 @@ function renderEssays(){
     row.className = 'essay-row' + (e.id === store.activeId ? ' current' : '');
     row.innerHTML = `
       <button class="essay-open" type="button">
-        <span class="er-main"><b>${esc(e.thema)}</b></span>
-        <span class="er-meta">${esc(e.niveau)} · ${words} Wörter · erstellt ${fmtDate(e.created)} · bearbeitet ${fmtDate(e.updated)}</span>
+        <span class="er-main"><b>${escHtml(e.thema)}</b></span>
+        <span class="er-meta">${escHtml(e.niveau)} · ${words} Wörter · erstellt ${fmtDate(e.created)} · bearbeitet ${fmtDate(e.updated)}</span>
       </button>
       <button class="essay-delete" type="button" aria-label="Essay löschen">×</button>`;
     row.querySelector('.essay-open').addEventListener('click', () => {
@@ -2338,7 +2300,7 @@ async function openVersions() {
       });
     });
   } catch (err) {
-    list.innerHTML = `<p class="versions-empty">Laden fehlgeschlagen: ${esc(err.message)}</p>`;
+    list.innerHTML = `<p class="versions-empty">Laden fehlgeschlagen: ${escHtml(err.message)}</p>`;
   }
 }
 function closeVersions() { $('#versionsShell').hidden = true; }
