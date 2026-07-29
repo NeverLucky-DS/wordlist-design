@@ -714,14 +714,19 @@ body .topbar{
   opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
 .wc-overlay.open{opacity:1;visibility:visible}
 
-#wordCard{position:fixed;z-index:62;width:500px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);
-  display:flex;flex-direction:column;overflow:hidden;
-  background:var(--card);border:1px solid var(--hair);border-radius:20px;
-  box-shadow:0 1px 2px rgba(40,40,45,.04),0 3px 8px rgba(40,40,45,.05),
-    0 24px 48px -20px rgba(40,40,45,.22),0 50px 110px -50px rgba(40,40,45,.4);
+/* The shell positions and animates; the LOOK belongs to `.wb-card`
+   (css/wortkarte.css), shared with the Wörterbuch page. This element used to be
+   the card itself — hence the background, border, radius and shadow that now
+   live one level in. Left as a flex column it squeezed the 420px child down to
+   2px, which reads as "the card did not open". */
+#wordCard{position:fixed;z-index:62;width:420px;max-width:calc(100vw - 32px);
   opacity:0;transform:translateY(10px) scale(.99);pointer-events:none;
   transition:opacity .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1)}
 #wordCard.open{opacity:1;transform:none;pointer-events:auto}
+/* the lift is the shell's job — it is what separates the card from the sheet */
+#wordCard .wb-card{max-height:calc(100vh - 36px);overflow-y:auto;
+  box-shadow:0 1px 2px rgba(40,40,45,.04),0 3px 8px rgba(40,40,45,.05),
+    0 24px 48px -20px rgba(40,40,45,.22),0 50px 110px -50px rgba(40,40,45,.4)}
 
 /* ---------- header: word + level left, icon cluster (hear/star/close)
    pinned top-right; translation underneath ---------------------------- */

@@ -630,7 +630,7 @@ function openTool(tool, keep){
        does not re-fetch a list the user just looked at */
     renderWoerterbuch();
     (wbTab === 'meine' && wbMine === null ? loadMine() :
-     wbTab === 'thema' && wbPaket === null ? loadPaket() : Promise.resolve())
+     wbTab === 'thema' && wbNeedsPaket() ? loadPaket() : Promise.resolve())
       .then(renderWoerterbuch);
   }
   else if (tool === 'analysen'){ anaPage = 0; renderAnalysen(); }
@@ -732,6 +732,15 @@ async function loadMine(){
   }
 }
 
+/* `none` is not an answer to cache. It means "this essay has no package yet",
+   and that changes on its own a second after the essay is created — the id
+   arrives from the server while the drawer is already open. Treating it as a
+   final state left "Das Essay ist noch nicht auf dem Server" on screen for the
+   rest of the session. */
+function wbNeedsPaket(){
+  return wbPaket === null || wbPaket.status === 'none' || wbPaket.status === 'error';
+}
+
 async function loadPaket(){
   const e = currentEssay();
   if (!e || !e.apiId){ wbPaket = { status: 'none', words: [] }; return; }
@@ -819,7 +828,7 @@ $('#wbBody').addEventListener('click', async e => {
   if (tabBtn){
     wbTab = tabBtn.dataset.tab;
     if (wbTab === 'meine' && wbMine === null) await loadMine();
-    if (wbTab === 'thema' && wbPaket === null) await loadPaket();
+    if (wbTab === 'thema' && wbNeedsPaket()) await loadPaket();
     renderWoerterbuch();
     return;
   }
@@ -1174,6 +1183,18 @@ async function openCard(lemma, rowEl){
       close: closeCard,
       goto: base => { const r = $(`.wb-row[data-lemma="${CSS.escape(base)}"]`); openCard(base, r || rowEl); },
       resize: () => { positionCard(rowEl); updateLink(); },
+      /* the card's own "add to list" button — the same list the row star
+         writes to, so the row has to learn about it too */
+      collect: async c => {
+        try {
+          await window.SchreibenApi.addMyWord(c.lemma);
+          wbMine = null;
+          const star = rowEl && rowEl.querySelector('.wb-star');
+          if (star){ star.classList.add('on'); star.querySelector('svg').setAttribute('fill','currentColor'); }
+        } catch (err) {
+          if (err.status === 401 && window.SiteAuth) window.SiteAuth.open();
+        }
+      },
     });
   }
   positionCard(rowEl);
@@ -1198,7 +1219,11 @@ document.addEventListener('keydown', e => {
 function updateLink(){
   const line = $('#linkLine'), card = $('#wordCard');
   if (!card.classList.contains('open') || !activeRow){ line.setAttribute('hidden',''); return; }
-  const titleEl = card.querySelector('.d-word');
+  /* `.wb-word` — the heading of the shared card (js/wb-card.js). This used to
+     read `.d-word`, the old local card's class, and after the switch the line
+     simply never drew: the card opened, the row stayed marked, and the thread
+     between them was gone with no error anywhere. */
+  const titleEl = card.querySelector('.wb-word');
   if (!titleEl){ line.setAttribute('hidden',''); return; }
   const tR = titleEl.getBoundingClientRect();
   const rR = activeRow.getBoundingClientRect();
