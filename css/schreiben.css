@@ -462,15 +462,30 @@ body .topbar{
 .pg-btn:disabled{opacity:.4;cursor:default}
 
 /* ---------- Wörterbuch rows — watercolor washes by level + type ------- */
-/* Two tabs over one row renderer. Underline, not a pill: the drawer already
+/* Used by the Schreibhilfen drawer (the Klischee search), NOT by the
+   Wörterbuch one — which is why deleting it along with the old word search
+   blew the magnifier up to full panel width: an inline <svg> with no width
+   falls back to 300×150. Kept here, one owner, one search box. */
+.wb-search{display:flex;align-items:center;gap:9px;margin:6px 0 8px;height:40px;padding:0 13px;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;
+  transition:border-color .18s,box-shadow .18s}
+.wb-search:focus-within{border-color:var(--accent-ln);box-shadow:0 0 0 4px var(--accent-soft)}
+.wb-search svg{width:16px;height:16px;color:var(--muted);flex:none}
+.wb-search input{flex:1;border:0;background:none;outline:none;font-size:13.5px;color:var(--ink)}
+.wb-search input::placeholder{color:var(--muted)}
+
+/* ⚠️ `.tool-tab`, not `.wb-tab`: the shared card (css/wortkarte.css) owns
+   `.wb-tab`/`.wb-tabs` for its own Beispiele/Grammatik/Bedeutung switcher,
+   and reusing the name here painted the card's tabs from the drawer.
+   Two tabs over one row renderer. Underline, not a pill: the drawer already
    carries a card, a wash per row and a star, and a filled segmented control
    would be the fourth object competing for the same 300px. */
-.wb-tabs{display:flex;gap:18px;margin:2px 0 10px;border-bottom:1px solid var(--line)}
-.wb-tab{background:none;border:0;padding:0 0 8px;cursor:pointer;font-family:inherit;
+.tool-tabs{display:flex;gap:18px;margin:2px 0 10px;border-bottom:1px solid var(--line)}
+.tool-tab{background:none;border:0;padding:0 0 8px;cursor:pointer;font-family:inherit;
   font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);
   border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .16s,border-color .16s}
-.wb-tab:hover{color:var(--ink-soft)}
-.wb-tab.on{color:var(--accent-ink);border-bottom-color:var(--accent-ln)}
+.tool-tab:hover{color:var(--ink-soft)}
+.tool-tab.on{color:var(--accent-ink);border-bottom-color:var(--accent-ln)}
 /* the package belongs to an older prompt — said, not hidden, not auto-fixed */
 .wb-note{font-size:12px;line-height:1.45;color:var(--ink-mute);padding:2px 2px 9px}
 .wb-jump{display:inline;background:none;border:0;padding:0;cursor:pointer;font-family:inherit;

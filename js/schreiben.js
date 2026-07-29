@@ -784,7 +784,7 @@ function wbRowHTML(w){
 
 function wbBodyHTML(){
   const tabs = WB_TABS.map(t =>
-    `<button class="wb-tab${t.id === wbTab ? ' on' : ''}" type="button" data-tab="${t.id}">${t.label}</button>`
+    `<button class="tool-tab${t.id === wbTab ? ' on' : ''}" type="button" data-tab="${t.id}">${t.label}</button>`
   ).join('');
 
   let inner = '';
@@ -813,7 +813,7 @@ function wbBodyHTML(){
           <button class="wb-jump" type="button" data-rebuild>Neu bauen</button></div>` : ''}
         <div class="wb-list">${p.words.map(wbRowHTML).join('')}</div>`;
   }
-  return `<div class="wb-tabs">${tabs}</div>${inner}`;
+  return `<div class="tool-tabs">${tabs}</div>${inner}`;
 }
 
 function renderWoerterbuch(){
@@ -1160,7 +1160,7 @@ async function openCard(lemma, rowEl){
   const card = $('#wordCard');
   activeRow = rowEl;
   card.innerHTML = `<article class="wb-card"><div class="wb-body">
-    <p class="wb-mean">Wird geladen…</p></div></article>`;
+    <p class="wb-mn">Wird geladen…</p></div></article>`;
   $('#wcOverlay').classList.add('open');
   card.style.top = '0px'; card.style.visibility = 'hidden';
   card.classList.add('open');
@@ -1175,7 +1175,7 @@ async function openCard(lemma, rowEl){
   if (activeRow !== rowEl) return;   /* another row was opened while we waited */
   if (!data){
     card.innerHTML = `<article class="wb-card"><div class="wb-body">
-      <p class="wb-mean">Die Karte ist gerade nicht erreichbar.</p></div></article>`;
+      <p class="wb-mn">Die Karte ist gerade nicht erreichbar.</p></div></article>`;
   } else {
     const entry = data.card || data;
     card.innerHTML = wortkarte(entry);
